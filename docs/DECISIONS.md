@@ -48,10 +48,11 @@ about 2 ms, worst 8.7 ms, for both runtimes at 320 and 640. Both release the GIL
 inference, so a process and its shared-memory plumbing would add complexity for nothing.
 This must be re-checked on the Pi (see the hardware checklist).
 
-**ncnn first, onnxruntime as fallback.** Ultralytics publish ncnn as the faster option on
-the Pi. On this x86 laptop onnxruntime is slightly faster at 320 and slower at 640, so
-laptop numbers do not settle it. Run `scripts/benchmark_vision.py` with `--backend` on the
-Pi and set `VISION.BACKEND` if needed. Their detections were identical on a test photo.
+**ncnn first, onnxruntime as fallback.** ncnn was the requested preference, and it is
+built for ARM. On this x86 laptop onnxruntime is faster at both sizes (15 against 23 ms at
+320, 59 against 79 ms at 640), but x86 results do not carry over to ARM, so this is
+unproven on the Pi. Run `scripts/benchmark_vision.py` with `--backend` there and set
+`VISION.BACKEND` if onnxruntime wins. Their detections were identical on a test photo.
 
 **Idle inference threads sleep.** With default settings both runtimes spin between
 inferences, using 62 to 112 % of a core at 4 inferences/s. `allow_spinning=0` and
