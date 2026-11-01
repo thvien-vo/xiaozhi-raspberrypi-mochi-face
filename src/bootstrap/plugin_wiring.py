@@ -24,6 +24,9 @@ def bind_shared_services(container: "ServiceContainer") -> None:
     from src.mcp.mcp_server import McpServer
     from src.mcp.tools.music.music_player import MusicPlayer
     from src.notifications.notification_player import NotificationPlayer
+    from src.vision.camera_service import set_active_camera_service
+    from src.vision.runtime import VisionRuntime
+    from src.vision.settings import load_vision_settings
 
     if container.mcp_server is None:
         container.mcp_server = McpServer()
@@ -36,11 +39,19 @@ def bind_shared_services(container: "ServiceContainer") -> None:
         container.notification_player.set_event_bus(container.event_bus)
         container.session.set_notification_player(container.notification_player)
 
+    if container.vision is None:
+        container.vision = VisionRuntime(load_vision_settings())
+        # Owns the camera even with detection disabled: take_photo goes through it
+        set_active_camera_service(container.vision.camera)
+
     logger.debug("Shared services created: McpServer, MusicPlayer, NotificationPlayer")
 
 
 def unbind_shared_services(container: "ServiceContainer") -> None:
     """Release shared service references (called in the final stage of the resource pool)."""
+    from src.vision.camera_service import set_active_camera_service
+
+    set_active_camera_service(None)
     if container.notification_player is not None:
         try:
             container.notification_player.detach()
@@ -59,6 +70,7 @@ def unbind_shared_services(container: "ServiceContainer") -> None:
     container.music_player = None
     container.mcp_server = None
     container.notification_player = None
+    container.vision = None
 
 
 async def setup_plugins(
@@ -72,6 +84,7 @@ async def setup_plugins(
     from src.plugins.mcp import McpPlugin
     from src.plugins.shortcuts import ShortcutsPlugin
     from src.plugins.ui import UIPlugin
+    from src.plugins.vision import VisionPlugin
     from src.plugins.wake_word import WakeWordPlugin
 
     bind_shared_services(container)
@@ -84,13 +97,16 @@ async def setup_plugins(
     mcp_plugin = McpPlugin(
         server=container.mcp_server,
         music_player=container.music_player,
+        vision=container.vision,
     )
+    vision_plugin = VisionPlugin(container.vision)
 
     container.plugins.register(
         mcp_plugin,
         audio_plugin,
         wake_word_plugin,
         ui_plugin,
+        vision_plugin,
         shortcuts_plugin,
     )
 

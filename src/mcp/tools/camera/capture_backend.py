@@ -11,6 +11,7 @@ import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FuturesTimeout
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -284,9 +285,37 @@ def _capture_picamera2(cfg: CaptureConfig) -> bytes | None:
                 pass
 
 
+@contextmanager
+def _exclusive_device():
+    """Make the shared camera service let go of the device while code opens it directly."""
+    from src.vision.camera_service import get_active_camera_service
+
+    service = get_active_camera_service()
+    if service is None:
+        yield
+    else:
+        with service.suspended():
+            yield
+
+
 def capture_jpeg(cfg: CaptureConfig | None = None) -> bytes | None:
-    """Capture a single JPEG frame as bytes per configuration; returns None on failure."""
+    """Capture a single JPEG frame as bytes per configuration; returns None on failure.
+
+    Goes through the shared camera service, so the device is never opened twice. Only a
+    different device than the configured one (settings test) is opened directly.
+    """
+    from src.vision.camera_service import get_active_camera_service
+
     cfg = cfg or load_capture_config()
+    service = get_active_camera_service()
+    if service is not None and service.matches(cfg):
+        return service.capture_jpeg(cfg.jpeg_max_side)
+
+    with _exclusive_device():
+        return _capture_direct(cfg)
+
+
+def _capture_direct(cfg: CaptureConfig) -> bytes | None:
     backend = cfg.backend
 
     def _run() -> bytes | None:
@@ -335,6 +364,13 @@ def list_camera_devices(
     consecutive_fail_limit: int = 2,
 ) -> list[CameraDeviceInfo]:
     """Enumerate available cameras (for settings UI / scanner scripts)."""
+    with _exclusive_device():
+        return _enumerate_cameras(max_index, consecutive_fail_limit)
+
+
+def _enumerate_cameras(
+    max_index: int, consecutive_fail_limit: int
+) -> list[CameraDeviceInfo]:
     _silence_opencv_logs()
     devices: list[CameraDeviceInfo] = []
     seen: set[str] = set()

@@ -128,6 +128,32 @@ class ConfigManager:
             # Small frames-per-second readout, for checking performance on the Pi
             "SHOW_FPS": False,
         },
+        # On-device object detection (needs the "vision" extra and an exported model)
+        "VISION": {
+            "ENABLED": True,
+            "BACKEND": "auto",  # auto (ncnn, then onnxruntime) | ncnn | onnxruntime
+            # {imgsz} is replaced by INPUT_SIZE; relative paths start at the app root
+            "NCNN_MODEL_PATH": "models/yolo/yolo11n_{imgsz}_ncnn_model",
+            "ONNX_MODEL_PATH": "models/yolo/yolo11n_{imgsz}.onnx",
+            "INPUT_SIZE": 320,  # 320 or 640; each size needs its own export
+            "NUM_THREADS": 2,
+            "CONFIDENCE": 0.35,
+            "IOU": 0.45,
+            "INFERENCE_RATE": 4.0,  # Inferences per second
+            # detect_objects reuses a result this recent instead of waiting for a new one
+            "MAX_RESULT_AGE_S": 2.0,
+            "DETECT_TIMEOUT_S": 8.0,
+            # Without a preview, stop the camera this long after the last query
+            "IDLE_STOP_S": 60.0,
+            "PREVIEW": {
+                "ENABLED": True,
+                "CORNER": "top-right",  # top-left | top-right | bottom-left | bottom-right
+                "WIDTH": 240,
+                "FPS": 12.0,
+                "MARGIN": 16,
+                "SHOW_BOXES": True,
+            },
+        },
         "SHORTCUTS": {
             "ENABLED": True,
             "MANUAL_PRESS": {"modifier": "ctrl", "key": "j", "description": "Hold to Talk"},
