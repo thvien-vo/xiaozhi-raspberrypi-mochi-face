@@ -98,4 +98,4 @@ class UIPlugin(Plugin):
 
     async def _on_notification_subtitle(self, text: str = "") -> None:
         if text:
-            self._presenter.set_chat_text(text)
+            self._presenter.show_notification_subtitle(text)

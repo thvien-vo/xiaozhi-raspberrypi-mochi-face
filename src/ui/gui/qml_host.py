@@ -10,9 +10,15 @@ from src.logging import get_logger
 logger = get_logger()
 
 
-def _show_window(window, *, activate: bool) -> None:
+def _show_window(window, *, activate: bool, fullscreen: bool = False) -> None:
     """Show window; when activate=False, avoid stealing focus (macOS fullscreen Space friendly)."""
     if window is None:
+        return
+
+    if fullscreen:
+        window.showFullScreen()
+        if activate:
+            window.requestActivate()
         return
 
     if activate:
@@ -46,6 +52,11 @@ class QmlAppHost:
 
     def __init__(self) -> None:
         self._engine: QQmlApplicationEngine | None = None
+        self._fullscreen = False
+
+    def set_fullscreen(self, fullscreen: bool) -> None:
+        """Kiosk mode: every show of the root window goes fullscreen."""
+        self._fullscreen = fullscreen
 
     @property
     def engine(self) -> QQmlApplicationEngine | None:
@@ -63,12 +74,17 @@ class QmlAppHost:
             ctx.setContextProperty(name, obj)
         logger.debug("QmlAppHost: Injected QML context %s", list(properties))
 
-    def load_main(self) -> None:
+    def add_image_provider(self, provider_id: str, provider) -> None:
+        if not self._engine:
+            raise RuntimeError("QML engine not created")
+        self._engine.addImageProvider(provider_id, provider)
+
+    def load_main(self, filename: str = "main.qml") -> None:
         if not self._engine:
             raise RuntimeError("QML engine not created")
         qml_dir = Path(__file__).parent / "qml"
         self._engine.addImportPath(str(qml_dir))
-        main_qml = qml_dir / "main.qml"
+        main_qml = qml_dir / filename
         self._engine.load(QUrl.fromLocalFile(str(main_qml)))
         if not self._engine.rootObjects():
             logger.error("QmlAppHost: Failed to load QML")
@@ -88,7 +104,9 @@ class QmlAppHost:
             activate: True=bring to foreground (tray "Show Window" / shortcut);
                       False=show only without requestActivate (cold start, avoids switching away from macOS fullscreen apps)
         """
-        _show_window(self.root_window(), activate=activate)
+        _show_window(
+            self.root_window(), activate=activate, fullscreen=self._fullscreen
+        )
 
     def toggle_root_visible(self) -> None:
         window = self.root_window()

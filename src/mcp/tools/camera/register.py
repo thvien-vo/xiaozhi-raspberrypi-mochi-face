@@ -9,7 +9,6 @@ from src.mcp.tooling import McpTool, Property, PropertyList, PropertyType
 from src.utils.config_manager import get_config
 
 from .normal_camera import NormalCamera
-from .vl_camera import VLCamera
 
 logger = get_logger()
 
@@ -25,7 +24,13 @@ def create_camera():
 
     if vl_key and vl_url:
         logger.info(f"Initializing VL Camera with URL: {vl_url}")
-        return VLCamera()
+        # Imported here so a missing cloud client cannot stop every MCP tool registering
+        try:
+            from .vl_camera import VLCamera
+
+            return VLCamera()
+        except ImportError as e:
+            logger.error(f"VL Camera unavailable, using normal Camera: {e}")
 
     logger.info("VL configuration not found, using normal Camera implementation")
     return NormalCamera()

@@ -90,6 +90,14 @@ tui = [
     "textual>=0.80.0",
 ]
 
+# On-device object detection: uv sync --extra vision
+# Only the inference runtimes. Ultralytics/PyTorch are needed once, by
+# scripts/export_yolo.py, and are deliberately not listed here.
+vision = [
+    "ncnn>=1.0.20241226",
+    "onnxruntime>=1.18.0",
+]
+
 # Note: Do not install picamera2 via pip extra for Raspberry Pi CSI cameras.
 # picamera2 depends on python-prctl (Linux only), which fails to compile on macOS during uv sync/run.
 # On Pi Bookworm, use the system package: sudo apt install python3-picamera2

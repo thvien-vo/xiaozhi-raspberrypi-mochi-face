@@ -94,6 +94,9 @@ class ConfigManager:
             "device": "",
             # auto | opencv | picamera2; auto tries OpenCV first, then falls back to CSI (picamera2)
             "backend": "auto",
+            # none | horizontal | vertical | both; applied once, where frames are read,
+            # so the preview, detection and take_photo all see the corrected image
+            "flip": "none",
             "frame_width": 640,
             "frame_height": 480,
             "fps": 30,
@@ -102,6 +105,57 @@ class ConfigManager:
             "Local_VL_url": "https://open.bigmodel.cn/api/paas/v4/",
             "VLapi_key": "",
             "models": "glm-4v-plus",
+        },
+        # GUI face (see docs/DECISIONS.md)
+        "FACE": {
+            # robot: code-drawn animated eyes; gif: classic window with assets/emojis
+            "STYLE": "robot",
+            # Kiosk mode: fullscreen, no title bar or controls, hidden cursor
+            "FULLSCREEN": False,
+            "WINDOW_WIDTH": 1024,
+            "WINDOW_HEIGHT": 600,
+            "ESC_TO_EXIT": True,  # Kiosk mode only
+            # Show the recognized user speech in a dimmer style above the assistant text
+            "SHOW_USER_TEXT": True,
+            "TYPEWRITER_CHARS_PER_S": 28,
+            # How long finished text stays before fading out
+            "TEXT_HOLD_MS": 1800,
+            # Stop showing "thinking" if no reply arrives within this time
+            "THINKING_TIMEOUT_S": 15,
+            # Seconds of inactivity while idle; 0 disables the transition
+            "SLEEPY_AFTER_S": 90,
+            "ASLEEP_AFTER_S": 240,
+            "BLINK_MIN_MS": 2000,
+            "BLINK_MAX_MS": 6000,
+            "DOUBLE_BLINK_CHANCE": 0.2,
+            # Small frames-per-second readout, for checking performance on the Pi
+            "SHOW_FPS": False,
+        },
+        # On-device object detection (needs the "vision" extra and an exported model)
+        "VISION": {
+            "ENABLED": True,
+            "BACKEND": "auto",  # auto (ncnn, then onnxruntime) | ncnn | onnxruntime
+            # {imgsz} is replaced by INPUT_SIZE; relative paths start at the app root
+            "NCNN_MODEL_PATH": "models/yolo/yolo11n_{imgsz}_ncnn_model",
+            "ONNX_MODEL_PATH": "models/yolo/yolo11n_{imgsz}.onnx",
+            "INPUT_SIZE": 320,  # 320 or 640; each size needs its own export
+            "NUM_THREADS": 2,
+            "CONFIDENCE": 0.35,
+            "IOU": 0.45,
+            "INFERENCE_RATE": 4.0,  # Inferences per second
+            # detect_objects reuses a result this recent instead of waiting for a new one
+            "MAX_RESULT_AGE_S": 2.0,
+            "DETECT_TIMEOUT_S": 8.0,
+            # Without a preview, stop the camera this long after the last query
+            "IDLE_STOP_S": 60.0,
+            "PREVIEW": {
+                "ENABLED": True,
+                "CORNER": "top-right",  # top-left | top-right | bottom-left | bottom-right
+                "WIDTH": 240,
+                "FPS": 12.0,
+                "MARGIN": 16,
+                "SHOW_BOXES": True,
+            },
         },
         "SHORTCUTS": {
             "ENABLED": True,

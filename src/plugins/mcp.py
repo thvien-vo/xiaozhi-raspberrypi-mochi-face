@@ -12,6 +12,7 @@ from src.plugins.base import Plugin
 if TYPE_CHECKING:
     from src.bootstrap.protocols import PluginCommands, PluginContext
     from src.mcp.tools.music.music_player import MusicPlayer
+    from src.vision.runtime import VisionRuntime
 
 logger = get_logger()
 
@@ -24,6 +25,7 @@ class McpPlugin(Plugin):
         self,
         server: Optional[McpServer] = None,
         music_player: Optional["MusicPlayer"] = None,
+        vision: Optional["VisionRuntime"] = None,
     ) -> None:
         super().__init__()
         if server is None:
@@ -32,6 +34,7 @@ class McpPlugin(Plugin):
             raise ValueError("McpPlugin requires a container-injected MusicPlayer")
         self._server: McpServer = server
         self._music_player = music_player
+        self._vision = vision
 
     async def setup(self, ctx: "PluginContext", cmd: "PluginCommands") -> None:
         await super().setup(ctx, cmd)
@@ -55,6 +58,11 @@ class McpPlugin(Plugin):
             server.set_camera(camera)
             register_camera_tools(server.add_tool, camera)
             register_screenshot_tools(server.add_tool, camera)
+
+            if self._vision is not None and self._vision.settings.enabled:
+                from src.mcp.tools.vision import register_vision_tools
+
+                register_vision_tools(server.add_tool, self._vision)
 
             server.add_common_tools(music_player=self._music_player)
         except Exception as e:

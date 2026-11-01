@@ -65,10 +65,25 @@ class UiPresenter:
         if self._vp:
             self._vp.set_auto_mode(auto_mode)
 
+    def _call_optional(self, method: str, *args) -> None:
+        """Call a viewport extension that only some frontends implement (robot face)."""
+        if not self._vp:
+            return
+        setter = getattr(self._vp, method, None)
+        if callable(setter):
+            setter(*args)
+
     def show_device_state(self, state) -> None:
+        self._call_optional("set_device_state", getattr(state, "value", str(state)))
         if status_text := self.STATE_TEXT_MAP.get(state):
-            self.set_emotion("neutral")
+            # The reply emotion can arrive just before TTS starts: keep it while speaking
+            if state != DeviceState.SPEAKING:
+                self.set_emotion("neutral")
             self.set_status(status_text, connected=True)
+
+    def show_notification_subtitle(self, text: str) -> None:
+        self.set_chat_text(text)
+        self._call_optional("set_speech_text", "tts", text)
 
     def show_network_error(self) -> None:
         self.set_status("Disconnected", connected=False)
@@ -106,8 +121,14 @@ class UiPresenter:
             return
         msg_type = message.get("type")
         if msg_type in ("tts", "stt"):
+            tts_state = message.get("state")
             if text := message.get("text"):
                 self.set_chat_text(text)
+                # sentence_end repeats the sentence that is already on screen
+                if tts_state != "sentence_end":
+                    self._call_optional("set_speech_text", msg_type, text)
+            if msg_type == "tts" and tts_state == "stop":
+                self._call_optional("end_speech")
         elif msg_type == "llm":
             if emotion := message.get("emotion"):
                 self.set_emotion(emotion)

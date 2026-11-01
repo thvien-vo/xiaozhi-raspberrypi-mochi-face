@@ -53,6 +53,7 @@ class ServiceContainer:
         self.mcp_server = None
         self.music_player = None
         self.notification_player = None
+        self.vision = None
 
         # Session control (listen/speak/interrupt/TTS loopback)
         self.session = ConversationSession(

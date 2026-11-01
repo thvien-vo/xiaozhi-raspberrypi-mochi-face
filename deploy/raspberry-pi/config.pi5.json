@@ -1,0 +1,37 @@
+{
+  "FACE": {
+    "STYLE": "robot",
+    "FULLSCREEN": true,
+    "WINDOW_WIDTH": 1024,
+    "WINDOW_HEIGHT": 600
+  },
+  "WAKE_WORD_OPTIONS": {
+    "NUM_THREADS": 2
+  },
+  "AEC_OPTIONS": {
+    "ENABLED": false
+  },
+  "AUDIO_DEVICES": {
+    "input_device_name": "Jabra",
+    "output_device_name": "Jabra"
+  },
+  "CAMERA": {
+    "backend": "opencv",
+    "fps": 15,
+    "frame_width": 640,
+    "frame_height": 480
+  },
+  "VISION": {
+    "ENABLED": true,
+    "BACKEND": "auto",
+    "INPUT_SIZE": 320,
+    "NUM_THREADS": 2,
+    "INFERENCE_RATE": 4.0,
+    "PREVIEW": {
+      "ENABLED": true,
+      "CORNER": "top-right",
+      "WIDTH": 240,
+      "FPS": 12.0
+    }
+  }
+}

@@ -99,15 +99,20 @@ class AudioDeviceManager:
             f"{device_output_sample_rate}Hz {output_channels}ch"
         )
 
-        # 4. Save device names (instead of IDs) to configuration
-        if (
-            input_device_name != input_info["name"]
-            or output_device_name != output_info["name"]
-        ):
-            self.config.update_config("AUDIO_DEVICES.input_device_name", input_info["name"])
+        # 4. Save device names (instead of IDs) to configuration. A configured name stays
+        # as written: a partial name like "Jabra" must survive ALSA renumbering the card
+        # (the full name contains "hw:2,0") and a boot with the device unplugged.
+        if not input_device_name or not output_device_name:
+            self.config.update_config(
+                "AUDIO_DEVICES.input_device_name",
+                input_device_name or input_info["name"],
+            )
             self.config.update_config("AUDIO_DEVICES.input_sample_rate", device_input_sample_rate)
             self.config.update_config("AUDIO_DEVICES.input_channels", input_channels)
-            self.config.update_config("AUDIO_DEVICES.output_device_name", output_info["name"])
+            self.config.update_config(
+                "AUDIO_DEVICES.output_device_name",
+                output_device_name or output_info["name"],
+            )
             self.config.update_config("AUDIO_DEVICES.output_sample_rate", device_output_sample_rate)
             self.config.update_config("AUDIO_DEVICES.output_channels", output_channels)
             logger.info("Device configuration saved")

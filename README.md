@@ -78,6 +78,7 @@ py-xiaozhi is a lightweight, cross-platform multi-modal AI interaction framework
 - **IoT & Embodied AI Ready** — GPIO interface for robotics control, hardware actuation, and sensor integration
 - **WebSocket / MQTT** — Dual protocol communication with WSS/TLS encrypted transmission and auto-reconnection
 - **Plugin Architecture** — Event-driven async design, clean dependency injection, extensible plugin system
+- **Robot Face** — Animated, code-drawn eyes for a small screen, with on-device YOLO object detection and a live camera preview. See [docs/REPORT.md](docs/REPORT.md) and the [Raspberry Pi 5 guide](docs/raspberry-pi-5.md)
 
 ## System Requirements
 

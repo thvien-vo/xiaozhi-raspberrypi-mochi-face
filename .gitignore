@@ -7,6 +7,9 @@
 .idea/
 venv/
 
+# Exported YOLO models: AGPL-3.0 weights, created by scripts/export_yolo.py
+/models/yolo/
+
 # Music cache
 cache/
 

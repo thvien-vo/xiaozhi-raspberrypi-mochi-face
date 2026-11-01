@@ -27,6 +27,10 @@ sherpa-onnx-core>=1.12.26; sys_platform != "win32"
 opencv-python-headless>=4.9.0
 pillow>=10.0.0
 
+# On-device object detection (optional, see the vision extra in pyproject.toml)
+# ncnn>=1.0.20241226
+# onnxruntime>=1.18.0
+
 # Encryption
 cryptography>=42.0.0
 
