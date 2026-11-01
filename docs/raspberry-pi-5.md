@@ -129,6 +129,13 @@ v4l2-ctl --list-devices
 .venv/bin/python scripts/camera_scanner.py --device /dev/v4l/by-id/usb-YOUR_CAMERA-video-index0
 ```
 
+If the image is mirrored, set `CAMERA.flip` to `horizontal` (or `vertical`, or `both`
+for an upside-down camera). The default is `none`, and the Pi preset leaves it alone
+because the camera may be mounted differently. The flip is applied once where frames are
+read, so the preview, detection and `take_photo` all show the corrected image, and "left"
+and "right" in `detect_objects` follow it. Use `main.py --face-demo --demo-camera real` to
+check, and hold up something with writing on it.
+
 ## 8. Set the screen resolution
 
 The kiosk window fills whatever resolution the screen reports, and the face scales to fit.

@@ -55,6 +55,15 @@ class CameraFrame:
     timestamp: float
 
 
+_FLIP_CODES = {"horizontal": 1, "vertical": 0, "both": -1}
+
+
+def apply_flip(image: np.ndarray, flip: str) -> np.ndarray:
+    """Mirror a frame per CAMERA.flip. This is the only place frames are flipped."""
+    code = _FLIP_CODES.get(flip)
+    return image if code is None else cv2.flip(image, code)
+
+
 class FrameSource(Protocol):
     def open(self) -> bool: ...
 
@@ -389,11 +398,12 @@ class CameraService:
             self._device_released.clear()
 
     def _read_until_closed(
-        self, source: FrameSource, warm_up_frames: int, stop: threading.Event
+        self, source: FrameSource, cfg: Any, stop: threading.Event
     ) -> bool:
         """Read frames until asked to close. Returns False if the camera failed."""
         failures = 0
-        discard = warm_up_frames
+        discard = cfg.warm_up_frames
+        flip = getattr(cfg, "flip", "none")
         while not self._should_close(stop):
             image = source.read()
             if image is None:
@@ -407,7 +417,7 @@ class CameraService:
                 discard -= 1
                 continue
             self._state = STATE_RUNNING
-            self._publish(image)
+            self._publish(apply_flip(image, flip))
         return True
 
     def _run(self, stop: threading.Event) -> None:
@@ -425,7 +435,7 @@ class CameraService:
                     self._state = STATE_OPENING
                 source = self._source_factory(cfg)
                 if source.open():
-                    healthy = self._read_until_closed(source, cfg.warm_up_frames, stop)
+                    healthy = self._read_until_closed(source, cfg, stop)
                     if healthy:
                         backoff = _RECONNECT_MIN_S
             except Exception as e:

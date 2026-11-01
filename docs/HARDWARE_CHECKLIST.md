@@ -43,6 +43,8 @@ Measure with the app running normally, in kiosk mode, on an actively cooled Pi.
 - [ ] The USB camera opens with `CAMERA.backend` `opencv` over V4L2
 - [ ] Requested 640x480 at 15 FPS is what the log reports
 - [ ] The right node is used (cameras often expose several `/dev/video*`)
+- [ ] `CAMERA.flip` is set so the preview is not mirrored (text readable, your left
+  hand appears on the left), and `detect_objects` left/right match the real scene
 - [ ] **Unplug and replug during use**: the preview hides, `detect_objects` reports the
   camera problem, and both recover by themselves. Simulated in tests on the laptop only.
 - [ ] Unplugging does not hang the app (a stuck V4L2 read is limited by a timeout)

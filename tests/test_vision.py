@@ -305,6 +305,63 @@ class TestCameraService:
         assert service.capture_jpeg(320, timeout=0.05) is None
 
 
+class TestFlip:
+    @pytest.fixture
+    def image(self):
+        # 2 rows x 3 columns, each pixel unique
+        return np.arange(18, dtype=np.uint8).reshape(2, 3, 3)
+
+    def test_modes(self, image):
+        assert camera_module.apply_flip(image, "none") is image
+        assert np.array_equal(camera_module.apply_flip(image, "horizontal"), image[:, ::-1])
+        assert np.array_equal(camera_module.apply_flip(image, "vertical"), image[::-1])
+        assert np.array_equal(camera_module.apply_flip(image, "both"), image[::-1, ::-1])
+
+    @pytest.mark.parametrize("bad", ["sideways", "", None, 5])
+    def test_invalid_values_fall_back_to_none(self, bad):
+        capture_backend._warned_flip_values.clear()
+        assert capture_backend.normalize_flip(bad) == ("none")
+
+    def test_normalize_accepts_case_and_spaces(self):
+        assert capture_backend.normalize_flip(" Horizontal ") == "horizontal"
+
+    def test_invalid_value_warns_once(self, monkeypatch):
+        capture_backend._warned_flip_values.clear()
+        warnings = []
+        monkeypatch.setattr(
+            capture_backend.logger, "warning", lambda *a, **k: warnings.append(a)
+        )
+        for _ in range(3):
+            capture_backend.normalize_flip("sideways")
+        assert len(warnings) == 1
+
+    def test_config_default_is_none(self):
+        assert ConfigManager.DEFAULT_CONFIG["CAMERA"]["flip"] == "none"
+        assert capture_backend.CaptureConfig().flip == "none"
+
+    def test_service_flips_once_for_every_reader(self):
+        stats = make_stats()
+        cfg = capture_backend.CaptureConfig(warm_up_frames=0, flip="horizontal")
+        marker = np.zeros((48, 64, 3), np.uint8)
+        marker[:, :8] = 255  # bright strip on the left of the device image
+
+        class Source(FakeSource):
+            def read(self):
+                time.sleep(0.002)
+                return marker
+
+        service = CameraService(lambda: cfg, lambda c: Source(stats))
+        client = object()
+        service.acquire(client)
+        frame = service.wait_for_frame(0, 2)
+        assert frame.image[:, -8:].all() and not frame.image[:, :8].any()
+        jpeg = service.capture_jpeg(0, timeout=2)
+        decoded = __import__("cv2").imdecode(np.frombuffer(jpeg, np.uint8), 1)
+        assert decoded[:, -8:].mean() > 200 and decoded[:, :8].mean() < 50
+        service.release(client)
+        assert marker[:, :8].all()  # The device buffer itself is untouched
+
+
 class TestCaptureRouting:
     @pytest.fixture
     def active(self):

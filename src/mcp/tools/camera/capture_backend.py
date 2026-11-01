@@ -23,6 +23,9 @@ logger = get_logger()
 
 _CAPTURE_TIMEOUT_S = 12.0
 
+FLIP_MODES = ("none", "horizontal", "vertical", "both")
+_warned_flip_values: set[str] = set()
+
 
 @dataclass
 class CaptureConfig:
@@ -34,6 +37,7 @@ class CaptureConfig:
     frame_width: int = 640
     frame_height: int = 480
     warm_up_frames: int = 5
+    flip: str = "none"  # none | horizontal | vertical | both
     jpeg_max_side: int = 320
 
 
@@ -46,6 +50,19 @@ class CameraDeviceInfo:
     kind: str  # opencv | v4l2 | picamera2
     index: int | None = None
     path: str | None = None
+
+
+def normalize_flip(value: Any) -> str:
+    """Return a valid flip mode; anything else is "none", with one warning per value."""
+    mode = str(value if value is not None else "none").strip().lower() or "none"
+    if mode in FLIP_MODES:
+        return mode
+    if mode not in _warned_flip_values:
+        _warned_flip_values.add(mode)
+        logger.warning(
+            "Invalid CAMERA.flip %r, using 'none' (valid: %s)", value, ", ".join(FLIP_MODES)
+        )
+    return "none"
 
 
 def load_capture_config() -> CaptureConfig:
@@ -83,6 +100,7 @@ def load_capture_config() -> CaptureConfig:
         frame_width=max(1, width),
         frame_height=max(1, height),
         warm_up_frames=warm,
+        flip=normalize_flip(cfg.get_config("CAMERA.flip", "none")),
     )
 
 

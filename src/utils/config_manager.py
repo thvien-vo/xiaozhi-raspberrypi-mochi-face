@@ -94,6 +94,9 @@ class ConfigManager:
             "device": "",
             # auto | opencv | picamera2; auto tries OpenCV first, then falls back to CSI (picamera2)
             "backend": "auto",
+            # none | horizontal | vertical | both; applied once, where frames are read,
+            # so the preview, detection and take_photo all see the corrected image
+            "flip": "none",
             "frame_width": 640,
             "frame_height": 480,
             "fps": 30,
