@@ -1,6 +1,6 @@
-"""天气工具 MCP.
+"""Weather MCP tools.
 
-- register_weather_tools: 显式注册（当前 mock，待接真 API）
+- register_weather_tools: explicit registration (currently mock, pending real API integration)
 """
 
 from .register import register_weather_tools

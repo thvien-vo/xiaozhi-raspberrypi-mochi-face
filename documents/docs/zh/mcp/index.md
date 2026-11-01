@@ -1,33 +1,33 @@
-# MCP 工具开发指南
+# MCP Tool Development Guide
 
-本文档说明如何为 py-xiaozhi 开发**内置** MCP 工具。外部 MCP 服务接入请参考 [外挂 MCP 接入指南](xiaozhi-mcp.md)。
+This document explains how to develop **built-in** MCP tools for py-xiaozhi. For external MCP services, see the [External MCP Integration Guide](xiaozhi-mcp.md).
 
-## 工作原理
+## How It Works
 
-1. `McpPlugin.setup` 创建摄像头等运行时对象，并调用 `register_camera_tools` / `register_screenshot_tools`
-2. `McpServer.add_common_tools()` **显式**调用各包的 `register_*_tools(add_tool, …)`
-3. 每个 `register_*` 用闭包持有依赖（如 `MusicPlayer`、`VolumeController`），构造 `McpTool` 并 `add_tool`
-4. 工具通过 JSON-RPC 2.0 对外暴露
+1. `McpPlugin.setup` creates runtime objects (e.g. camera) and calls `register_camera_tools` / `register_screenshot_tools`
+2. `McpServer.add_common_tools()` **explicitly** calls each package’s `register_*_tools(add_tool, …)`
+3. Each `register_*` holds dependencies in a closure (e.g. `MusicPlayer`, `VolumeController`), builds `McpTool` instances, and calls `add_tool`
+4. Tools are exposed over JSON-RPC 2.0
 
-**内置工具不使用 `@mcp_tool` 全局装饰器，也不做目录自动发现。** 新增工具包时：实现 `register_*_tools`，并在 `add_common_tools`（或 `McpPlugin`）中挂上一次。
+**Built-in tools do not use a global `@mcp_tool` decorator or filesystem auto-discovery.** To add a package: implement `register_*_tools` and wire it once in `add_common_tools` (or `McpPlugin`).
 
-需要运行时对象时，由容器 / `McpPlugin` 创建后注入 `register`，**不要**写模块级 `get_instance` 单例。
+Inject runtime objects from the container / plugin — **do not** use module-level `get_instance` singletons.
 
-## 快速上手：开发一个灯控工具
+## Quick Start: Light Control Tool
 
-### 第 1 步：创建目录
+### Step 1: Directory
 
 ```
 src/mcp/tools/light/
-├── __init__.py          # 导出 register_light_tools
-├── register.py      # register_light_tools 实现
-└── light_manager.py     # 业务逻辑（可选）
+├── __init__.py          # export register_light_tools
+├── register.py      # register_light_tools
+└── light_manager.py     # optional business logic
 ```
 
-### 第 2 步：业务逻辑（`light_manager.py`）
+### Step 2: Business logic (`light_manager.py`)
 
 ```python
-"""灯光控制业务逻辑."""
+"""Light control business logic."""
 
 from src.logging import get_logger
 
@@ -41,28 +41,28 @@ class LightManager:
 
     def turn_on(self) -> str:
         self._on = True
-        logger.info("[Light] 灯已打开")
-        return "灯已打开"
+        logger.info("[Light] Light turned on")
+        return "Light turned on"
 
     def turn_off(self) -> str:
         self._on = False
-        logger.info("[Light] 灯已关闭")
-        return "灯已关闭"
+        logger.info("[Light] Light turned off")
+        return "Light turned off"
 
     def set_brightness(self, level: int) -> str:
         self._brightness = max(0, min(100, level))
-        logger.info(f"[Light] 亮度设为 {self._brightness}%")
-        return f"亮度已设为 {self._brightness}%"
+        logger.info(f"[Light] Brightness set to {self._brightness}%")
+        return f"Brightness set to {self._brightness}%"
 
     def get_status(self) -> str:
-        state = "开" if self._on else "关"
-        return f"灯状态: {state}, 亮度: {self._brightness}%"
+        state = "on" if self._on else "off"
+        return f"Light status: {state}, brightness: {self._brightness}%"
 ```
 
-### 第 3 步：`register_light_tools`（`register.py`）
+### Step 3: `register_light_tools` (`register.py`)
 
 ```python
-"""灯光 MCP 工具注册."""
+"""Light MCP tool registration."""
 
 from collections.abc import Callable
 from typing import Any
@@ -97,19 +97,19 @@ def register_light_tools(
     tools = [
         McpTool(
             "self.light.turn_on",
-            "打开灯。当用户说'开灯'、'打开灯'时调用。",
+            "Turn on the light. Call when user says 'turn on the light'.",
             PropertyList(),
             turn_on,
         ),
         McpTool(
             "self.light.turn_off",
-            "关闭灯。当用户说'关灯'、'把灯关了'时调用。",
+            "Turn off the light. Call when user says 'turn off the light'.",
             PropertyList(),
             turn_off,
         ),
         McpTool(
             "self.light.set_brightness",
-            "设置灯的亮度。参数: brightness (0-100)。",
+            "Set light brightness. Parameter: brightness (0-100).",
             PropertyList(
                 [
                     Property(
@@ -124,29 +124,29 @@ def register_light_tools(
         ),
         McpTool(
             "self.light.get_status",
-            "查看灯的当前状态（开/关、亮度）。",
+            "View current light state (on/off, brightness).",
             PropertyList(),
             get_status,
         ),
     ]
     for tool in tools:
         add_tool(tool)
-    logger.info("已注册 %d 个灯光 MCP 工具", len(tools))
+    logger.info("Registered %d light MCP tools", len(tools))
 ```
 
-### 第 4 步：`__init__.py`
+### Step 4: `__init__.py`
 
 ```python
-"""灯光控制工具."""
+"""Light control tools."""
 
 from .register import register_light_tools
 
 __all__ = ["register_light_tools"]
 ```
 
-### 第 5 步：挂到宿主
+### Step 5: Wire into the host
 
-在 `src/mcp/mcp_server.py` 的 `add_common_tools` 中增加：
+In `src/mcp/mcp_server.py` → `add_common_tools`:
 
 ```python
 from src.mcp.tools.light import register_light_tools
@@ -154,11 +154,11 @@ from src.mcp.tools.light import register_light_tools
 register_light_tools(self.add_tool)
 ```
 
-若工具依赖容器对象，在 `McpPlugin.setup` 中创建后传入 `register_light_tools(server.add_tool, manager)`。
+If the tool needs a container-owned object, create it in `McpPlugin.setup` and pass it into `register_light_tools(server.add_tool, manager)`.
 
-**完成。** 重启应用后灯控工具可用。
+**Done.** Restart the app to load the tools.
 
-## API 参考
+## API Reference
 
 ### `McpTool` / `Property`
 
@@ -166,8 +166,8 @@ register_light_tools(self.add_tool)
 from src.mcp.tooling import McpTool, Property, PropertyList, PropertyType
 
 McpTool(
-    name="self.module.action",  # 全局唯一
-    description="AI 据此决定何时调用",
+    name="self.module.action",  # globally unique
+    description="Used by the model to decide when to call",
     properties=PropertyList(
         [
             Property("city", PropertyType.STRING),
@@ -185,46 +185,41 @@ McpTool(
 )
 ```
 
-### 参数类型
+### Parameter types
 
-| 类型 | 用法 | 说明 |
+| Type | Usage | Notes |
 |------|------|------|
-| `PropertyType.STRING` | `Property("name", PropertyType.STRING)` | 字符串 |
-| `PropertyType.INTEGER` | `Property("n", PropertyType.INTEGER, min_value=0, max_value=100)` | 整数，可选范围 |
-| `PropertyType.BOOLEAN` | `Property("flag", PropertyType.BOOLEAN, default_value=False)` | 布尔 |
+| `PropertyType.STRING` | `Property("name", PropertyType.STRING)` | String |
+| `PropertyType.INTEGER` | `Property("n", PropertyType.INTEGER, min_value=0, max_value=100)` | Integer, optional range |
+| `PropertyType.BOOLEAN` | `Property("flag", PropertyType.BOOLEAN, default_value=False)` | Boolean |
 
-- 不带 `default_value` 的一般为**必填**（由协议侧校验）
-- `min_value` / `max_value` 仅对 `INTEGER` 有效
+### Return values
 
-### 返回值
+Prefer **`str`** (or bool/int). Use `json.dumps(..., ensure_ascii=False)` for structured payloads.
 
-回调宜返回 **`str`**（或 bool/int）。结构化数据用 `json.dumps(..., ensure_ascii=False)`。
+## Registration conventions
 
-**不要直接返回 `dict`** 作为协议 body 的主形态时需按现有 `McpTool` 封装约定处理。
-
-## 注册约定
-
-| 规则 | 说明 |
+| Rule | Description |
 |------|------|
-| 入口 | 包导出 `register_*_tools(add_tool, ...)`，实现放在 **`register.py`** |
-| 包结构 | `__init__.py`（re-export）+ `register.py`（注册）+ 业务模块（如 `music_player.py` / `service.py`） |
-| 挂载 | 在 `add_common_tools` 或 `McpPlugin.setup` 中**显式**调用一次 |
-| 依赖 | 有状态对象用参数注入闭包；禁止模块级全局 `get_instance` |
-| 命名 | 工具名 `self.module.action` 或业务约定名，全局唯一 |
-| 异步 | `async def`；阻塞 IO 用 `asyncio.to_thread` |
-| 超时 | 外部 API 必须设 `timeout` |
-| 日志 | `get_logger()`，前缀 `[ToolName]` |
-| 错误 | try/except，用户可读信息 + `logger.error(..., exc_info=True)` |
+| Entry | Export `register_*_tools(add_tool, ...)` implemented in **`register.py`** |
+| Package layout | `__init__.py` (re-export) + `register.py` (registration) + domain modules |
+| Wiring | Call once from `add_common_tools` or `McpPlugin.setup` |
+| Dependencies | Inject into the closure; no module-level singletons |
+| Naming | Prefer `self.module.action`, globally unique |
+| Async | `async def`; wrap blocking I/O with `asyncio.to_thread` |
+| Timeout | Always set `timeout` for external APIs |
+| Logging | `get_logger()`, prefix `[ToolName]` |
+| Errors | try/except, user-readable message + `exc_info=True` |
 
-## 现有工具模块
+## Built-in tool modules
 
-| 模块 | 路径 | 注册文件 | 注册方式 | 详细文档 |
-|------|------|----------|----------|----------|
-| 音量 | `volume/` | `register.py` | `register_volume_tools` | [system.md](system.md) |
-| 应用 | `app/` | `register.py` | `register_app_tools` | [system.md](system.md) |
-| 相机 | `camera/` | `register.py` | `register_camera_tools`（McpPlugin） | [camera.md](camera.md) |
-| 截图 | `screenshot/` | `register.py` | `register_screenshot_tools`（McpPlugin） | — |
-| 音乐 | `music/` | `register.py` | `register_music_tools`（注入 MusicPlayer） | [music.md](music.md) |
-| 天气 | `weather/` | `register.py` + `service.py` | `register_weather_tools`（当前 mock） | — |
+| Module | Path | Registration file | Registration | Docs |
+|------|------|----------|------|------|
+| Volume | `volume/` | `register.py` | `register_volume_tools` | [system.md](system.md) |
+| Apps | `app/` | `register.py` | `register_app_tools` | [system.md](system.md) |
+| Camera | `camera/` | `register.py` | `register_camera_tools` (McpPlugin) | [camera.md](camera.md) |
+| Screenshot | `screenshot/` | `register.py` | `register_screenshot_tools` (McpPlugin) | — |
+| Music | `music/` | `register.py` | `register_music_tools` (injected MusicPlayer) | [music.md](music.md) |
+| Weather | `weather/` | `register.py` + `service.py` | `register_weather_tools` (mock for now) | — |
 
-用户目录下的**外挂**插件（自带依赖、安装即用）见 [MCP 外挂扩展](./plugins.md)；与内置 `register_*` 并存，不恢复全局装饰器发现。
+User-directory **external** plugins (vendored deps, install-and-run) are documented in [External Plugins](./plugins.md). They coexist with built-in `register_*` and do not bring back decorator discovery.

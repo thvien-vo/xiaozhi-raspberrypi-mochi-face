@@ -213,7 +213,7 @@ Note: subprocess isolation is **not** an OS sandbox — same user privileges as 
 1. Get the plugin folder or zip.  
 2. Copy/extract under `mcp_plugins` so `manifest.json` is present.  
 3. **Fully quit and restart** the app.  
-4. Logs should show: `[MCP插件] 已加载 <id> (N 工具)`.  
+4. Logs should show: `[MCP Plugin] Loaded <id> (N tools)`.  
 5. Confirm tools via chat or MCP `tools/list`.
 
 Repo samples (stdlib only):

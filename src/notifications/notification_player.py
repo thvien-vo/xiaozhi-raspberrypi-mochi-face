@@ -1,4 +1,4 @@
-"""流式播放服务端 ``notify`` 消息中的音频。"""
+"""Streaming playback for audio in server ``notify`` messages."""
 
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ class NotificationSubtitle:
 def parse_notification(
     message: dict[str, Any],
 ) -> tuple[str, list[NotificationSubtitle]] | None:
-    """验证并标准化服务端通知字段。"""
+    """Validate and normalize server notification fields."""
     audio_url = message.get("audio_url")
     if not isinstance(audio_url, str):
         return None
@@ -60,7 +60,7 @@ def parse_notification(
             or not 0 <= start_ms <= 0xFFFFFFFF
             or not isinstance(text, str)
         ):
-            logger.warning("忽略无效通知字幕")
+            logger.warning("Ignoring invalid notification subtitle")
             continue
         subtitles.append(NotificationSubtitle(start_ms=int(start_ms), text=text))
 
@@ -69,7 +69,7 @@ def parse_notification(
 
 
 class NotificationPlayer:
-    """仅承担一条 notify 的流式解码、播放与字幕进度。"""
+    """Handles streaming decoding, playback, and subtitle progress for a single notify message."""
 
     def __init__(self) -> None:
         self._event_bus: EventBus | None = None
@@ -98,7 +98,7 @@ class NotificationPlayer:
         return self._active
 
     def set_event_bus(self, event_bus: EventBus) -> None:
-        """绑定 AudioCodec 生命周期事件。"""
+        """Bind AudioCodec lifecycle events."""
         self.detach()
         self._event_bus = event_bus
         from src.core.event_bus import Events
@@ -114,7 +114,7 @@ class NotificationPlayer:
                     Events.AUDIO_CODEC_CHANGED, self._on_audio_codec_changed
                 )
             except Exception as e:
-                logger.debug(f"取消通知 AudioCodec 订阅失败: {e}")
+                logger.debug(f"Failed to unsubscribe notification player from AudioCodec: {e}")
         self._event_bus = None
         self._codec = None
 
@@ -128,7 +128,7 @@ class NotificationPlayer:
             if generation and callback is not None:
                 await callback(generation, False)
         if codec is not None:
-            logger.info("AudioCodec 已设置到 NotificationPlayer")
+            logger.info("AudioCodec set on NotificationPlayer")
 
     async def start(
         self,
@@ -136,13 +136,13 @@ class NotificationPlayer:
         subtitles: list[NotificationSubtitle],
         finished_callback: _FinishCallback,
     ) -> int | None:
-        """开始一条通知；成功时返回本次 generation。"""
+        """Start a notification; returns its generation ID on success."""
         async with self._lock:
             if self._active or self._consumer_task is not None:
-                logger.warning("已有通知正在播放，忽略新的 notify")
+                logger.warning("A notification is already playing, ignoring new notify")
                 return None
             if self._codec is None:
-                logger.warning("AudioCodec 未就绪，忽略 notify")
+                logger.warning("AudioCodec is not ready, ignoring notify")
                 return None
 
             self._generation += 1
@@ -194,7 +194,7 @@ class NotificationPlayer:
         return None
 
     async def stop(self) -> None:
-        """取消当前通知并立即清空其 PCM 余量。"""
+        """Cancel the current notification and immediately clear its remaining PCM buffer."""
         async with self._lock:
             if not self._active and self._consumer_task is None:
                 return
@@ -212,7 +212,7 @@ class NotificationPlayer:
             self._finished_callback = None
             self._subtitles = []
 
-            # 清理期间仍持有锁，新通知不能复用尚未清完的 codec。
+            # Hold lock during cleanup so a new notification cannot reuse a codec that has not finished clearing.
             if (
                 consumer_task is not None
                 and consumer_task is not asyncio.current_task()
@@ -235,7 +235,7 @@ class NotificationPlayer:
             except asyncio.CancelledError:
                 pass
             except Exception as e:
-                logger.debug(f"等待通知播放任务退出失败: {e}")
+                logger.debug(f"Failed while waiting for notification playback task to exit: {e}")
 
     async def _reset_after_failed_start(
         self, generation: int, codec: AudioCodec
@@ -268,7 +268,7 @@ class NotificationPlayer:
                     pcm = await asyncio.wait_for(queue.get(), timeout=1.0)
                 except asyncio.TimeoutError:
                     if not decoder.is_running():
-                        logger.warning("通知解码器提前停止")
+                        logger.warning("Notification decoder stopped prematurely")
                         break
                     continue
 
@@ -276,7 +276,7 @@ class NotificationPlayer:
                     return
                 if pcm is None:
                     if not self._saw_audio or not decoder.completed_successfully:
-                        logger.warning("通知音频为空或解码失败")
+                        logger.warning("Notification audio is empty or decoding failed")
                         break
                     drained_event = self._drained_event
                     if drained_event is not None:
@@ -295,7 +295,7 @@ class NotificationPlayer:
         except asyncio.CancelledError:
             return
         except Exception as e:
-            logger.error(f"通知播放失败: {e}", exc_info=True)
+            logger.error(f"Notification playback failed: {e}", exc_info=True)
         finally:
             await self._finish(generation, success)
 
@@ -375,4 +375,4 @@ class NotificationPlayer:
             try:
                 await callback(generation, success)
             except Exception as e:
-                logger.error(f"通知完成回调失败: {e}", exc_info=True)
+                logger.error(f"Notification completion callback failed: {e}", exc_info=True)

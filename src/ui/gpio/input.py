@@ -1,19 +1,19 @@
-"""GPIO 输入处理.
+"""GPIO input handling.
 
-封装 gpiozero 按键监听，支持树莓派的 GPIO 按键输入。
-仅支持 Linux 系统。
+Wraps gpiozero button monitoring to support Raspberry Pi GPIO button input.
+Linux systems only.
 
-按键模块规格：
-- 按下输出低电平（Active Low）
-- 松开输出高电平
+Button module specifications:
+- Outputs low level when pressed (Active Low)
+- Outputs high level when released
 
-默认引脚映射（BCM 编号）：
-- KEY1: GPIO 17 - 开始/停止对话
-- KEY2: GPIO 27 - 中断当前语音
-- KEY3: GPIO 22 - 切换自动/手动模式
-- KEY4: GPIO 23 - 退出程序
+Default pin mapping (BCM numbering):
+- KEY1: GPIO 17 - Start/Stop conversation
+- KEY2: GPIO 27 - Abort current speech
+- KEY3: GPIO 22 - Toggle Auto/Manual mode
+- KEY4: GPIO 23 - Quit application
 
-修改 DEFAULT_PINS 可自定义引脚。
+Modify DEFAULT_PINS to customize pins.
 """
 
 import sys
@@ -24,15 +24,15 @@ from src.logging import get_logger
 
 logger = get_logger()
 
-# 默认 GPIO 引脚配置（BCM 编号）
-# 可根据实际接线修改
+# Default GPIO pin configuration (BCM numbering)
+# Modify according to actual wiring
 DEFAULT_PINS: List[int] = [17, 27, 22, 23]
 
 
 class GPIOInput:
-    """GPIO 按键输入处理类.
+    """GPIO button input handler class.
 
-    封装 gpiozero 的 Button 类，提供按键事件回调。
+    Wraps gpiozero's Button class to provide button event callbacks.
     """
 
     def __init__(
@@ -40,11 +40,11 @@ class GPIOInput:
         pins: Optional[List[int]] = None,
         bounce_time: float = 0.05,
     ):
-        """初始化 GPIO 输入.
+        """Initialize GPIO input.
 
         Args:
-            pins: GPIO 引脚列表（BCM 编号），默认使用 DEFAULT_PINS
-            bounce_time: 消抖时间（秒）
+            pins: List of GPIO pins (BCM numbering), defaults to DEFAULT_PINS
+            bounce_time: Debounce time (seconds)
         """
         self._pins = pins or DEFAULT_PINS.copy()
         self._bounce_time = bounce_time
@@ -53,33 +53,33 @@ class GPIOInput:
         self._lock = threading.Lock()
         self._available = False
 
-        # 检查平台
+        # Check platform
         if sys.platform != "linux":
-            logger.warning("GPIO 模式仅支持 Linux 系统")
+            logger.warning("GPIO mode is only supported on Linux systems")
             return
 
-        # 尝试导入 gpiozero
+        # Try importing gpiozero
         try:
             from gpiozero import Button  # type: ignore[import-not-found]
 
             self._Button = Button
             self._available = True
-            logger.info(f"GPIO 输入初始化成功，引脚: {self._pins}")
+            logger.info(f"GPIO input initialized successfully, pins: {self._pins}")
         except ImportError:
             logger.error(
-                "未安装 gpiozero 库，请运行: sudo apt install python3-gpiozero python3-rpi.gpio"
+                "gpiozero library is not installed, please run: sudo apt install python3-gpiozero python3-rpi.gpio"
             )
         except Exception as e:
-            logger.error(f"GPIO 初始化失败: {e}", exc_info=True)
+            logger.error(f"GPIO initialization failed: {e}", exc_info=True)
 
     @property
     def available(self) -> bool:
-        """GPIO 是否可用."""
+        """Whether GPIO is available."""
         return self._available
 
     @property
     def pins(self) -> List[int]:
-        """当前配置的引脚列表."""
+        """Currently configured pin list."""
         return self._pins.copy()
 
     def setup(
@@ -89,38 +89,38 @@ class GPIOInput:
         on_key3_pressed: Optional[Callable] = None,
         on_key4_pressed: Optional[Callable] = None,
     ) -> bool:
-        """设置按键回调.
+        """Set up button callbacks.
 
         Args:
-            on_key1_pressed: KEY1 按下回调
-            on_key2_pressed: KEY2 按下回调
-            on_key3_pressed: KEY3 按下回调
-            on_key4_pressed: KEY4 按下回调
+            on_key1_pressed: KEY1 press callback
+            on_key2_pressed: KEY2 press callback
+            on_key3_pressed: KEY3 press callback
+            on_key4_pressed: KEY4 press callback
 
         Returns:
-            是否设置成功
+            Whether setup succeeded
         """
         if not self._available:
-            logger.warning("GPIO 不可用，跳过按键设置")
+            logger.warning("GPIO unavailable, skipping button setup")
             return False
 
         callbacks = [on_key1_pressed, on_key2_pressed, on_key3_pressed, on_key4_pressed]
 
         try:
             for i, pin in enumerate(self._pins):
-                # 创建按钮实例（Active Low，内部上拉）
+                # Create button instance (Active Low, internal pull-up)
                 button = self._Button(pin, pull_up=True, bounce_time=self._bounce_time)
                 self._buttons.append(button)
 
-                # 保存回调
+                # Save callback
                 with self._lock:
                     self._callbacks[i] = {
                         "pressed": callbacks[i] if i < len(callbacks) else None,
                     }
 
-                # 设置按下回调
+                # Set press callback
                 if i < len(callbacks) and callbacks[i]:
-                    # 使用闭包捕获索引
+                    # Capture index via closure
                     def make_handler(idx: int):
                         def handler():
                             with self._lock:
@@ -133,24 +133,24 @@ class GPIOInput:
 
                     button.when_pressed = make_handler(i)
 
-                logger.debug(f"KEY{i + 1} -> GPIO{pin} 已配置")
+                logger.debug(f"KEY{i + 1} -> GPIO{pin} configured")
 
-            logger.info(f"GPIO 按键设置完成: {len(self._buttons)} 个按键")
+            logger.info(f"GPIO button setup complete: {len(self._buttons)} buttons")
             return True
 
         except Exception as e:
-            logger.error(f"GPIO 按键设置失败: {e}", exc_info=True)
+            logger.error(f"GPIO button setup failed: {e}", exc_info=True)
             return False
 
     def close(self) -> None:
-        """关闭 GPIO 资源."""
+        """Close GPIO resources."""
         for button in self._buttons:
             try:
                 button.close()
             except Exception as e:
-                logger.warning(f"关闭 GPIO 按钮失败: {e}", exc_info=True)
+                logger.warning(f"Failed to close GPIO button: {e}", exc_info=True)
 
         self._buttons.clear()
         with self._lock:
             self._callbacks.clear()
-        logger.info("GPIO 资源已释放")
+        logger.info("GPIO resources released")

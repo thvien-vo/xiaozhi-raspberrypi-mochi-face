@@ -14,24 +14,24 @@ logger = get_logger()
 
 class ScreenshotCamera(BaseCamera):
     """
-    桌面截图摄像头实现.
+    Desktop screenshot camera implementation.
     """
 
     def __init__(self):
         """
-        初始化截图摄像头.
+        Initialize the screenshot camera.
         """
         super().__init__()
         logger.info("Initializing ScreenshotCamera")
 
-        # 导入依赖库
+        # Import required dependencies
         self._import_dependencies()
 
     def _import_dependencies(self):
         """
-        导入必要的依赖库.
+        Import required dependency libraries.
         """
-        # 检测 PIL 是否可用（避免未使用导入的告警）
+        # Check if PIL is available (avoids unused import warnings)
         try:
             import importlib.util
 
@@ -48,9 +48,9 @@ class ScreenshotCamera(BaseCamera):
                 "Failed to check PIL availability, fallback methods will be used"
             )
 
-        # 平台特定导入
+        # Platform-specific imports
         if sys.platform == "darwin":  # macOS
-            # 使用 which 检测系统 screencapture 命令是否可用
+            # Check if system screencapture command is available via which
             try:
                 import shutil
 
@@ -71,21 +71,22 @@ class ScreenshotCamera(BaseCamera):
                 self._win32_available = False
 
     def capture(self, display_id=None) -> bool:
-        """截取桌面画面.
+        """Capture the desktop screen.
 
         Args:
-            display_id: 显示器ID，None=所有显示器，"main"=主屏，"secondary"=副屏，1,2,3...=具体显示器
+            display_id: Display ID: None=all displays, "main"=primary display,
+                "secondary"=secondary display, 1,2,3...=specific display number
 
         Returns:
-            成功返回True，失败返回False
+            True on success, False on failure
         """
         try:
             logger.info("Starting desktop screenshot capture...")
 
-            # 尝试不同的截图方法
+            # Try different screenshot capture methods
             screenshot_data = None
 
-            # 优先使用平台特定方法（更好的多显示器支持）
+            # Prefer platform-specific methods (better multi-display support)
             if sys.platform == "darwin" and getattr(
                 self, "_subprocess_available", False
             ):
@@ -95,7 +96,7 @@ class ScreenshotCamera(BaseCamera):
             elif sys.platform.startswith("linux"):
                 screenshot_data = self._capture_linux(display_id)
 
-            # 备用方法：使用PIL ImageGrab
+            # Fallback method: use PIL ImageGrab
             if not screenshot_data and self._pil_available:
                 screenshot_data = self._capture_with_pil()
 
@@ -114,34 +115,34 @@ class ScreenshotCamera(BaseCamera):
             return False
 
     def _capture_with_pil(self) -> bytes:
-        """使用PIL ImageGrab截图.
+        """Capture screenshot using PIL ImageGrab.
 
         Returns:
-            JPEG格式的图片字节数据
+            JPEG-formatted image byte data
         """
         try:
             import PIL.ImageGrab
 
             logger.debug("Capturing screenshot with PIL ImageGrab...")
 
-            # 截取所有屏幕（包括多显示器）
+            # Capture all screens (including multiple monitors)
             screenshot = PIL.ImageGrab.grab(all_screens=True)
 
-            # 如果图片包含透明度通道(RGBA)，转换为RGB
+            # Convert RGBA (with alpha channel) to RGB
             if screenshot.mode == "RGBA":
-                # 创建白色背景
+                # Create a white background
                 from PIL import Image
 
                 background = Image.new("RGB", screenshot.size, (255, 255, 255))
                 background.paste(
                     screenshot, mask=screenshot.split()[3]
-                )  # 使用alpha通道作为mask
+                )  # Use alpha channel as mask
                 screenshot = background
             elif screenshot.mode not in ["RGB", "L"]:
-                # 确保图片格式兼容JPEG
+                # Ensure image format is compatible with JPEG
                 screenshot = screenshot.convert("RGB")
 
-            # 转换为JPEG格式的字节数据
+            # Convert to JPEG byte data
             byte_io = io.BytesIO()
             screenshot.save(byte_io, format="JPEG", quality=85)
 
@@ -152,13 +153,14 @@ class ScreenshotCamera(BaseCamera):
             return None
 
     def _capture_macos(self, display_id=None) -> bytes:
-        """使用macOS系统命令截图（支持显示器选择）.
+        """Capture screenshot using macOS system command (supports display selection).
 
         Args:
-            display_id: 显示器ID，None=所有显示器，"main"=主屏，"secondary"=副屏，1,2,3...=具体显示器
+            display_id: Display ID: None=all displays, "main"=primary display,
+                "secondary"=secondary display, 1,2,3...=specific display number
 
         Returns:
-            JPEG格式的图片字节数据
+            JPEG-formatted image byte data
         """
         try:
             from PIL import Image
@@ -167,18 +169,18 @@ class ScreenshotCamera(BaseCamera):
                 f"Capturing screenshot with macOS screencapture command, display_id: {display_id}"
             )
 
-            # 根据display_id决定截图策略
+            # Determine capture strategy based on display_id
             if display_id is None:
-                # 截取所有显示器并合成
+                # Capture all displays and composite them
                 screenshot = self._capture_all_displays_macos()
             elif display_id == "main" or display_id == 1:
-                # 截取主显示器
+                # Capture primary display
                 screenshot = self._capture_single_display_macos(1)
             elif display_id == "secondary" or display_id == 2:
-                # 截取副显示器
+                # Capture secondary display
                 screenshot = self._capture_single_display_macos(2)
             elif isinstance(display_id, int) and display_id > 0:
-                # 截取指定显示器
+                # Capture specified display
                 screenshot = self._capture_single_display_macos(display_id)
             else:
                 logger.error(f"Invalid display_id: {display_id}")
@@ -188,16 +190,16 @@ class ScreenshotCamera(BaseCamera):
                 logger.error("Failed to create composite screenshot")
                 return None
 
-            # 转换为JPEG
+            # Convert to JPEG-compatible mode
             if screenshot.mode == "RGBA":
-                # 创建白色背景
+                # Create a white background
                 background = Image.new("RGB", screenshot.size, (255, 255, 255))
                 background.paste(screenshot, mask=screenshot.split()[3])
                 screenshot = background
             elif screenshot.mode not in ["RGB", "L"]:
                 screenshot = screenshot.convert("RGB")
 
-            # 保存为JPEG字节数据
+            # Save as JPEG byte data
             byte_io = io.BytesIO()
             screenshot.save(byte_io, format="JPEG", quality=85)
 
@@ -208,44 +210,43 @@ class ScreenshotCamera(BaseCamera):
             return None
 
     def _composite_displays(self, displays):
-        """将多个显示器的截图合成为一张图片.
+        """Composite screenshots from multiple displays into a single image.
 
         Args:
-            displays: 显示器信息列表
+            displays: List of display information dicts
 
         Returns:
-            合成后的PIL Image对象
+            Composited PIL Image object
         """
         try:
             from PIL import Image
 
-            # 计算合成后的尺寸
-            # 假设显示器按上下或左右排列
+            # Calculate dimensions for vertical stacking
             total_width = max(display["size"][0] for display in displays)
             total_height = sum(display["size"][1] for display in displays)
 
-            # 也计算左右排列的尺寸
+            # Calculate dimensions for horizontal side-by-side layout
             horizontal_width = sum(display["size"][0] for display in displays)
             horizontal_height = max(display["size"][1] for display in displays)
 
-            # 选择更紧凑的排列方式
+            # Choose the more compact arrangement
             if total_width * total_height <= horizontal_width * horizontal_height:
-                # 垂直排列更紧凑
+                # Vertical arrangement is more compact
                 composite = Image.new("RGB", (total_width, total_height), (0, 0, 0))
                 y_offset = 0
                 for display in sorted(displays, key=lambda d: d["id"]):
-                    x_offset = (total_width - display["size"][0]) // 2  # 居中
+                    x_offset = (total_width - display["size"][0]) // 2  # Center horizontally
                     composite.paste(display["image"], (x_offset, y_offset))
                     y_offset += display["size"][1]
                 logger.debug(f"Created vertical composite: {composite.size}")
             else:
-                # 水平排列更紧凑
+                # Horizontal arrangement is more compact
                 composite = Image.new(
                     "RGB", (horizontal_width, horizontal_height), (0, 0, 0)
                 )
                 x_offset = 0
                 for display in sorted(displays, key=lambda d: d["id"]):
-                    y_offset = (horizontal_height - display["size"][1]) // 2  # 居中
+                    y_offset = (horizontal_height - display["size"][1]) // 2  # Center vertically
                     composite.paste(display["image"], (x_offset, y_offset))
                     x_offset += display["size"][0]
                 logger.debug(f"Created horizontal composite: {composite.size}")
@@ -257,13 +258,13 @@ class ScreenshotCamera(BaseCamera):
             return None
 
     def _capture_windows(self, display_id=None) -> bytes:
-        """使用Windows API截图.
+        """Capture screenshot using Windows API.
 
         Args:
-            display_id: 显示器ID (暂未实现，使用虚拟屏幕)
+            display_id: Display ID (not yet implemented, captures full virtual screen)
 
         Returns:
-            JPEG格式的图片字节数据
+            JPEG-formatted image byte data
         """
         try:
             import ctypes
@@ -275,7 +276,7 @@ class ScreenshotCamera(BaseCamera):
                 f"Capturing screenshot with Windows API, display_id: {display_id}"
             )
 
-            # 获取虚拟屏幕尺寸（包括所有显示器）
+            # Get virtual screen dimensions (covering all monitors)
             user32 = ctypes.windll.user32
             # SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN, SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN
             virtual_left = user32.GetSystemMetrics(76)  # SM_XVIRTUALSCREEN
@@ -286,7 +287,7 @@ class ScreenshotCamera(BaseCamera):
             screensize = (virtual_width, virtual_height)
             screen_offset = (virtual_left, virtual_top)
 
-            # 创建设备上下文
+            # Create device context
             hdc = user32.GetDC(None)
             hcdc = ctypes.windll.gdi32.CreateCompatibleDC(hdc)
             hbmp = ctypes.windll.gdi32.CreateCompatibleBitmap(
@@ -294,7 +295,7 @@ class ScreenshotCamera(BaseCamera):
             )
             ctypes.windll.gdi32.SelectObject(hcdc, hbmp)
 
-            # 复制虚拟屏幕到位图（包括所有显示器）
+            # Copy virtual screen into bitmap (including all monitors)
             ctypes.windll.gdi32.BitBlt(
                 hcdc,
                 0,
@@ -307,34 +308,34 @@ class ScreenshotCamera(BaseCamera):
                 0x00CC0020,
             )
 
-            # 获取位图数据
+            # Prepare bitmap header info
             bmpinfo = ctypes.wintypes.BITMAPINFO()
             bmpinfo.bmiHeader.biSize = ctypes.sizeof(ctypes.wintypes.BITMAPINFOHEADER)
             bmpinfo.bmiHeader.biWidth = screensize[0]
-            bmpinfo.bmiHeader.biHeight = -screensize[1]  # 负值表示从上到下
+            bmpinfo.bmiHeader.biHeight = -screensize[1]  # Negative height indicates top-down DIB
             bmpinfo.bmiHeader.biPlanes = 1
             bmpinfo.bmiHeader.biBitCount = 32
             bmpinfo.bmiHeader.biCompression = 0
 
-            # 分配缓冲区
+            # Allocate pixel buffer
             buffer_size = screensize[0] * screensize[1] * 4
             buffer = ctypes.create_string_buffer(buffer_size)
 
-            # 获取像素数据
+            # Retrieve pixel data
             ctypes.windll.gdi32.GetDIBits(
                 hcdc, hbmp, 0, screensize[1], buffer, ctypes.byref(bmpinfo), 0
             )
 
-            # 清理资源
+            # Clean up GDI resources
             ctypes.windll.gdi32.DeleteObject(hbmp)
             ctypes.windll.gdi32.DeleteDC(hcdc)
             user32.ReleaseDC(None, hdc)
 
-            # 转换为PIL Image
+            # Convert to PIL Image
             image = Image.frombuffer("RGBA", screensize, buffer, "raw", "BGRA", 0, 1)
             image = image.convert("RGB")
 
-            # 转换为JPEG字节数据
+            # Convert to JPEG byte data
             byte_io = io.BytesIO()
             image.save(byte_io, format="JPEG", quality=85)
 
@@ -345,13 +346,13 @@ class ScreenshotCamera(BaseCamera):
             return None
 
     def _capture_linux(self, display_id=None) -> bytes:
-        """使用Linux系统命令截图.
+        """Capture screenshot using Linux system commands.
 
         Args:
-            display_id: 显示器ID (暂未实现，使用默认显示器)
+            display_id: Display ID (not yet implemented, uses default display)
 
         Returns:
-            JPEG格式的图片字节数据
+            JPEG-formatted image byte data
         """
         try:
             import os
@@ -362,7 +363,7 @@ class ScreenshotCamera(BaseCamera):
                 f"Capturing screenshot with Linux screenshot commands, display_id: {display_id}"
             )
 
-            # 尝试不同的Linux截图工具
+            # Try different Linux screenshot utilities
             screenshot_commands = [
                 ["gnome-screenshot", "-f"],  # GNOME
                 ["scrot"],  # scrot
@@ -371,26 +372,26 @@ class ScreenshotCamera(BaseCamera):
 
             for cmd_base in screenshot_commands:
                 try:
-                    # 创建临时文件
+                    # Create temporary file
                     with tempfile.NamedTemporaryFile(
                         suffix=".jpg", delete=False
                     ) as temp_file:
                         temp_path = temp_file.name
 
-                    # 构建完整命令
+                    # Build full command
                     cmd = cmd_base + [temp_path]
 
-                    # 执行命令
+                    # Execute command
                     result = subprocess.run(
                         cmd, capture_output=True, text=True, timeout=10
                     )
 
                     if result.returncode == 0 and os.path.exists(temp_path):
-                        # 读取截图数据
+                        # Read screenshot data
                         with open(temp_path, "rb") as f:
                             screenshot_data = f.read()
 
-                        # 清理临时文件
+                        # Clean up temporary file
                         os.unlink(temp_path)
 
                         logger.debug(
@@ -398,7 +399,7 @@ class ScreenshotCamera(BaseCamera):
                         )
                         return screenshot_data
                     else:
-                        # 清理临时文件
+                        # Clean up temporary file
                         if os.path.exists(temp_path):
                             os.unlink(temp_path)
 
@@ -421,7 +422,7 @@ class ScreenshotCamera(BaseCamera):
         try:
             logger.info(f"Analyzing screenshot with question: {question}")
 
-            # 优先使用注册时注入的拍照摄像头（共用 vision URL/token）
+            # Prefer the photo camera injected during registration (shares vision URL/token)
             camera_instance = getattr(self, "_photo_camera_ref", None)
             buf = image_data if image_data is not None else self.jpeg_data["buf"]
             if camera_instance is not None:
@@ -438,13 +439,13 @@ class ScreenshotCamera(BaseCamera):
             )
 
     def _capture_single_display_macos(self, display_num):
-        """截取macOS单个显示器.
+        """Capture a single display on macOS.
 
         Args:
-            display_num: 显示器编号 (1, 2, 3, ...)
+            display_num: Display number (1, 2, 3, ...)
 
         Returns:
-            PIL Image对象
+            PIL Image object
         """
         try:
             import os
@@ -491,10 +492,10 @@ class ScreenshotCamera(BaseCamera):
             return None
 
     def _capture_all_displays_macos(self):
-        """截取macOS所有显示器并合成.
+        """Capture all displays on macOS and composite them.
 
         Returns:
-            合成后的PIL Image对象
+            Composited PIL Image object
         """
         try:
             import os
@@ -503,9 +504,9 @@ class ScreenshotCamera(BaseCamera):
 
             from PIL import Image
 
-            # 检测所有可用的显示器
+            # Detect all available displays
             displays = []
-            for display_id in range(1, 5):  # 检测最多4个显示器
+            for display_id in range(1, 5):  # Probe up to 4 displays
                 with tempfile.NamedTemporaryFile(
                     suffix=".png", delete=False
                 ) as temp_file:
@@ -545,18 +546,18 @@ class ScreenshotCamera(BaseCamera):
                 logger.error("No displays found")
                 return None
 
-            # 清理临时文件
+            # Clean up temporary files
             for display in displays:
                 try:
                     os.unlink(display["path"])
                 except Exception as e:
-                    logger.debug(f"清理截图临时文件失败: {e}")
+                    logger.debug(f"Failed to clean up temporary screenshot file: {e}")
 
             if len(displays) == 1:
-                # 单显示器，直接返回
+                # Single display, return directly
                 return displays[0]["image"]
             else:
-                # 多显示器，需要合成
+                # Multiple displays, composite them
                 logger.debug(f"Compositing {len(displays)} displays")
                 return self._composite_displays(displays)
 

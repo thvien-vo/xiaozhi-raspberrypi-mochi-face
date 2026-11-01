@@ -7,7 +7,7 @@ outline: deep
 
 # Contributing
 
-Chinese version: [简体中文](/contributing)
+Chinese version: [Simplified Chinese](/contributing)
 
 Thank you for contributing to `py-xiaozhi`. This guide explains how we expect issues, pull requests, review cycles, and maintainer handoff to work.
 

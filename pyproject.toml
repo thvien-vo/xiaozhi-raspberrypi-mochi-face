@@ -1,7 +1,7 @@
 [project]
 name = "py-xiaozhi"
 version = "1.0.0"
-description = "小智 AI 客户端 - 跨平台语音助手"
+description = "Xiaozhi AI Client - Cross-platform Voice Assistant"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
@@ -9,12 +9,12 @@ authors = [{ name = "Junsen", email = "junsen@example.com" }]
 keywords = ["ai", "voice-assistant", "xiaozhi"]
 
 dependencies = [
-    # 音频处理
+    # Audio processing
     "numpy>=1.26.0",
     "sounddevice>=0.4.4",
     "soxr>=0.5.0",
     "opuslib>=3.0.1",
-    # 网络通信
+    # Network communication
     "aiohttp>=3.9.0",
     "websockets>=11.0.3",
     "paho-mqtt>=2.1.0",
@@ -23,77 +23,77 @@ dependencies = [
     "openai>=1.0.0",
     "sherpa-onnx>=1.12.26",
     "sherpa-onnx-core>=1.12.26; sys_platform != 'win32'",
-    # 图像处理
+    # Image processing
     "opencv-python-headless>=4.9.0",
     "pillow>=10.0.0",
-    # 加密
+    # Encryption
     "cryptography>=42.0.0",
-    # 工具库
+    # Utility libraries
     "psutil>=5.9.0",
     "pendulum>=3.0.0",
     "py-machineid>=0.6.0",
     "platformdirs>=4.0.0",
-    # 音乐/媒体
+    # Music/Media
     "mutagen>=1.47.0",
-    # 中文处理
+    # Chinese text processing
     "pypinyin>=0.51.0",
     "lunar_python>=1.3.0",
-    # 剪贴板
+    # Clipboard
     "pyperclip>=1.8.0",
-    # 快捷键 (跨平台基础)
+    # Keyboard shortcuts (cross-platform base)
     "pynput>=1.7.6",
     # ============================================================
-    # 平台特定依赖 (根据系统自动安装)
+    # Platform-specific dependencies (installed automatically by OS)
     # ============================================================
-    # macOS 依赖
+    # macOS dependencies
     "applescript>=2021.2.9; sys_platform == 'darwin'",
     "pyobjc-framework-Quartz>=10.0; sys_platform == 'darwin'",
     "pyobjc-framework-Cocoa>=10.0; sys_platform == 'darwin'",
-    # Windows 依赖
+    # Windows dependencies
     "comtypes>=1.4.0; sys_platform == 'win32'",
     "pycaw>=20230407; sys_platform == 'win32'",
     "pywin32>=306; sys_platform == 'win32'",
-    # Linux 依赖 (GPIO 模式)
+    # Linux dependencies (GPIO mode)
     "gpiozero>=2.0.1; sys_platform == 'linux'",
     "lgpio>=0.2.2.0; sys_platform == 'linux'",
 ]
 
 [project.optional-dependencies]
-# GUI 模式额外依赖
-# 使用 `uv sync --extra gui` 或 `pip install '.[gui]'` 启用
+# Extra dependencies for GUI mode
+# Enable with `uv sync --extra gui` or `pip install '.[gui]'`
 gui = [
     "PySide6>=6.6.0",
     "qasync>=0.27.1",
 ]
 
-# macOS 特定依赖 (已通过环境标记自动安装，保留用于显式安装)
+# macOS-specific dependencies (auto-installed via environment markers; kept for explicit installation)
 macos = [
     "applescript>=2021.2.9",
     "pyobjc-framework-Quartz>=10.0",
     "pyobjc-framework-Cocoa>=10.0",
 ]
 
-# Windows 特定依赖 (已通过环境标记自动安装，保留用于显式安装)
+# Windows-specific dependencies (auto-installed via environment markers; kept for explicit installation)
 windows = [
     "comtypes>=1.4.0",
     "pycaw>=20230407",
     "pywin32>=306",
 ]
 
-# Linux 特定依赖 (GPIO 模式)
+# Linux-specific dependencies (GPIO mode)
 linux = [
     "gpiozero>=2.0.1",
     "lgpio>=0.2.2.0",
 ]
-# TUI 全屏终端模式：uv sync --extra tui
+# TUI full-screen terminal mode: uv sync --extra tui
 tui = [
     "textual>=0.80.0",
 ]
 
-# 注意：树莓派 CSI 不要用 pip extra 装 picamera2。
-# picamera2 依赖 python-prctl（仅 Linux），在 macOS 上 uv sync/run 会直接编译失败。
-# Pi Bookworm 请用系统包：sudo apt install python3-picamera2
-# 代码在 import 到 picamera2 时自动启用 CSI 后端（CAMERA.backend=auto/picamera2）。
+# Note: Do not install picamera2 via pip extra for Raspberry Pi CSI cameras.
+# picamera2 depends on python-prctl (Linux only), which fails to compile on macOS during uv sync/run.
+# On Pi Bookworm, use the system package: sudo apt install python3-picamera2
+# The code automatically enables the CSI backend when picamera2 can be imported (CAMERA.backend=auto/picamera2).
 
 [project.scripts]
 xiaozhi = "main:main"
@@ -103,7 +103,7 @@ Homepage = "https://github.com/huangjunsen0406/py-xiaozhi"
 Repository = "https://github.com/huangjunsen0406/py-xiaozhi"
 
 # ============================================================
-# 依赖组 (uv/pip 通用)
+# Dependency groups (compatible with uv/pip)
 # ============================================================
 [dependency-groups]
 dev = [
@@ -114,7 +114,7 @@ dev = [
 ]
 
 # ============================================================
-# Ruff 配置 (替代 black + isort + flake8)
+# Ruff configuration (replaces black + isort + flake8)
 # ============================================================
 [tool.ruff]
 target-version = "py310"
@@ -146,7 +146,7 @@ skip-magic-trailing-comma = false
 line-ending = "auto"
 
 # ============================================================
-# pytest 配置
+# pytest configuration
 # ============================================================
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
@@ -154,7 +154,7 @@ testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 
 # ============================================================
-# 保留旧工具配置（向后兼容）
+# Legacy tool configuration (retained for backward compatibility)
 # ============================================================
 [tool.black]
 line-length = 88
@@ -185,7 +185,7 @@ known_first_party = ["src"]
 sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
 
 # ============================================================
-# 构建系统
+# Build system
 # ============================================================
 [build-system]
 requires = ["hatchling"]

@@ -1,4 +1,4 @@
-// 主窗口 - 匹配原布局
+// Main window - matches original layout
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -13,16 +13,16 @@ AppWindow {
     minimumWidth: 360
     minimumHeight: 420
     title: ""
-    // 由 QmlAppHost.show_root 控制显示；避免 QML 加载瞬间抢焦点
+    // Controlled by QmlAppHost.show_root; avoid stealing focus when QML loads
     visible: false
 
-    // 直接使用 ColumnLayout，不需要额外的 Rectangle 层
-    // AppWindow 已经提供了带圆角的容器
+    // Use ColumnLayout directly without an extra Rectangle layer
+    // AppWindow already provides a container with rounded corners
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
 
-            // 自定义标题栏 - 平台自适应
+            // Custom title bar - platform adaptive
             TitleBar {
                 Layout.fillWidth: true
                 showMaximize: true
@@ -39,7 +39,7 @@ AppWindow {
                 }
             }
 
-            // 状态卡片区域
+            // Status card area
             Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -50,7 +50,7 @@ AppWindow {
                     anchors.margins: Theme.spacingMd
                     spacing: Theme.spacingMd
 
-                    // 状态标签
+                    // Status label
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 40
@@ -59,14 +59,14 @@ AppWindow {
 
                         Text {
                             anchors.centerIn: parent
-                            text: (mainModel && mainModel.statusText) ? mainModel.statusText : "待命"
+                            text: (mainModel && mainModel.statusText) ? mainModel.statusText : "Standby"
                             font.pixelSize: Theme.fontSizeMd
                             font.weight: Font.Bold
                             color: Theme.primaryText
                         }
                     }
 
-                    // 表情显示区域
+                    // Emotion display area
                     Item {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
@@ -92,7 +92,7 @@ AppWindow {
                         }
                     }
 
-                    // 对话 + 音乐行
+                    // Chat + music row
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 72
@@ -106,7 +106,7 @@ AppWindow {
                             Text {
                                 width: parent.width
                                 height: parent.height - (musicLineText.visible ? 22 : 0)
-                                text: (mainModel && mainModel.ttsText) ? mainModel.ttsText : "待命"
+                                text: (mainModel && mainModel.ttsText) ? mainModel.ttsText : "Standby"
                                 font.pixelSize: Theme.fontSizeSm
                                 color: Theme.textSecondary
                                 horizontalAlignment: Text.AlignHCenter
@@ -130,7 +130,7 @@ AppWindow {
                 }
             }
 
-            // 按钮区域
+            // Button area
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 72
@@ -143,14 +143,14 @@ AppWindow {
                     anchors.bottomMargin: 10
                     spacing: Theme.spacingSm
 
-                    // 手动模式按钮（点击切换录音）
+                    // Manual mode button (click to toggle recording)
                     Button {
                         id: manualBtn
                         Layout.preferredWidth: 100
                         Layout.fillWidth: true
                         Layout.maximumWidth: 140
                         Layout.preferredHeight: 38
-                        text: (mainModel && mainModel.buttonText) ? mainModel.buttonText : "按住后说话"
+                        text: (mainModel && mainModel.buttonText) ? mainModel.buttonText : "Hold to Talk"
                         visible: !(mainModel && mainModel.autoMode)
 
                         background: Rectangle {
@@ -169,14 +169,14 @@ AppWindow {
                         onClicked: if (eventBridge) eventBridge.onManualToggle()
                     }
 
-                    // 自动模式按钮
+                    // Auto mode button
                     Button {
                         id: autoBtn
                         Layout.preferredWidth: 100
                         Layout.fillWidth: true
                         Layout.maximumWidth: 140
                         Layout.preferredHeight: 38
-                        text: (mainModel && mainModel.buttonText) ? mainModel.buttonText : "开始对话"
+                        text: (mainModel && mainModel.buttonText) ? mainModel.buttonText : "Start Chat"
                         visible: mainModel && mainModel.autoMode
 
                         background: Rectangle {
@@ -195,14 +195,14 @@ AppWindow {
                         onClicked: if (eventBridge) eventBridge.onAutoStart()
                     }
 
-                    // 打断对话
+                    // Interrupt conversation
                     Button {
                         id: abortBtn
                         Layout.preferredWidth: 80
                         Layout.fillWidth: true
                         Layout.maximumWidth: 120
                         Layout.preferredHeight: 38
-                        text: "打断对话"
+                        text: "Interrupt"
 
                         background: Rectangle {
                             color: abortBtn.pressed ? Theme.divider : (abortBtn.hovered ? Theme.backgroundHover : Theme.backgroundSecondary)
@@ -222,7 +222,7 @@ AppWindow {
                         onClicked: if (eventBridge) eventBridge.onAbort()
                     }
 
-                    // 输入 + 发送
+                    // Input + Send
                     RowLayout {
                         Layout.fillWidth: true
                         Layout.minimumWidth: 120
@@ -250,7 +250,7 @@ AppWindow {
 
                                 Text {
                                     anchors.fill: parent
-                                    text: "输入文字..."
+                                    text: "Enter message..."
                                     font: textInput.font
                                     color: Theme.textPlaceholder
                                     verticalAlignment: Text.AlignVCenter
@@ -266,7 +266,7 @@ AppWindow {
                             Layout.preferredWidth: 60
                             Layout.maximumWidth: 84
                             Layout.preferredHeight: 38
-                            text: "发送"
+                            text: "Send"
 
                             background: Rectangle {
                                 color: sendBtn.pressed ? Theme.primaryPressed : (sendBtn.hovered ? Theme.primaryHover : Theme.primary)
@@ -285,14 +285,14 @@ AppWindow {
                         }
                     }
 
-                    // 模式切换
+                    // Mode toggle
                     Button {
                         id: modeBtn
                         Layout.preferredWidth: 80
                         Layout.fillWidth: true
                         Layout.maximumWidth: 120
                         Layout.preferredHeight: 38
-                        text: (mainModel && mainModel.modeText) ? mainModel.modeText : "手动对话"
+                        text: (mainModel && mainModel.modeText) ? mainModel.modeText : "Manual Mode"
 
                         background: Rectangle {
                             color: modeBtn.pressed ? Theme.divider : (modeBtn.hovered ? Theme.backgroundHover : Theme.backgroundSecondary)
@@ -312,14 +312,14 @@ AppWindow {
                         onClicked: if (eventBridge) eventBridge.onAutoToggle()
                     }
 
-                    // 参数设置
+                    // Settings
                     Button {
                         id: settingsBtn
                         Layout.preferredWidth: 80
                         Layout.fillWidth: true
                         Layout.maximumWidth: 120
                         Layout.preferredHeight: 38
-                        text: "参数设置"
+                        text: "Settings"
 
                         background: Rectangle {
                             color: settingsBtn.pressed ? Theme.divider : (settingsBtn.hovered ? Theme.backgroundHover : Theme.backgroundSecondary)

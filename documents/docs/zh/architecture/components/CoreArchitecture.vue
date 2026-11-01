@@ -1,7 +1,7 @@
 <template>
   <div class="chart-container">
     <div ref="architectureChart" class="w-full h-[500px]"></div>
-    <p class="chart-description">核心架构：容器编排 → 插件 / 协议 / 音频 / 界面</p>
+    <p class="chart-description">Core: container → plugins / protocol / audio / UI</p>
   </div>
 </template>
 
@@ -34,7 +34,7 @@ const createChartOption = (darkMode) => ({
     orient: 'vertical',
     right: 10,
     top: 'center',
-    data: ['核心基础设施', '主要模块', '子模块'],
+    data: ['Core Infrastructure', 'Main Modules', 'Submodules'],
     textStyle: {
       color: darkMode ? '#f3f4f6' : '#374151'
     },
@@ -44,23 +44,23 @@ const createChartOption = (darkMode) => ({
   },
   series: [
     {
-      name: '架构图',
+      name: 'Architecture Diagram',
       type: 'graph',
       layout: 'force',
       data: [
-        { name: 'ServiceContainer', value: '启动关闭', category: 0, symbolSize: 70 },
-        { name: 'EventBus', value: '事件总线', category: 0, symbolSize: 55 },
-        { name: 'PluginManager', value: '插件', category: 1, symbolSize: 50 },
-        { name: 'ProtocolManager', value: '协议', category: 1, symbolSize: 50 },
-        { name: 'AudioCodec', value: '音频', category: 1, symbolSize: 50 },
+        { name: 'ServiceContainer', value: 'lifecycle', category: 0, symbolSize: 70 },
+        { name: 'EventBus', value: 'events', category: 0, symbolSize: 55 },
+        { name: 'PluginManager', value: 'plugins', category: 1, symbolSize: 50 },
+        { name: 'ProtocolManager', value: 'protocol', category: 1, symbolSize: 50 },
+        { name: 'AudioCodec', value: 'audio', category: 1, symbolSize: 50 },
         { name: 'MCP Server', value: 'MCP', category: 1, symbolSize: 50 },
-        { name: 'ViewPort', value: '界面', category: 1, symbolSize: 50 },
+        { name: 'ViewPort', value: 'UI', category: 1, symbolSize: 50 },
         { name: 'WebSocket', value: 'WS', category: 2, symbolSize: 32 },
         { name: 'MQTT', value: 'MQTT', category: 2, symbolSize: 32 },
-        { name: 'AudioPlugin', value: '音频插件', category: 2, symbolSize: 32 },
-        { name: 'UIPlugin', value: 'UI插件', category: 2, symbolSize: 32 },
-        { name: 'MCP工具', value: '工具', category: 2, symbolSize: 32 },
-        { name: 'Gui/Cli/Gpio', value: '界面实现', category: 2, symbolSize: 32 }
+        { name: 'AudioPlugin', value: 'audio plugin', category: 2, symbolSize: 32 },
+        { name: 'UIPlugin', value: 'UI plugin', category: 2, symbolSize: 32 },
+        { name: 'MCP tools', value: 'tools', category: 2, symbolSize: 32 },
+        { name: 'Gui/Cli/Gpio', value: 'views', category: 2, symbolSize: 32 }
       ],
       links: [
         { source: 'ServiceContainer', target: 'EventBus' },
@@ -74,12 +74,12 @@ const createChartOption = (darkMode) => ({
         { source: 'ViewPort', target: 'Gui/Cli/Gpio' },
         { source: 'ProtocolManager', target: 'WebSocket' },
         { source: 'ProtocolManager', target: 'MQTT' },
-        { source: 'MCP Server', target: 'MCP工具' },
+        { source: 'MCP Server', target: 'MCP tools' },
         { source: 'EventBus', target: 'PluginManager' }
       ],
       categories: [
         {
-          name: '核心基础设施',
+          name: 'Core Infrastructure',
           itemStyle: {
             color: '#5470c6',
             borderColor: '#5470c6',
@@ -87,7 +87,7 @@ const createChartOption = (darkMode) => ({
           }
         },
         {
-          name: '主要模块',
+          name: 'Main Modules',
           itemStyle: {
             color: '#93cc76',
             borderColor: '#93cc76',
@@ -95,7 +95,7 @@ const createChartOption = (darkMode) => ({
           }
         },
         {
-          name: '子模块',
+          name: 'Submodules',
           itemStyle: {
             color: '#fac858',
             borderColor: '#fac858',

@@ -1,16 +1,16 @@
 ---
 frameworks:
-- 其他
+- other
 license: Apache License 2.0
 tasks:
 - keyword-spotting
 ---
 
-sherpa 中自定义唤醒词模型，训练数据为 wenetspeech L （10000 小时）数据，模型大小约为 3.3 M， 建模单元为拼音（声母 + 韵母）。
-使用 icefall 训练，已转换为 onnx 格式，此仓库主要是给 sherpa-onnx 这个 inference 引擎使用。
+Custom wake word model in sherpa, trained on WenetSpeech L (10,000 hours) data, with a model size of approximately 3.3 MB and Pinyin (initial + final) modeling units.
+Trained using icefall and converted to ONNX format, this repository is primarily intended for use with the sherpa-onnx inference engine.
 
-模型结构为 zipformer 模型， 本质是一个非常小的语音识别模型，为了实现唤醒词的功能，我们在解码端做了一些修改和约束。
-支持自定义唤醒词，数量不限，效果需要单个调整参数。
+The model architecture is Zipformer, which is essentially a very compact speech recognition model with modifications and constraints applied at the decoding stage to implement wake word spotting.
+It supports an unlimited number of custom wake words, though optimal performance may require tuning parameters individually.
 
 #### Clone with HTTP
 ```bash

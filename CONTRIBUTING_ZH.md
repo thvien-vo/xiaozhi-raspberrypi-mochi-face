@@ -1,37 +1,37 @@
-# 参与贡献
+# Contributing
 
-英文版本请查看 [CONTRIBUTING.md](./CONTRIBUTING.md)。
+For the main English version, see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
-感谢你为 `py-xiaozhi` 做出贡献。我们欢迎 Bug 反馈、文档修复、测试补充、工具链改进，以及范围清晰的新功能。
+Thank you for contributing to `py-xiaozhi`. We welcome bug reports, documentation fixes, additional tests, toolchain improvements, and well-scoped new features.
 
-## 开始之前
+## Before You Start
 
-- 提交前先搜索现有的 Issue 和 Pull Request，避免重复。
-- 对于较大的新功能、架构调整或行为变更，建议先开 Issue 讨论。
-- 文档修复、小型 Bug 修复和聚焦明确的改进，一般可以直接提交 Pull Request。
+- Search existing Issues and Pull Requests before submitting to avoid duplicates.
+- For major new features, architectural changes, or behavioral modifications, please open an Issue for discussion first.
+- Documentation fixes, minor bug fixes, and focused improvements can generally be submitted directly via a Pull Request.
 
-## 开发环境
+## Development Environment
 
-### 基本要求
+### Basic Requirements
 
 - Python `>=3.10`
 - Git
-- 如果需要验证音频能力，请准备可用的麦克风和扬声器
+- Working microphone and speaker if verifying audio capabilities
 
-### 安装依赖
+### Install Dependencies
 
 ```bash
 git clone https://github.com/huangjunsen0406/py-xiaozhi.git
 cd py-xiaozhi
 
-# 基础安装
+# Base installation
 uv sync
 
-# GUI + 开发工具
+# GUI + development tools
 uv sync --extra gui --group dev
 ```
 
-如果你不使用 `uv`，可以使用以下兼容方案：
+If you do not use `uv`, you can use the following compatible approach:
 
 ```bash
 pip install -e .
@@ -39,15 +39,15 @@ pip install -e '.[gui]'
 pip install pytest pytest-asyncio ruff pyinstaller
 ```
 
-## 开发流程
+## Development Workflow
 
-1. Fork 仓库，并从 `main` 创建功能分支。
-2. 尽量让每次修改只聚焦一个问题、一个功能或一类文档更新。
-3. 提交信息遵循 Conventional Commits，例如 `fix(audio): handle empty frame`。
-4. 如果修改影响行为、配置或公共接口，请同步更新文档。
-5. 如果修改涉及正确性或回归风险，请补充或更新测试。
+1. Fork the repository and create a feature branch from `main`.
+2. Keep each change focused on a single issue, feature, or category of documentation update.
+3. Follow Conventional Commits for commit messages, e.g., `fix(audio): handle empty frame`.
+4. Update documentation synchronously if your changes affect behavior, configuration, or public interfaces.
+5. Add or update tests if your changes involve correctness or regression risks.
 
-推荐分支命名：
+Recommended branch naming:
 
 - `feature/xxx`
 - `fix/xxx`
@@ -55,9 +55,9 @@ pip install pytest pytest-asyncio ruff pyinstaller
 - `refactor/xxx`
 - `test/xxx`
 
-## 质量要求
+## Quality Requirements
 
-提交 Pull Request 前，请根据改动类型运行相应检查：
+Before submitting a Pull Request, run the appropriate checks based on the type of change:
 
 ```bash
 ruff check .
@@ -65,37 +65,37 @@ ruff format .
 pytest
 ```
 
-如有必要，也请验证对应运行路径，例如：
+If necessary, also verify the corresponding runtime path, for example:
 
-- GUI 改动：运行 `python main.py`
-- CLI 改动：运行 `python main.py --mode cli`
-- 协议改动：验证 `websocket` 或 `mqtt`
-- 文档改动：在 `documents/` 下本地预览
+- GUI changes: run `python main.py`
+- CLI changes: run `python main.py --mode cli`
+- Protocol changes: verify `websocket` or `mqtt`
+- Documentation changes: preview locally under `documents/`
 
-## Pull Request 要求
+## Pull Request Requirements
 
-每个 Pull Request 都应尽量满足以下要求：
+Every Pull Request should aim to meet the following requirements:
 
-- 清楚说明问题背景和解决方案。
-- 如有相关 Issue，请附上关联链接。
-- 提供必要的验证步骤、截图或日志，方便审核。
-- 保持改动范围合理，避免混入无关重构。
-- 遵循现有代码风格和项目结构。
+- Clearly explain the problem background and solution.
+- Attach links to related Issues if applicable.
+- Provide necessary verification steps, screenshots, or logs to facilitate review.
+- Keep the scope of changes reasonable and avoid mixing in unrelated refactoring.
+- Follow the existing code style and project structure.
 
 ## Maintainer Workflow
 
-维护者通常会按以下流程审核贡献：
+Maintainers typically review contributions according to the following workflow:
 
-1. 先将改动归类为 `bug`、`feature`、`docs`、`refactor` 或 `maintenance`。
-2. 确认改动范围是否清晰、问题是否可复现、方向是否符合项目规划。
-3. 检查测试、文档和验证证据，再决定是否提出修改意见或批准。
-4. 在 CI 通过且反馈处理完成后合并。
-5. 合并后按正常发布流程进入后续版本，合并不等于立即发布。
+1. Categorize changes as `bug`, `feature`, `docs`, `refactor`, or `maintenance`.
+2. Confirm whether the scope of changes is clear, the issue is reproducible, and the direction aligns with the project roadmap.
+3. Check tests, documentation, and verification evidence before deciding whether to request changes or approve.
+4. Merge after CI passes and all review feedback has been resolved.
+5. Merged changes enter subsequent releases through the normal release process; merging does not imply an immediate release.
 
-## 详细文档
+## Detailed Documentation
 
-- 项目文档：<https://huangjunsen0406.github.io/py-xiaozhi/>
-- 详细贡献指南（英文）：<https://huangjunsen0406.github.io/py-xiaozhi/en/contributing>
-- 详细贡献指南（中文）：<https://huangjunsen0406.github.io/py-xiaozhi/contributing>
+- Project Documentation: <https://huangjunsen0406.github.io/py-xiaozhi/>
+- Detailed Contribution Guide (English): <https://huangjunsen0406.github.io/py-xiaozhi/en/contributing>
+- Detailed Contribution Guide (Chinese): <https://huangjunsen0406.github.io/py-xiaozhi/contributing>
 
-再次感谢你的贡献。
+Thank you again for your contribution.

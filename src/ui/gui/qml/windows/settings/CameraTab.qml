@@ -1,4 +1,4 @@
-// 摄像头设置页
+// Camera settings tab
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -9,11 +9,11 @@ ScrollView {
     id: root
     clip: true
 
-    // 测试状态
+    // Test state
     property bool cameraTesting: false
     property string testResult: ""
 
-    // 进入摄像头页时再扫描（启动阶段不扫 OpenCV，避免冷启动卡顿）
+    // Scan cameras when entering the Camera tab (avoid scanning OpenCV at startup to prevent cold-start lag)
     Component.onCompleted: {
         if (settingsModel) {
             var list = settingsModel.getCameras()
@@ -31,13 +31,13 @@ ScrollView {
         function onDevicesChanged() {
             if (settingsModel) {
                 cameraCombo.model = settingsModel.getCameras()
-                // model 设置后重新同步 currentIndex
+                // Re-sync currentIndex after setting model
                 cameraCombo.currentIndex = settingsModel.selectedCameraIndex
             }
         }
         function onStatusMessage(message) {
             root.testResult = message
-            if (message.startsWith("[成功]") || message.startsWith("[失败]") || message.startsWith("[错误]")) {
+            if (message.startsWith("[Success]") || message.startsWith("[Failed]") || message.startsWith("[Error]")) {
                 root.cameraTesting = false
             }
         }
@@ -47,21 +47,21 @@ ScrollView {
         width: root.availableWidth
         spacing: Theme.spacingLg
 
-        // 页面标题
+        // Page title
         Text {
-            text: "摄像头设置"
+            text: "Camera Settings"
             font.pixelSize: Theme.fontSizeXl
             font.weight: Font.DemiBold
             color: Theme.textPrimary
         }
 
-        // 设备选择
+        // Device selection
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
 
             Text {
-                text: "设备选择"
+                text: "Device Selection"
                 font.pixelSize: Theme.fontSizeMd
                 font.weight: Font.Medium
                 color: Theme.textSecondary
@@ -72,7 +72,7 @@ ScrollView {
                 spacing: Theme.spacingMd
 
                 Text {
-                    text: "摄像头"
+                    text: "Camera"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 80
@@ -89,7 +89,7 @@ ScrollView {
                 }
 
                 Button {
-                    text: root.cameraTesting ? "测试中..." : "测试"
+                    text: root.cameraTesting ? "Testing..." : "Test"
                     enabled: !root.cameraTesting
                     Layout.preferredWidth: 70
                     Layout.preferredHeight: 32
@@ -115,7 +115,7 @@ ScrollView {
                 }
 
                 Button {
-                    text: "刷新"
+                    text: "Refresh"
                     Layout.preferredWidth: 70
                     Layout.preferredHeight: 32
 
@@ -137,20 +137,20 @@ ScrollView {
             }
         }
 
-        // 分隔线
+        // Divider
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // 视频参数
+        // Video parameters
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
 
             Text {
-                text: "视频参数"
+                text: "Video Parameters"
                 font.pixelSize: Theme.fontSizeMd
                 font.weight: Font.Medium
                 color: Theme.textSecondary
@@ -163,7 +163,7 @@ ScrollView {
                 columnSpacing: Theme.spacingLg
 
                 Text {
-                    text: "分辨率"
+                    text: "Resolution"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 80
@@ -201,7 +201,7 @@ ScrollView {
                 }
 
                 Text {
-                    text: "帧率"
+                    text: "Frame Rate"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 80
@@ -228,20 +228,20 @@ ScrollView {
             }
         }
 
-        // 分隔线
+        // Divider
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // VL API 配置
+        // VL API configuration
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
 
             Text {
-                text: "视觉语言模型 (VL API)"
+                text: "Vision-Language Model (VL API)"
                 font.pixelSize: Theme.fontSizeMd
                 font.weight: Font.Medium
                 color: Theme.textSecondary
@@ -254,7 +254,7 @@ ScrollView {
                 columnSpacing: Theme.spacingLg
 
                 Text {
-                    text: "API 地址"
+                    text: "API URL"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 80
@@ -288,7 +288,7 @@ ScrollView {
                 }
 
                 Text {
-                    text: "模型"
+                    text: "Model"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 80
@@ -309,23 +309,23 @@ ScrollView {
             }
         }
 
-        // 分隔线
+        // Divider
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // 测试结果
+        // Test result
         Rectangle {
             Layout.fillWidth: true
             height: 48
-            color: root.testResult.startsWith("[成功]") ? Theme.successLight :
-                   root.testResult.startsWith("[失败]") ? Theme.errorLight :
-                   root.testResult.startsWith("[错误]") ? Theme.errorLight : Theme.backgroundSecondary
-            border.color: root.testResult.startsWith("[成功]") ? Theme.successBorder :
-                          root.testResult.startsWith("[失败]") ? Theme.errorBorder :
-                          root.testResult.startsWith("[错误]") ? Theme.errorBorder : Theme.divider
+            color: root.testResult.startsWith("[Success]") ? Theme.successLight :
+                   root.testResult.startsWith("[Failed]") ? Theme.errorLight :
+                   root.testResult.startsWith("[Error]") ? Theme.errorLight : Theme.backgroundSecondary
+            border.color: root.testResult.startsWith("[Success]") ? Theme.successBorder :
+                          root.testResult.startsWith("[Failed]") ? Theme.errorBorder :
+                          root.testResult.startsWith("[Error]") ? Theme.errorBorder : Theme.divider
             radius: Theme.radiusMd
             visible: root.testResult.length > 0 || root.cameraTesting
 
@@ -343,20 +343,20 @@ ScrollView {
 
                 Text {
                     Layout.fillWidth: true
-                    text: root.cameraTesting ? "正在测试摄像头..." : root.testResult
+                    text: root.cameraTesting ? "Testing camera..." : root.testResult
                     font.pixelSize: Theme.fontSizeSm
-                    color: root.testResult.startsWith("[成功]") ? Theme.success :
-                           root.testResult.startsWith("[失败]") ? Theme.error :
-                           root.testResult.startsWith("[错误]") ? Theme.error : Theme.textSecondary
+                    color: root.testResult.startsWith("[Success]") ? Theme.success :
+                           root.testResult.startsWith("[Failed]") ? Theme.error :
+                           root.testResult.startsWith("[Error]") ? Theme.error : Theme.textSecondary
                     elide: Text.ElideRight
                 }
             }
         }
 
-        // 提示信息
+        // Hint message
         Text {
             Layout.fillWidth: true
-            text: "摄像头用于视觉识别功能。如需使用本地 VL 模型，请配置 API 地址和密钥。"
+            text: "Camera is used for visual recognition. Configure the API URL and key to use a custom VL model."
             font.pixelSize: Theme.fontSizeSm
             color: Theme.textPlaceholder
             wrapMode: Text.WordWrap

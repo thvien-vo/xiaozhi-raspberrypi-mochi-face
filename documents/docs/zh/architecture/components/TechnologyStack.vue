@@ -28,7 +28,7 @@ import {
   CommandLineIcon
 } from '@heroicons/vue/24/solid';
 
-// 技术栈
+// Technology Stack
 const techStack = [
   {
     name: 'Python',
@@ -37,72 +37,72 @@ const techStack = [
   },
   {
     name: 'AsyncIO',
-    description: '异步编程框架',
+    description: 'Async Programming Framework',
     icon: ArrowPathIcon
   },
   {
     name: 'PySide6',
-    description: 'Qt6 GUI框架',
+    description: 'Qt6 GUI Framework',
     icon: WindowIcon
   },
   {
     name: 'QML/QtQuick',
-    description: '声明式UI',
+    description: 'Declarative UI',
     icon: WindowIcon
   },
   {
     name: 'qasync',
-    description: 'Qt异步集成',
+    description: 'Qt Async Integration',
     icon: ArrowsUpDownIcon
   },
   {
     name: 'uv',
-    description: '包管理器',
+    description: 'Package Manager',
     icon: CommandLineIcon
   },
   {
     name: 'Sherpa-ONNX',
-    description: '唤醒词检测',
+    description: 'Wake Word Detection',
     icon: DocumentIcon
   },
   {
     name: 'OpusLib',
-    description: '音频编解码',
+    description: 'Audio Codec',
     icon: AudioIcon
   },
   {
     name: 'SoXR',
-    description: '高质量重采样',
+    description: 'High-Quality Resampling',
     icon: SignalIcon
   },
   {
     name: 'SoundDevice',
-    description: '音频设备管理',
+    description: 'Audio Device Management',
     icon: AudioIcon
   },
   {
     name: 'WebSockets',
-    description: '实时通信协议',
+    description: 'Real-Time Communication Protocol',
     icon: PuzzlePieceIcon
   },
   {
     name: 'MQTT',
-    description: 'IoT消息传输',
+    description: 'IoT Message Transport',
     icon: SignalIcon
   },
   {
     name: 'MCP Protocol',
-    description: '模型上下文协议',
+    description: 'Model Context Protocol',
     icon: PuzzlePieceIcon
   },
   {
     name: 'EventBus',
-    description: '事件驱动架构',
+    description: 'Event-Driven Architecture',
     icon: ArrowPathIcon
   },
   {
     name: 'Quartz',
-    description: 'macOS快捷键',
+    description: 'macOS Shortcuts',
     icon: CommandLineIcon
   }
 ];

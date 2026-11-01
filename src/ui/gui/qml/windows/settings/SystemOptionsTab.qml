@@ -1,4 +1,4 @@
-// 系统选项设置页
+// System options settings tab
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -13,28 +13,28 @@ ScrollView {
         width: root.availableWidth
         spacing: Theme.spacingLg
 
-        // 页面标题
+        // Page title
         Text {
-            text: "系统选项"
+            text: "System Options"
             font.pixelSize: Theme.fontSizeXl
             font.weight: Font.DemiBold
             color: Theme.textPrimary
         }
 
-        // 基本信息区域
+        // Basic information section
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
 
-            // 区域标题
+            // Section title
             Text {
-                text: "基本信息"
+                text: "Basic Information"
                 font.pixelSize: Theme.fontSizeMd
                 font.weight: Font.Medium
                 color: Theme.textSecondary
             }
 
-            // 表单项
+            // Form items
             GridLayout {
                 Layout.fillWidth: true
                 columns: 2
@@ -42,7 +42,7 @@ ScrollView {
                 columnSpacing: Theme.spacingLg
 
                 Text {
-                    text: "客户端 ID"
+                    text: "Client ID"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -52,7 +52,7 @@ ScrollView {
                     Layout.fillWidth: true
                     text: settingsModel ? settingsModel.clientId : ""
                     onEditingFinished: if (settingsModel) settingsModel.clientId = text
-                    placeholderText: "自动生成"
+                    placeholderText: "Auto-generated"
                     font.pixelSize: Theme.fontSizeSm
                     background: Rectangle {
                         radius: Theme.radiusSm
@@ -62,7 +62,7 @@ ScrollView {
                 }
 
                 Text {
-                    text: "设备 ID"
+                    text: "Device ID"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -72,7 +72,7 @@ ScrollView {
                     Layout.fillWidth: true
                     text: settingsModel ? settingsModel.deviceId : ""
                     onEditingFinished: if (settingsModel) settingsModel.deviceId = text
-                    placeholderText: "自动生成"
+                    placeholderText: "Auto-generated"
                     font.pixelSize: Theme.fontSizeSm
                     background: Rectangle {
                         radius: Theme.radiusSm
@@ -84,20 +84,20 @@ ScrollView {
             }
         }
 
-        // 分隔线
+        // Divider
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // 回声消除区域
+        // Acoustic Echo Cancellation section
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
 
             Text {
-                text: "回声消除"
+                text: "Acoustic Echo Cancellation (AEC)"
                 font.pixelSize: Theme.fontSizeMd
                 font.weight: Font.Medium
                 color: Theme.textSecondary
@@ -110,7 +110,7 @@ ScrollView {
                 columnSpacing: Theme.spacingLg
 
                 Text {
-                    text: "启用"
+                    text: "Enable"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -122,7 +122,7 @@ ScrollView {
                 }
 
                 Text {
-                    text: "音乐并行播放"
+                    text: "Parallel Music Playback"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -136,7 +136,7 @@ ScrollView {
                 }
 
                 Text {
-                    text: "延迟补偿帧数"
+                    text: "Delay Compensation Frames"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -154,7 +154,7 @@ ScrollView {
                 }
 
                 Text {
-                    text: "噪声抑制预处理"
+                    text: "Noise Suppression Preprocessing"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -170,27 +170,27 @@ ScrollView {
 
             Text {
                 Layout.fillWidth: true
-                text: "消除本应用 TTS/音乐的回声，启用后进入实时对话模式；音乐并行=TTS 播放时音乐闪避不暂停；延迟补偿=40ms+N×协议帧长，蓝牙设备可适当调大。修改后重启生效。"
+                text: "Cancels echo from app TTS and music playback, enabling real-time conversation mode. Parallel Music ducks music volume during TTS instead of pausing; Delay Compensation = 40ms + N x frame duration (increase for Bluetooth devices). Restart required to take effect."
                 font.pixelSize: Theme.fontSizeXs
                 color: Theme.textSecondary
                 wrapMode: Text.WordWrap
             }
         }
 
-        // 分隔线
+        // Divider
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // 网络配置区域
+        // Network configuration section
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
 
             Text {
-                text: "网络配置"
+                text: "Network Configuration"
                 font.pixelSize: Theme.fontSizeMd
                 font.weight: Font.Medium
                 color: Theme.textSecondary
@@ -223,7 +223,7 @@ ScrollView {
                 }
 
                 Text {
-                    text: "访问令牌"
+                    text: "Access Token"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -237,7 +237,7 @@ ScrollView {
                 }
 
                 Text {
-                    text: "OTA 版本 URL"
+                    text: "OTA Version URL"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -256,7 +256,7 @@ ScrollView {
                 }
 
                 Text {
-                    text: "授权 URL"
+                    text: "Authorization URL"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -275,7 +275,7 @@ ScrollView {
                 }
 
                 Text {
-                    text: "激活版本"
+                    text: "Activation Version"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -293,20 +293,20 @@ ScrollView {
             }
         }
 
-        // 分隔线
+        // Divider
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // MQTT 配置区域
+        // MQTT configuration section
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
 
             Text {
-                text: "MQTT 配置"
+                text: "MQTT Configuration"
                 font.pixelSize: Theme.fontSizeMd
                 font.weight: Font.Medium
                 color: Theme.textSecondary
@@ -319,7 +319,7 @@ ScrollView {
                 columnSpacing: Theme.spacingLg
 
                 Text {
-                    text: "服务端点"
+                    text: "Endpoint"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -339,7 +339,7 @@ ScrollView {
                 }
 
                 Text {
-                    text: "客户端 ID"
+                    text: "Client ID"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -358,7 +358,7 @@ ScrollView {
                 }
 
                 Text {
-                    text: "用户名"
+                    text: "Username"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -377,7 +377,7 @@ ScrollView {
                 }
 
                 Text {
-                    text: "密码"
+                    text: "Password"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -391,7 +391,7 @@ ScrollView {
                 }
 
                 Text {
-                    text: "发布主题"
+                    text: "Publish Topic"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -410,7 +410,7 @@ ScrollView {
                 }
 
                 Text {
-                    text: "订阅主题"
+                    text: "Subscribe Topic"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -430,20 +430,20 @@ ScrollView {
             }
         }
 
-        // 分隔线
+        // Divider
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // 可写目录（缓存 / 日志 / 音乐等）
+        // Writable directories (cache / logs / music, etc.)
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
 
             Text {
-                text: "数据目录"
+                text: "Data Directories"
                 font.pixelSize: Theme.fontSizeMd
                 font.weight: Font.Medium
                 color: Theme.textSecondary
@@ -451,18 +451,18 @@ ScrollView {
 
             Text {
                 Layout.fillWidth: true
-                text: "配置文件仍在用户数据目录。点「选择」打开系统文件夹对话框；「默认」清空为系统默认。保存后下次启动会从旧目录复制到新路径。"
+                text: "Configuration files remain in the user data directory. Click 'Browse' to select a folder, or 'Default' to reset to the system default. After saving, existing files will be copied to the new path on next launch."
                 font.pixelSize: Theme.fontSizeXs
                 color: Theme.textSecondary
                 wrapMode: Text.WordWrap
             }
 
-            // 缓存
+            // Cache
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Theme.spacingSm
                 Text {
-                    text: "缓存目录"
+                    text: "Cache Directory"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -482,7 +482,7 @@ ScrollView {
                     }
                 }
                 Button {
-                    text: "选择"
+                    text: "Browse"
                     font.pixelSize: Theme.fontSizeSm
                     Layout.preferredWidth: 64
                     Layout.preferredHeight: 32
@@ -506,7 +506,7 @@ ScrollView {
                     }
                 }
                 Button {
-                    text: "默认"
+                    text: "Default"
                     font.pixelSize: Theme.fontSizeSm
                     Layout.preferredWidth: 64
                     Layout.preferredHeight: 32
@@ -531,12 +531,12 @@ ScrollView {
                 }
             }
 
-            // 日志
+            // Logs
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Theme.spacingSm
                 Text {
-                    text: "日志目录"
+                    text: "Log Directory"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -556,7 +556,7 @@ ScrollView {
                     }
                 }
                 Button {
-                    text: "选择"
+                    text: "Browse"
                     font.pixelSize: Theme.fontSizeSm
                     Layout.preferredWidth: 64
                     Layout.preferredHeight: 32
@@ -580,7 +580,7 @@ ScrollView {
                     }
                 }
                 Button {
-                    text: "默认"
+                    text: "Default"
                     font.pixelSize: Theme.fontSizeSm
                     Layout.preferredWidth: 64
                     Layout.preferredHeight: 32
@@ -605,12 +605,12 @@ ScrollView {
                 }
             }
 
-            // 音乐
+            // Music
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Theme.spacingSm
                 Text {
-                    text: "音乐缓存"
+                    text: "Music Cache"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -630,7 +630,7 @@ ScrollView {
                     }
                 }
                 Button {
-                    text: "选择"
+                    text: "Browse"
                     font.pixelSize: Theme.fontSizeSm
                     Layout.preferredWidth: 64
                     Layout.preferredHeight: 32
@@ -654,7 +654,7 @@ ScrollView {
                     }
                 }
                 Button {
-                    text: "默认"
+                    text: "Default"
                     font.pixelSize: Theme.fontSizeSm
                     Layout.preferredWidth: 64
                     Layout.preferredHeight: 32
@@ -679,12 +679,12 @@ ScrollView {
                 }
             }
 
-            // 唤醒词
+            // Wake Words
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Theme.spacingSm
                 Text {
-                    text: "唤醒词目录"
+                    text: "Wake Words Dir"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -704,7 +704,7 @@ ScrollView {
                     }
                 }
                 Button {
-                    text: "选择"
+                    text: "Browse"
                     font.pixelSize: Theme.fontSizeSm
                     Layout.preferredWidth: 64
                     Layout.preferredHeight: 32
@@ -728,7 +728,7 @@ ScrollView {
                     }
                 }
                 Button {
-                    text: "默认"
+                    text: "Default"
                     font.pixelSize: Theme.fontSizeSm
                     Layout.preferredWidth: 64
                     Layout.preferredHeight: 32
@@ -753,12 +753,12 @@ ScrollView {
                 }
             }
 
-            // MCP 插件
+            // MCP Plugins
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Theme.spacingSm
                 Text {
-                    text: "MCP 插件目录"
+                    text: "MCP Plugins Dir"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -778,7 +778,7 @@ ScrollView {
                     }
                 }
                 Button {
-                    text: "选择"
+                    text: "Browse"
                     font.pixelSize: Theme.fontSizeSm
                     Layout.preferredWidth: 64
                     Layout.preferredHeight: 32
@@ -802,7 +802,7 @@ ScrollView {
                     }
                 }
                 Button {
-                    text: "默认"
+                    text: "Default"
                     font.pixelSize: Theme.fontSizeSm
                     Layout.preferredWidth: 64
                     Layout.preferredHeight: 32

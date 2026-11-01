@@ -10,6 +10,6 @@ export function getGuideSideBarItems(): (DefaultTheme.SidebarItem)[] {
       link: `/guide/${item}`
     }
   }).filter(item => {
-    return !item.text.includes('使用文档')
+    return !item.text.includes('usage-guide')
   })
 }

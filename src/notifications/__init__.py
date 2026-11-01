@@ -1,4 +1,4 @@
-"""服务端单向语音通知播放。"""
+"""Server one-way voice notification playback."""
 
 from .notification_player import NotificationPlayer
 

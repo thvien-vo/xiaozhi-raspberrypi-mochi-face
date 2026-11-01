@@ -1,4 +1,4 @@
-"""音量后端协议与工厂."""
+"""Volume backend protocol and factory."""
 
 from __future__ import annotations
 
@@ -6,12 +6,12 @@ from typing import Protocol
 
 
 class VolumeBackend(Protocol):
-    """平台音量实现."""
+    """Platform-specific volume implementation."""
 
     def get_volume(self) -> int:
-        """当前音量 0-100."""
+        """Current volume level (0-100)."""
         ...
 
     def set_volume(self, volume: int) -> None:
-        """设置音量 0-100（调用方已 clamp）."""
+        """Set volume level 0-100 (clamped by caller)."""
         ...

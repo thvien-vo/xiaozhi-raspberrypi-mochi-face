@@ -1,4 +1,4 @@
-// 快捷键设置页
+// Shortcuts settings tab
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -13,21 +13,21 @@ ScrollView {
         width: root.availableWidth
         spacing: Theme.spacingLg
 
-        // 页面标题
+        // Page title
         Text {
-            text: "快捷键设置"
+            text: "Keyboard Shortcuts"
             font.pixelSize: Theme.fontSizeXl
             font.weight: Font.DemiBold
             color: Theme.textPrimary
         }
 
-        // 基本设置
+        // General settings
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
 
             Text {
-                text: "基本设置"
+                text: "General"
                 font.pixelSize: Theme.fontSizeMd
                 font.weight: Font.Medium
                 color: Theme.textSecondary
@@ -38,7 +38,7 @@ ScrollView {
                 spacing: Theme.spacingMd
 
                 Text {
-                    text: "启用全局快捷键"
+                    text: "Enable Global Shortcuts"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                 }
@@ -52,14 +52,14 @@ ScrollView {
             }
         }
 
-        // 分隔线
+        // Divider
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // 快捷键配置
+        // Shortcut configuration
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
@@ -67,19 +67,19 @@ ScrollView {
             enabled: settingsModel ? settingsModel.shortcutsEnabled : false
 
             Text {
-                text: "快捷键配置"
+                text: "Shortcut Assignments"
                 font.pixelSize: Theme.fontSizeMd
                 font.weight: Font.Medium
                 color: Theme.textSecondary
             }
 
-            // 按住说话
+            // Hold to talk
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Theme.spacingMd
 
                 Text {
-                    text: "按住说话"
+                    text: "Hold to Talk"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textPrimary
                     Layout.preferredWidth: 80
@@ -121,7 +121,7 @@ ScrollView {
 
                 Text {
                     Layout.fillWidth: true
-                    text: "长按录音"
+                    text: "Hold key to record"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textPlaceholder
                 }
@@ -129,13 +129,13 @@ ScrollView {
 
             Rectangle { Layout.fillWidth: true; height: 1; color: Theme.divider }
 
-            // 自动对话
+            // Auto chat
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Theme.spacingMd
 
                 Text {
-                    text: "自动对话"
+                    text: "Auto Chat"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textPrimary
                     Layout.preferredWidth: 80
@@ -177,7 +177,7 @@ ScrollView {
 
                 Text {
                     Layout.fillWidth: true
-                    text: "开启/关闭自动对话"
+                    text: "Start/stop automatic conversation"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textPlaceholder
                 }
@@ -185,13 +185,13 @@ ScrollView {
 
             Rectangle { Layout.fillWidth: true; height: 1; color: Theme.divider }
 
-            // 中断对话
+            // Interrupt conversation
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Theme.spacingMd
 
                 Text {
-                    text: "中断对话"
+                    text: "Interrupt"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textPrimary
                     Layout.preferredWidth: 80
@@ -233,7 +233,7 @@ ScrollView {
 
                 Text {
                     Layout.fillWidth: true
-                    text: "立即停止当前对话"
+                    text: "Immediately stop current conversation"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textPlaceholder
                 }
@@ -241,13 +241,13 @@ ScrollView {
 
             Rectangle { Layout.fillWidth: true; height: 1; color: Theme.divider }
 
-            // 切换模式
+            // Switch mode
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Theme.spacingMd
 
                 Text {
-                    text: "切换模式"
+                    text: "Switch Mode"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textPrimary
                     Layout.preferredWidth: 80
@@ -289,7 +289,7 @@ ScrollView {
 
                 Text {
                     Layout.fillWidth: true
-                    text: "手动/自动模式切换"
+                    text: "Toggle between Manual and Auto mode"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textPlaceholder
                 }
@@ -297,13 +297,13 @@ ScrollView {
 
             Rectangle { Layout.fillWidth: true; height: 1; color: Theme.divider }
 
-            // 显示/隐藏窗口
+            // Show/Hide window
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Theme.spacingMd
 
                 Text {
-                    text: "显示/隐藏"
+                    text: "Show/Hide"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textPrimary
                     Layout.preferredWidth: 80
@@ -345,24 +345,24 @@ ScrollView {
 
                 Text {
                     Layout.fillWidth: true
-                    text: "切换主窗口可见性"
+                    text: "Toggle main window visibility"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textPlaceholder
                 }
             }
         }
 
-        // 分隔线
+        // Divider
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // 提示信息
+        // Hint message
         Text {
             Layout.fillWidth: true
-            text: "快捷键在全局范围内有效，请确保不与系统或其他应用的快捷键冲突。"
+            text: "Shortcuts work globally across the system. Ensure they do not conflict with system or other application shortcuts."
             font.pixelSize: Theme.fontSizeSm
             color: Theme.textPlaceholder
             wrapMode: Text.WordWrap

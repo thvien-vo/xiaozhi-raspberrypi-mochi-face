@@ -14,28 +14,28 @@ categories:
     labels:
       - 'feature'
       - 'feat'
-      - '新功能'
+      - 'enhancement'
   - title: 'Bug Fixes'
     labels:
       - 'bug'
       - 'fix'
-      - '修复'
+      - 'hotfix'
       - 'bugfix'
   - title: 'Performance'
     labels:
       - 'perf'
-      - '性能'
-      - '优化'
+      - 'performance'
+      - 'optimization'
   - title: 'Documentation'
     labels:
       - 'docs'
       - 'documentation'
-      - '文档'
+      - 'doc'
   - title: 'Maintenance'
     labels:
       - 'chore'
       - 'maintenance'
-      - '维护'
+      - 'refactor'
       - 'deps'
       - 'dependencies'
 

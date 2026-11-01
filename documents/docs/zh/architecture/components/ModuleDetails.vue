@@ -42,92 +42,92 @@ const modules = [
     name: 'src/bootstrap/',
     icon: CogIcon,
     features: [
-      'ServiceContainer 编排启动与关闭',
-      '会话、健康检查、插件装配拆分',
-      '按依赖加载各插件'
+      'ServiceContainer orchestrates start/shutdown',
+      'Session, health, and plugin wiring split out',
+      'Plugins load by dependency order'
     ]
   },
   {
     name: 'src/core/',
     icon: BoltIcon,
     features: [
-      'EventBus 事件通信',
-      '设备状态机与协议管理',
-      '任务与资源统一回收'
+      'EventBus for decoupled messaging',
+      'Device state machine and protocol manager',
+      'Tasks and resources cleaned up together'
     ]
   },
   {
     name: 'src/plugins/',
     icon: CpuChipIcon,
     features: [
-      '插件生命周期与依赖隔离',
-      '音频、UI、快捷键、唤醒词、MCP'
+      'Plugin lifecycle and failure isolation',
+      'Audio, UI, shortcuts, wake word, MCP'
     ]
   },
   {
     name: 'src/protocols/',
     icon: ArrowsRightLeftIcon,
     features: [
-      'WebSocket / MQTT 双协议',
-      '实时音频与文本消息'
+      'WebSocket and MQTT',
+      'Realtime audio and text'
     ]
   },
   {
     name: 'src/audio_codecs/',
     icon: DocumentIcon,
     features: [
-      'Opus 编解码与重采样',
-      '设备热刷新与热重载'
+      'Opus codec and resampling',
+      'Hot refresh and reload of devices'
     ]
   },
   {
     name: 'src/audio_processing/',
     icon: SpeakerXMarkIcon,
     features: [
-      '离线唤醒词检测',
-      '复用麦克风 PCM 流'
+      'Offline wake-word detection',
+      'Reuses microphone PCM'
     ]
   },
   {
     name: 'src/mcp/',
     icon: WrenchIcon,
     features: [
-      '音乐、摄像头、截图、音量等工具',
-      '容器注入注册；支持外挂插件',
-      '摄像头支持 USB 与树莓派 CSI'
+      'Music, camera, screenshot, volume, and more',
+      'Container injection; optional external plugins',
+      'Camera: USB and Raspberry Pi CSI'
     ]
   },
   {
     name: 'src/ui/',
     icon: ComputerDesktopIcon,
     features: [
-      'GUI / CLI / GPIO 统一 ViewPort',
-      'PySide6 + QML 主界面与设置',
-      '冷启动不抢前台（macOS）'
+      'GUI / CLI / GPIO via ViewPort',
+      'PySide6 + QML main window and settings',
+      'Cold start does not steal focus (macOS)'
     ]
   },
   {
     name: 'src/activation/',
     icon: LightBulbIcon,
     features: [
-      '设备激活与 OTA',
-      '独立激活窗口'
+      'Device activation and OTA',
+      'Standalone activation window'
     ]
   },
   {
     name: 'src/logging/',
     icon: DocumentIcon,
     features: [
-      '分级日志与文件轮转',
-      '显式初始化'
+      'Leveled logs and rotation',
+      'Explicit initialization'
     ]
   },
   {
     name: 'src/utils/',
     icon: MapIcon,
     features: [
-      '配置管理（按名匹配音频设备）',
-      '资源路径与跨平台工具'
+      'Config (audio devices matched by name)',
+      'Resource paths and cross-platform helpers'
     ]
   }
 ];

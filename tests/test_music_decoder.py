@@ -1,4 +1,4 @@
-"""FFmpeg 终态、PCM 短读及启动取消回归。"""
+"""Regression tests for FFmpeg terminal states, short PCM reads, and startup cancellation."""
 
 import asyncio
 from unittest.mock import AsyncMock

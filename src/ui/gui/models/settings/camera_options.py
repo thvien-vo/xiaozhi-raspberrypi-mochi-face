@@ -1,8 +1,8 @@
-"""摄像头参数与 VL 配置属性."""
+"""Camera parameters and VL configuration properties."""
 
 
 class SettingsCameraOptionsMixin:
-    # ========== 摄像头设置 ==========
+    # ========== Camera Settings ==========
 
     def _get_cameraIndex(self) -> int:
         return self._get_value("CAMERA.camera_index", 0)
@@ -45,4 +45,3 @@ class SettingsCameraOptionsMixin:
 
     def _set_vlModels(self, value: str):
         self._set_value("CAMERA.models", value)
-

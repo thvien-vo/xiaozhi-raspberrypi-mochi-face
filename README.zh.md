@@ -20,172 +20,173 @@
     <img src="https://img.shields.io/badge/Gitee-FF5722?style=flat-square&logo=gitee" alt="Gitee"/>
   </a>
   <a href="https://huangjunsen0406.github.io/py-xiaozhi/guide/00_%E6%96%87%E6%A1%A3%E7%9B%AE%E5%BD%95.html">
-    <img alt="使用文档" src="https://img.shields.io/badge/使用文档-点击查看-blue?labelColor=2d2d2d" />
+    <img alt="Usage Docs" src="https://img.shields.io/badge/Usage%20Docs-Click%20to%20View-blue?labelColor=2d2d2d" />
   </a>
   <a href="https://atomgit.com/huangjunsen0406/py-xiaozhi">
     <img src="./assets/AtomGit.svg" alt="AtomGit" height="20"/>
   </a>
 </p>
 
-简体中文 | [English](README.md)
+Simplified Chinese | [English](README.md)
 
-## ❤️赞助商
+## ❤️ Sponsors
 
-> [想出现在这里？](mailto:95134130@qq.com)
+> [Want to appear here?](mailto:95134130@qq.com)
 
 <details open>
-<summary>点击折叠</summary>
+<summary>Click to collapse</summary>
 
 [**GitDo.net**](https://gitdo.net/)
 
-感谢 GitDo.net 赞助了本项目！GitDo.net 是一个 AI API 聚合中转平台，一个 API Key 即可调用 **Claude、Gemini、GPT** 等主流模型，国内直连、无需魔法、稳定高效，是企业级 AI 编程和应用的理想选择。**[点击访问 GitDo.net](https://gitdo.net/)**
+Thanks to GitDo.net for sponsoring this project! GitDo.net is an AI API aggregation relay platform where a single API Key can invoke mainstream models such as **Claude, Gemini, and GPT**. Direct connection, no proxy required, stable and efficient — an ideal choice for enterprise-grade AI programming and applications. **[Visit GitDo.net](https://gitdo.net/)**
 
 ---
 
 |                                                                     |                                                                                                                                                                             |
 | ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [**Token能量站**](https://factory.pub/register?aff=3rXc)            | 感谢 Token能量站 赞助了本项目！提供 **GPT、Grok、Claude** 等主流模型的 API 中转服务，稳定可靠，价格实惠。**[点击注册](https://factory.pub/register?aff=3rXc)**              |
-| [**良心AI**](https://www.openailaozu.com/register?aff=5Y7JEH5HBTXS) | 感谢 良心AI 赞助了本项目！提供 **GPT、Claude、Gemini** 等主流模型的 API 中转服务，国内直连，稳定高速。**[点击注册](https://www.openailaozu.com/register?aff=5Y7JEH5HBTXS)** |
+| [**Token Energy Station**](https://factory.pub/register?aff=3rXc)   | Thanks to Token Energy Station for sponsoring this project! Providing API relay services for mainstream models such as **GPT, Grok, and Claude** — stable, reliable, and affordable. **[Click to Register](https://factory.pub/register?aff=3rXc)** |
+| [**Conscience AI**](https://www.openailaozu.com/register?aff=5Y7JEH5HBTXS) | Thanks to Conscience AI for sponsoring this project! Providing API relay services for mainstream models such as **GPT, Claude, and Gemini** — direct connection, stable and high-speed. **[Click to Register](https://www.openailaozu.com/register?aff=5Y7JEH5HBTXS)** |
 
 </details>
 
-## 项目简介
+## Project Introduction
 
-py-xiaozhi 是一个轻量级、跨平台的多模态 AI 交互主控框架，基于 Python 异步架构，支持实时语音、视觉识别和 IoT 设备控制。可部署于 Windows / macOS / Linux 桌面以及 Raspberry Pi、RDK 等 ARM 嵌入式平台，向下对接具身智能硬件，向上接入大语言模型，开箱即用。
+py-xiaozhi is a lightweight, cross-platform multi-modal AI interaction master control framework based on Python's asynchronous architecture, supporting real-time voice, visual recognition, and IoT device control. It can be deployed on Windows / macOS / Linux desktops as well as ARM embedded platforms such as Raspberry Pi and RDK, interfacing downward with embodied intelligent hardware and upward with Large Language Models out of the box.
 
-> 本项目从 [xiaozhi-esp32](https://github.com/78/xiaozhi-esp32) 移植演进而来，已被 [D-Robotics 官方生态 (xiaozhi-in-rdk)](https://github.com/D-Robotics/xiaozhi-in-rdk) 深度适配。
+> Ported and evolved from [xiaozhi-esp32](https://github.com/78/xiaozhi-esp32), and deeply adapted by the [D-Robotics Official Ecosystem (xiaozhi-in-rdk)](https://github.com/D-Robotics/xiaozhi-in-rdk).
 
-> **重要提示**
+> **Important Notes**
 >
-> - 请先阅读 [项目文档](https://huangjunsen0406.github.io/py-xiaozhi/)，启动教程和配置说明都在里面
-> - main 是最新代码，每次更新后请重新安装 pip 依赖
-> - **如果你已经基于本项目进行了二次开发，请不要直接合并最新代码**，新版本架构已大幅重构，强行合并会导致大量冲突。建议以旧版本为基础继续维护，或参考新架构重新适配
-> - [从零开始使用小智客户端（视频教程）](https://www.bilibili.com/video/BV1dWQhYEEmq/)
+> - Please read the [Project Documentation](https://huangjunsen0406.github.io/py-xiaozhi/) first; startup tutorials and configuration instructions are included inside.
+> - `main` holds the latest code; please reinstall pip dependencies after each update.
+> - **If you have already done secondary development based on this project, please do not merge the latest code directly** — the new version architecture has been significantly refactored, and a forced merge will cause numerous conflicts. It is recommended to continue maintaining based on the old version or re-adapt by referencing the new architecture.
+> - [Getting Started with Xiaozhi Client from Scratch (Video Tutorial)](https://www.bilibili.com/video/BV1dWQhYEEmq/)
 
-## 演示
+## Demo
 
-- [Bilibili 演示视频](https://www.bilibili.com/video/BV1HmPjeSED2/)
+- [Bilibili Demo Video](https://www.bilibili.com/video/BV1HmPjeSED2/)
 
-![系统界面](./documents/docs/guide/images/系统界面.png)
+![System Interface](./documents/docs/guide/images/%E7%B3%BB%E7%BB%9F%E7%95%8C%E9%9D%A2.png)
 
-## 功能特点
+## Features
 
-- **AI 语音交互** — 语音输入与识别，自然流畅的对话体验
-- **视觉多模态** — 图像识别和处理，理解图像内容
-- **智能唤醒** — 多种唤醒词激活，免手动操作（可配置）
-- **自动对话模式** — 连续对话，提升交互流畅度
-- **MCP 工具生态** — 音乐播放、摄像头、截图、应用管理、天气查询、音量控制
-- **Opus 编解码** — 音频编解码和实时重采样
-- **唤醒词检测** — 基于 Sherpa-ONNX 离线识别，支持多唤醒词和拼音匹配
-- **多界面模式** — GUI（PySide6 + QML）/ CLI / GPIO，适应不同环境
-- **系统托盘 & 全局快捷键** — 后台运行，快捷操作
-- **WebSocket / MQTT** — 双协议通信，支持 WSS 加密传输
-- **设备激活** — v1/v2 双协议，自动验证码和设备指纹
-- **跨平台** — Windows 10+ / macOS 10.15+ / Linux
+- **AI Voice Interaction** — Voice input and recognition for a natural and fluent conversation experience
+- **Visual Multi-modality** — Image recognition and processing to understand image content
+- **Smart Wake-up** — Multiple wake words for hands-free activation (configurable)
+- **Auto Conversation Mode** — Continuous conversation for improved interaction fluency
+- **MCP Tool Ecosystem** — Music playback, camera, screenshot, application management, weather query, volume control
+- **Opus Codec** — Audio encoding/decoding and real-time resampling
+- **Wake Word Detection** — Offline recognition based on Sherpa-ONNX, supporting multiple wake words and Pinyin matching
+- **Multiple UI Modes** — GUI (PySide6 + QML) / CLI / GPIO to adapt to different environments
+- **System Tray & Global Shortcuts** — Background execution and quick operations
+- **WebSocket / MQTT** — Dual-protocol communication supporting WSS encrypted transmission
+- **Device Activation** — v1/v2 dual protocol with automatic verification codes and device fingerprinting
+- **Cross-platform** — Windows 10+ / macOS 10.15+ / Linux
 
-## 相关项目
+## Related Projects
 
-- [xiaozhi-desktop](https://xiaozhi.junsen.online) — Electron 桌面版，支持 AEC 回声消除、Live2D、悬浮窗等显示模式，提供 Windows / macOS 安装包
+- [xiaozhi-desktop](https://xiaozhi.junsen.online) — Electron desktop edition supporting AEC echo cancellation, Live2D, floating window display modes, and Windows / macOS installers
 
-## 快速开始
+## Quick Start
 
-**环境要求**：Python >= 3.10，麦克风和扬声器，稳定网络连接
+**Requirements**: Python >= 3.10, microphone and speaker, stable network connection
 
 ```bash
-# 克隆项目
+# Clone project
 git clone https://github.com/huangjunsen0406/py-xiaozhi.git
 cd py-xiaozhi
 
-# 基础安装（CLI / GPIO 模式）
-uv sync                        # 推荐
-# 或: pip install -e .
+# Base installation (CLI / GPIO mode)
+uv sync                        # Recommended
+# or: pip install -e .
 
-# GUI 模式（额外安装 PySide6 + qasync）
-uv sync --extra gui            # 推荐
-# 或: pip install -e '.[gui]'
+# GUI mode (installs PySide6 + qasync)
+uv sync --extra gui            # Recommended
+# or: pip install -e '.[gui]'
 
-# 运行
-python main.py                 # GUI 模式（默认）
-python main.py --mode cli      # CLI 模式
-python main.py --protocol mqtt # MQTT 协议
+# Run
+python main.py                 # GUI mode (default)
+python main.py --mode cli      # CLI mode
+python main.py --protocol mqtt # MQTT protocol
 ```
 
-## 项目结构
+## Project Structure
 
 ```
 py-xiaozhi/
-├── main.py                     # 应用程序主入口
+├── main.py                     # Main application entry point
 ├── src/
-│   ├── bootstrap/              # 应用引导与依赖注入
-│   ├── core/                   # 核心基础设施（事件总线、状态管理等）
-│   ├── plugins/                # 插件系统（音频、UI、MCP、唤醒词、快捷键）
-│   ├── protocols/              # 通信协议（WebSocket / MQTT）
-│   ├── audio_codecs/           # 音频编解码
-│   ├── audio_processing/       # 唤醒词检测
-│   ├── activation/             # 设备激活
-│   ├── mcp/                    # MCP 工具系统
-│   │   └── tools/              # 工具模块（music/camera/screenshot/app/weather/volume）
-│   ├── ui/                     # 用户界面
-│   │   ├── gui/                # PySide6 + QML 图形界面
-│   │   ├── cli/                # 命令行界面
-│   │   └── gpio/               # GPIO 嵌入式界面
-│   └── utils/                  # 工具函数
-├── libs/                       # 第三方原生库（libopus / webrtc_apm）
-├── models/                     # 语音唤醒模型
-├── documents/                  # VitePress 文档站
-└── pyproject.toml              # 项目配置
+│   ├── bootstrap/              # Application bootstrap & dependency injection
+│   ├── core/                   # Core infrastructure (event bus, state management, etc.)
+│   ├── plugins/                # Plugin system (audio, UI, MCP, wake word, shortcuts)
+│   ├── protocols/              # Communication protocols (WebSocket / MQTT)
+│   ├── audio_codecs/           # Audio codecs
+│   ├── audio_processing/       # Wake word detection
+│   ├── activation/             # Device activation
+│   ├── mcp/                    # MCP tool system
+│   │   └── tools/              # Tool modules (music/camera/screenshot/app/weather/volume)
+│   ├── ui/                     # User interface
+│   │   ├── gui/                # PySide6 + QML graphical interface
+│   │   ├── cli/                # Command line interface
+│   │   └── gpio/               # GPIO embedded interface
+│   └── utils/                  # Utility functions
+├── libs/                       # Third-party native libraries (libopus / webrtc_apm)
+├── models/                     # Voice wake word models
+├── documents/                  # VitePress documentation site
+└── pyproject.toml              # Project configuration
 ```
 
-## 状态流转
+## State Flow
 
 ```
                     +----------------+
                     |                |
                     v                |
-+------+  唤醒/按钮  +------------+  |   +------------+
-| IDLE | ---------> | CONNECTING | -+-> | LISTENING  |
-+------+            +------------+      +------------+
-   ^                                          |
-   |                                          | 语音识别完成
-   |        +------------+                    v
-   +------- |  SPEAKING  | <-----------------+
-    完成播放 +------------+
++------+ Wake/Button +------------+  |   +------------+
+| IDLE | ----------> | CONNECTING | -+-> | LISTENING  |
++------+             +------------+      +------------+
+   ^                                           |
+   |                                           | Speech Recognition Complete
+   |        +------------+                     v
+   +------- |  SPEAKING  | <------------------+
+    Playback +------------+
+    Complete
 ```
 
-## 参与贡献
+## Contributing
 
-- 仓库贡献入口请先阅读 [CONTRIBUTING.md](./CONTRIBUTING.md)
-- 中文版本请查看 [CONTRIBUTING_ZH.md](./CONTRIBUTING_ZH.md)
-- 详细文档请查看 [贡献指南](https://huangjunsen0406.github.io/py-xiaozhi/contributing)
+- Please read [CONTRIBUTING.md](./CONTRIBUTING.md) first for the repository contribution guide
+- For the Chinese version entry, see [CONTRIBUTING_ZH.md](./CONTRIBUTING_ZH.md)
+- For detailed documentation, see the [Contribution Guide](https://huangjunsen0406.github.io/py-xiaozhi/contributing)
 
 ## Maintainer Workflow
 
-- 先将新提交归类为 `bug`、`feature`、`docs`、`refactor` 或 `maintenance`
-- 优先审核范围清晰、验证步骤明确、上下文完整的 Pull Request
-- 影响行为、配置或公共接口的改动需要同步更新文档
-- 在 CI 通过且审核意见处理完成后再合并
-- 合并后按正常发布流程进入版本，不承诺立即发布
+- Categorize new submissions as `bug`, `feature`, `docs`, `refactor`, or `maintenance`
+- Prioritize reviewing Pull Requests with a clear scope, explicit verification steps, and complete context
+- Changes affecting behavior, configuration, or public interfaces require synchronous documentation updates
+- Merge after CI passes and review feedback is resolved
+- Merged changes enter releases according to the normal release workflow without promising immediate shipping
 
-## 感谢
+## Acknowledgments
 
-> 排名不分前后
+> In no particular order
 
 [Xiaoxia](https://github.com/78)
 [zhh827](https://github.com/zhh827)
-[四博智联-李洪刚](https://github.com/SmartArduino)
+[SmartArduino-Li Honggang](https://github.com/SmartArduino)
 [HonestQiao](https://github.com/HonestQiao)
 [vonweller](https://github.com/vonweller)
-[孙卫公](https://space.bilibili.com/416954647)
+[Sun Weigong](https://space.bilibili.com/416954647)
 [isamu2025](https://github.com/isamu2025)
 [Rain120](https://github.com/Rain120)
 [kejily](https://github.com/kejily)
-[电波bilibili君](https://space.bilibili.com/119751)
-[赛搏智能](https://shop115087494.m.taobao.com/?refer=https%3A%2F%2Fm.tb.cn%2F)
+[Radio bilibili Jun](https://space.bilibili.com/119751)
+[Cyber Intelligence](https://shop115087494.m.taobao.com/?refer=https%3A%2F%2Fm.tb.cn%2F)
 
-## 项目统计
+## Project Statistics
 
 [![Star History Chart](https://star-history.dera.page/svg?repos=huangjunsen0406/py-xiaozhi&type=Date)](https://star-history.dera.page/#huangjunsen0406/py-xiaozhi&Date)
 
-## 许可证
+## License
 
 [MIT License](LICENSE)

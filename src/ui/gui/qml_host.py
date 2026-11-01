@@ -1,4 +1,4 @@
-"""QML 引擎宿主：加载、上下文注入、根窗口操作."""
+"""QML engine host: loading, context injection, root window operations."""
 
 from pathlib import Path
 
@@ -11,7 +11,7 @@ logger = get_logger()
 
 
 def _show_window(window, *, activate: bool) -> None:
-    """显示窗口；activate=False 时尽量不抢前台（macOS 全屏 Space 友好）."""
+    """Show window; when activate=False, avoid stealing focus (macOS fullscreen Space friendly)."""
     if window is None:
         return
 
@@ -21,7 +21,7 @@ def _show_window(window, *, activate: bool) -> None:
         window.requestActivate()
         return
 
-    # QWidget 路径：ShowWithoutActivating
+    # QWidget path: ShowWithoutActivating
     set_attr = getattr(window, "setAttribute", None)
     if callable(set_attr):
         set_attr(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
@@ -31,8 +31,8 @@ def _show_window(window, *, activate: bool) -> None:
             set_attr(Qt.WidgetAttribute.WA_ShowWithoutActivating, False)
         return
 
-    # QQuickWindow / QWindow：临时去掉可获焦，避免成为 key window
-    # （macOS 上 key window 会把其它全屏 App 的 Space 挤掉）
+    # QQuickWindow / QWindow: temporarily disable focus acceptance to avoid becoming the key window
+    # (on macOS, a key window switches away from other fullscreen app Spaces)
     flags = window.flags()
     try:
         window.setFlags(flags | Qt.WindowType.WindowDoesNotAcceptFocus)
@@ -42,7 +42,7 @@ def _show_window(window, *, activate: bool) -> None:
 
 
 class QmlAppHost:
-    """只负责 QML 引擎生命周期与根对象访问，不碰业务逻辑."""
+    """Responsible only for QML engine lifecycle and root object access, without touching business logic."""
 
     def __init__(self) -> None:
         self._engine: QQmlApplicationEngine | None = None
@@ -61,7 +61,7 @@ class QmlAppHost:
         ctx = self._engine.rootContext()
         for name, obj in properties.items():
             ctx.setContextProperty(name, obj)
-        logger.debug("QmlAppHost: 已注入 QML 上下文 %s", list(properties))
+        logger.debug("QmlAppHost: Injected QML context %s", list(properties))
 
     def load_main(self) -> None:
         if not self._engine:
@@ -71,9 +71,9 @@ class QmlAppHost:
         main_qml = qml_dir / "main.qml"
         self._engine.load(QUrl.fromLocalFile(str(main_qml)))
         if not self._engine.rootObjects():
-            logger.error("QmlAppHost: QML 加载失败")
+            logger.error("QmlAppHost: Failed to load QML")
             raise RuntimeError("Failed to load QML")
-        logger.debug("QmlAppHost: 已加载 %s", main_qml)
+        logger.debug("QmlAppHost: Loaded %s", main_qml)
 
     def root_window(self):
         if not self._engine:
@@ -82,11 +82,11 @@ class QmlAppHost:
         return roots[0] if roots else None
 
     def show_root(self, *, activate: bool = True) -> None:
-        """显示主窗口.
+        """Show main window.
 
         Args:
-            activate: True=抢前台（托盘「显示窗口」/快捷键）；
-                      False=仅显示、不 requestActivate（冷启动，避免挤掉 macOS 全屏 App）
+            activate: True=bring to foreground (tray "Show Window" / shortcut);
+                      False=show only without requestActivate (cold start, avoids switching away from macOS fullscreen apps)
         """
         _show_window(self.root_window(), activate=activate)
 
@@ -97,7 +97,7 @@ class QmlAppHost:
         if window.isVisible():
             window.hide()
         else:
-            # 用户主动切换：需要到前台
+            # User actively toggled: bring to foreground
             self.show_root(activate=True)
 
     def shutdown(self) -> None:

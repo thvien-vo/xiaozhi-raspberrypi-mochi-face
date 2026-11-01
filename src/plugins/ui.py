@@ -1,4 +1,4 @@
-"""UI 插件：起界面、转展示、接用户操作."""
+"""UI plugin: starts the interface, forwards display updates, and handles user actions."""
 
 from typing import TYPE_CHECKING, Optional
 
@@ -17,7 +17,7 @@ logger = get_logger()
 
 
 class UIPlugin(Plugin):
-    """界面插件."""
+    """User interface plugin."""
 
     name = "ui"
     priority = 60
@@ -54,8 +54,9 @@ class UIPlugin(Plugin):
         bus.on(Events.MUSIC_STATE_CHANGED, self._on_music_state_changed)
         bus.on(Events.MUSIC_LYRICS_UPDATE, self._on_music_lyrics_update)
         bus.on(Events.NOTIFICATION_SUBTITLE, self._on_notification_subtitle)
-        logger.info("UIPlugin 已订阅音乐/通知/网络/系统提示事件")
+        logger.info("UIPlugin subscribed to music/notification/network/system notice events")
 
+    
         if self._session:
             self._session.subscribe(bus)
 

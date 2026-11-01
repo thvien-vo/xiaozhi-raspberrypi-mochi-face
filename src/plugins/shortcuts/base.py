@@ -1,4 +1,4 @@
-"""快捷键后端抽象基类."""
+"""Abstract base class for shortcut backends."""
 
 import asyncio
 from abc import ABC, abstractmethod
@@ -12,17 +12,17 @@ logger = get_logger()
 
 @dataclass
 class ShortcutConfig:
-    """快捷键配置."""
+    """Shortcut configuration."""
 
     modifier: str  # ctrl, alt, shift, cmd
-    key: str  # 按键
+    key: str  # Key name
     description: str = ""
 
 
 class ShortcutBackend(ABC):
-    """快捷键后端抽象基类.
+    """Abstract base class for shortcut backends.
 
-    定义了所有快捷键后端必须实现的接口。
+    Defines the interface that all shortcut backends must implement.
     """
 
     def __init__(self, loop: Optional[asyncio.AbstractEventLoop] = None):
@@ -33,59 +33,59 @@ class ShortcutBackend(ABC):
 
     @abstractmethod
     async def start(self) -> bool:
-        """启动快捷键监听.
+        """Start listening for shortcuts.
 
         Returns:
-            是否成功启动
+            Whether listening started successfully
         """
         pass
 
     @abstractmethod
     async def stop(self) -> None:
-        """停止快捷键监听."""
+        """Stop listening for shortcuts."""
         pass
 
     @abstractmethod
     def register(self, name: str, config: ShortcutConfig, callback: Callable) -> bool:
-        """注册快捷键.
+        """Register a shortcut.
 
         Args:
-            name: 快捷键名称
-            config: 快捷键配置
-            callback: 回调函数（无参数）
+            name: Shortcut name
+            config: Shortcut configuration
+            callback: Callback function (no arguments)
 
         Returns:
-            是否注册成功
+            Whether registration succeeded
         """
         pass
 
     @abstractmethod
     def unregister(self, name: str) -> bool:
-        """注销快捷键.
+        """Unregister a shortcut.
 
         Args:
-            name: 快捷键名称
+            name: Shortcut name
 
         Returns:
-            是否注销成功
+            Whether unregistration succeeded
         """
         pass
 
     def unregister_all(self) -> None:
-        """注销所有快捷键."""
+        """Unregister all shortcuts."""
         for name in list(self._shortcuts.keys()):
             self.unregister(name)
 
     @property
     def is_running(self) -> bool:
-        """是否正在运行."""
+        """Whether the backend is currently running."""
         return self._running
 
     def _run_callback(self, name: str) -> None:
-        """运行回调函数（线程安全）.
+        """Run a callback function (thread-safe).
 
         Args:
-            name: 快捷键名称
+            name: Shortcut name
         """
         if name not in self._callbacks:
             return
@@ -97,11 +97,11 @@ class ShortcutBackend(ABC):
             else:
                 self._loop.call_soon_threadsafe(callback)
         else:
-            # 没有事件循环，直接调用
+            # No running event loop, call directly
             if asyncio.iscoroutinefunction(callback):
-                logger.warning(f"无法调用异步回调 {name}，没有事件循环")
+                logger.warning(f"Cannot invoke async callback {name} without an event loop")
             else:
                 try:
                     callback()
                 except Exception as e:
-                    logger.error(f"快捷键回调 {name} 执行失败: {e}", exc_info=True)
+                    logger.error(f"Shortcut callback {name} execution failed: {e}", exc_info=True)

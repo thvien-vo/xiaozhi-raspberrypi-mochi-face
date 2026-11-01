@@ -8,7 +8,7 @@ import {
   ArrowPathIcon
 } from '@heroicons/vue/24/solid';
 
-// 架构特点
+// Architecture Features
 const architectureFeatures = [
   {
     title: 'Event-driven',

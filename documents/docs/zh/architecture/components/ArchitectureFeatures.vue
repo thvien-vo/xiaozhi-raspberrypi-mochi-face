@@ -8,36 +8,36 @@ import {
   ArrowPathIcon
 } from '@heroicons/vue/24/solid';
 
-// 架构特点
+// Architecture Features
 const architectureFeatures = [
   {
-    title: '事件驱动',
-    description: '模块之间用 EventBus 通信，少直接耦合',
+    title: 'Event-driven',
+    description: 'Modules talk via EventBus with less direct coupling',
     icon: ArrowPathIcon
   },
   {
-    title: '异步架构',
-    description: 'asyncio + qasync，适合实时语音',
+    title: 'Async',
+    description: 'asyncio + qasync for realtime voice',
     icon: BoltIcon
   },
   {
-    title: '多界面',
-    description: 'GUI / CLI / GPIO 同一套 ViewPort',
+    title: 'Multi UI',
+    description: 'GUI / CLI / GPIO share one ViewPort',
     icon: ShareIcon
   },
   {
-    title: '状态机',
-    description: '待命 / 聆听 / 说话 状态清晰切换',
+    title: 'State machine',
+    description: 'Idle / listening / speaking transitions',
     icon: ArrowsRightLeftIcon
   },
   {
-    title: '插件化',
-    description: '音频、MCP、UI、快捷键、唤醒词可插拔',
+    title: 'Plugins',
+    description: 'Audio, MCP, UI, shortcuts, wake word',
     icon: PuzzlePieceIcon
   },
   {
-    title: '跨平台',
-    description: 'Windows / macOS / Linux（含树莓派）',
+    title: 'Cross-platform',
+    description: 'Windows / macOS / Linux (incl. Raspberry Pi)',
     icon: CubeIcon
   }
 ];

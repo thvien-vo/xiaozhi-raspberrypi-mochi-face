@@ -1,4 +1,4 @@
-// 自定义输入框组件
+// Custom text input component
 import QtQuick
 import QtQuick.Controls
 import "../theme"
@@ -6,9 +6,9 @@ import "../theme"
 TextField {
     id: root
 
-    // 是否为密码模式
+    // Whether password mode is enabled
     property bool isPassword: false
-    // 密码是否可见
+    // Whether password is visible
     property bool passwordVisible: false
 
     implicitWidth: 200
@@ -34,7 +34,7 @@ TextField {
         border.color: root.activeFocus ? Theme.primary : "transparent"
     }
 
-    // 密码切换按钮
+    // Password toggle button
     Item {
         visible: root.isPassword
         anchors.right: parent.right
@@ -49,7 +49,7 @@ TextField {
             color: eyeMouseArea.containsMouse ? Theme.backgroundHover : "transparent"
         }
 
-        // 眼睛图标 (SVG path)
+        // Eye icon (SVG path)
         Canvas {
             id: eyeIcon
             anchors.centerIn: parent
@@ -64,7 +64,7 @@ TextField {
                 ctx.lineCap = "round"
                 ctx.lineJoin = "round"
 
-                // 眼睛轮廓
+                // Eye outline
                 ctx.beginPath()
                 ctx.moveTo(1, 9)
                 ctx.bezierCurveTo(1, 9, 4, 3, 9, 3)
@@ -73,12 +73,12 @@ TextField {
                 ctx.bezierCurveTo(4, 15, 1, 9, 1, 9)
                 ctx.stroke()
 
-                // 瞳孔
+                // Pupil
                 ctx.beginPath()
                 ctx.arc(9, 9, 3, 0, Math.PI * 2)
                 ctx.stroke()
 
-                // 斜线 (隐藏时)
+                // Slash (when hidden)
                 if (!root.passwordVisible) {
                     ctx.beginPath()
                     ctx.moveTo(3, 15)

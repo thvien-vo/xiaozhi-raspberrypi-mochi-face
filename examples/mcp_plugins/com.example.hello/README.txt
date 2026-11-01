@@ -1,1 +1,1 @@
-示例插件：复制整个 com.example.hello 目录到 {用户数据}/mcp_plugins/ 后重启应用。
+Example plugin: Copy the entire com.example.hello directory into {user_data}/mcp_plugins/ and restart the application.

@@ -1,4 +1,4 @@
-// 表情面板
+// Emotion panel
 import QtQuick
 import QtQuick.Layouts
 import "../theme"
@@ -14,7 +14,7 @@ Rectangle {
         anchors.margins: Theme.spacingLg
         spacing: Theme.spacingMd
 
-        // 表情显示
+        // Emotion display
         EmotionDisplay {
             Layout.fillWidth: true
             Layout.fillHeight: true

@@ -1,4 +1,4 @@
-// 音乐设置页
+// Music settings tab
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -14,19 +14,19 @@ ScrollView {
         spacing: Theme.spacingLg
 
         Text {
-            text: "音乐配置"
+            text: "Music Configuration"
             font.pixelSize: Theme.fontSizeXl
             font.weight: Font.DemiBold
             color: Theme.textPrimary
         }
 
-        // API 配置
+        // API configuration
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
 
             Text {
-                text: "API 设置"
+                text: "API Settings"
                 font.pixelSize: Theme.fontSizeMd
                 font.weight: Font.Medium
                 color: Theme.textSecondary
@@ -39,7 +39,7 @@ ScrollView {
                 columnSpacing: Theme.spacingLg
 
                 Text {
-                    text: "搜索 API"
+                    text: "Search API"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 120
@@ -48,10 +48,10 @@ ScrollView {
                     id: musicSearchUrlField
                     Layout.fillWidth: true
                     text: settingsModel ? settingsModel.musicSearchUrl : ""
-                    // 边改边写回；只靠 editingFinished 时点保存常写不上空串
+                    // Write back on edit; relying only on editingFinished may miss empty strings when clicking Save
                     onTextEdited: if (settingsModel) settingsModel.musicSearchUrl = text
                     onEditingFinished: if (settingsModel) settingsModel.musicSearchUrl = text
-                    placeholderText: "留空使用默认酷我搜索 API"
+                    placeholderText: "Leave empty to use default Kuwo search API"
                     font.pixelSize: Theme.fontSizeSm
                     background: Rectangle {
                         radius: Theme.radiusSm
@@ -61,7 +61,7 @@ ScrollView {
                 }
 
                 Text {
-                    text: "直链 API"
+                    text: "Stream URL API"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 120
@@ -72,7 +72,7 @@ ScrollView {
                     text: settingsModel ? settingsModel.musicUrlApi : ""
                     onTextEdited: if (settingsModel) settingsModel.musicUrlApi = text
                     onEditingFinished: if (settingsModel) settingsModel.musicUrlApi = text
-                    placeholderText: "留空使用默认 lx-music-api"
+                    placeholderText: "Leave empty to use default lx-music-api"
                     font.pixelSize: Theme.fontSizeSm
                     background: Rectangle {
                         radius: Theme.radiusSm
@@ -93,7 +93,7 @@ ScrollView {
                     text: settingsModel ? settingsModel.musicUrlApiKey : ""
                     onTextEdited: if (settingsModel) settingsModel.musicUrlApiKey = text
                     onEditingFinished: if (settingsModel) settingsModel.musicUrlApiKey = text
-                    placeholderText: "留空使用默认 Key"
+                    placeholderText: "Leave empty to use default Key"
                     font.pixelSize: Theme.fontSizeSm
                     background: Rectangle {
                         radius: Theme.radiusSm
@@ -104,7 +104,7 @@ ScrollView {
             }
 
             Text {
-                text: "搜索 API 使用酷我官方接口，直链 API 用于获取播放地址（需配合 API Key）"
+                text: "Search API uses the official Kuwo endpoint; Stream URL API fetches playback URLs (requires API Key)"
                 font.pixelSize: Theme.fontSizeXs
                 color: Theme.textPlaceholder
                 wrapMode: Text.WordWrap
@@ -118,13 +118,13 @@ ScrollView {
             color: Theme.divider
         }
 
-        // 播放偏好
+        // Playback preferences
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
 
             Text {
-                text: "播放偏好"
+                text: "Playback Preferences"
                 font.pixelSize: Theme.fontSizeMd
                 font.weight: Font.Medium
                 color: Theme.textSecondary
@@ -137,7 +137,7 @@ ScrollView {
                 columnSpacing: Theme.spacingLg
 
                 Text {
-                    text: "默认音质"
+                    text: "Default Audio Quality"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 120

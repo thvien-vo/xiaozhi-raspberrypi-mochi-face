@@ -1,6 +1,6 @@
-"""插件与共享服务装配.
+"""Plugin and shared service wiring.
 
-集中：创建 McpServer/MusicPlayer、注册插件清单、资源池清理、音频直连。
+Centralizes: creating McpServer/MusicPlayer, registering the plugin manifest, resource pool cleanup, and direct audio routing.
 """
 
 from __future__ import annotations
@@ -17,9 +17,9 @@ logger = get_logger()
 
 
 def bind_shared_services(container: "ServiceContainer") -> None:
-    """创建跨插件共享服务（McpServer / MusicPlayer / Notify），仅容器持有.
+    """Create cross-plugin shared services (McpServer / MusicPlayer / Notify), held only by the container.
 
-    不再写入模块级单例；插件与 MCP 工具经构造注入 / 闭包拿到同一实例。
+    No longer writes to module-level singletons; plugins and MCP tools receive the same instance via constructor injection or closures.
     """
     from src.mcp.mcp_server import McpServer
     from src.mcp.tools.music.music_player import MusicPlayer
@@ -36,26 +36,26 @@ def bind_shared_services(container: "ServiceContainer") -> None:
         container.notification_player.set_event_bus(container.event_bus)
         container.session.set_notification_player(container.notification_player)
 
-    logger.debug("共享服务已创建: McpServer, MusicPlayer, NotificationPlayer")
+    logger.debug("Shared services created: McpServer, MusicPlayer, NotificationPlayer")
 
 
 def unbind_shared_services(container: "ServiceContainer") -> None:
-    """释放共享服务引用（资源池最后阶段调用）."""
+    """Release shared service references (called in the final stage of the resource pool)."""
     if container.notification_player is not None:
         try:
             container.notification_player.detach()
         except Exception as e:
-            logger.debug(f"detach NotificationPlayer 失败: {e}", exc_info=True)
+            logger.debug(f"Failed to detach NotificationPlayer: {e}", exc_info=True)
     if container.music_player is not None:
         try:
             container.music_player.detach()
         except Exception as e:
-            logger.debug(f"detach MusicPlayer 失败: {e}", exc_info=True)
+            logger.debug(f"Failed to detach MusicPlayer: {e}", exc_info=True)
     if container.mcp_server is not None:
         try:
             container.mcp_server.detach()
         except Exception as e:
-            logger.debug(f"detach McpServer 失败: {e}", exc_info=True)
+            logger.debug(f"Failed to detach McpServer: {e}", exc_info=True)
     container.music_player = None
     container.mcp_server = None
     container.notification_player = None
@@ -67,7 +67,7 @@ async def setup_plugins(
     ctx: "PluginContext",
     cmd: "PluginCommands",
 ) -> None:
-    """绑定共享服务、注册并初始化插件、挂资源清理与音频直连."""
+    """Bind shared services, register and initialize plugins, attach resource cleanup and direct audio routing."""
     from src.plugins.audio import AudioPlugin
     from src.plugins.mcp import McpPlugin
     from src.plugins.shortcuts import ShortcutsPlugin
@@ -76,7 +76,7 @@ async def setup_plugins(
 
     bind_shared_services(container)
 
-    # 创建插件实例（Audio 经事件发布 codec，不注入 MusicPlayer）
+    # Create plugin instances (Audio publishes codec via events, without injecting MusicPlayer)
     audio_plugin = AudioPlugin()
     wake_word_plugin = WakeWordPlugin()
     ui_plugin = UIPlugin(mode=mode, task_manager=container.tasks)
@@ -98,33 +98,33 @@ async def setup_plugins(
 
     register_cleanup_resources(container)
 
-    # 设置音频直连通道（TTS 音频不经过 EventBus，减少延迟）
+    # Set up direct audio channel (TTS audio bypasses EventBus to reduce latency)
     if not audio_plugin.failed:
         container.protocol.set_audio_handler(audio_plugin.on_incoming_audio)
 
 
 def register_cleanup_resources(container: "ServiceContainer") -> None:
-    """将所有模块的清理函数注册到资源池（先注册的后释放）."""
+    """Register cleanup functions of all modules into the resource pool (first registered, last released)."""
     pool = container.resource_pool
 
-    # 最先注册 = 最后释放：共享服务 unbind 在插件清理之后
+    # Registered first = released last: shared services unbind after plugin cleanup
     pool.register(
         "shared_services", lambda: unbind_shared_services(container)
     )
 
-    # 事件总线最后释放（次先注册）
+    # Event bus released second-to-last (registered second)
     pool.register("event_bus", container.event_bus.clear)
 
-    # 各插件注册自身资源
+    # Each plugin registers its own resources
     for plugin in container.plugins._plugins:
         plugin.register_resources(pool)
 
-    # 通知必须先于 AudioCodec 清理，停止其解码任务并释放播放 FIFO。
+    # Notifications must be cleaned up before AudioCodec to stop decoding tasks and release playback FIFOs.
     if container.notification_player is not None:
         pool.register("notification_player", container.notification_player.stop)
 
-    # 网络连接：退出时关闭控制通道和其后台线程；会话内重连仍走 disconnect。
+    # Network connection: close control channel and background threads on exit; in-session reconnects still use disconnect.
     pool.register("protocol", container.protocol.shutdown)
 
-    # 异步任务
+    # Asynchronous tasks
     pool.register("tasks", container.tasks.cancel_all)

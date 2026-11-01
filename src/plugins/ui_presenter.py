@@ -1,4 +1,4 @@
-"""把状态/协议消息画到界面上."""
+"""Renders state and protocol messages onto the user interface."""
 
 from typing import TYPE_CHECKING, Optional
 
@@ -12,20 +12,20 @@ logger = get_logger()
 
 
 class UiPresenter:
-    """写界面：对话、音乐、状态、表情、按钮等."""
+    """Updates UI elements: chat, music, status, emotion, buttons, etc."""
 
     STATE_TEXT_MAP = {
-        DeviceState.IDLE: "待命",
-        DeviceState.LISTENING: "聆听中...",
-        DeviceState.SPEAKING: "说话中...",
-        DeviceState.NOTIFYING: "通知播放中...",
+        DeviceState.IDLE: "Standby",
+        DeviceState.LISTENING: "Listening...",
+        DeviceState.SPEAKING: "Speaking...",
+        DeviceState.NOTIFYING: "Playing notification...",
     }
 
     MUSIC_STATE_TEXT = {
-        "playing": "正在播放: {song}",
-        "paused": "已暂停: {song}",
-        "stopped": "已停止: {song}",
-        "completed": "播放完成: {song}",
+        "playing": "Playing: {song}",
+        "paused": "Paused: {song}",
+        "stopped": "Stopped: {song}",
+        "completed": "Completed: {song}",
     }
 
     def __init__(self, viewport: Optional["ViewPort"] = None) -> None:
@@ -71,14 +71,14 @@ class UiPresenter:
             self.set_status(status_text, connected=True)
 
     def show_network_error(self) -> None:
-        self.set_status("未连接", connected=False)
+        self.set_status("Disconnected", connected=False)
 
     def show_music_state(self, data) -> None:
         try:
             from src.mcp.tools.music.events import MusicStateData
 
             if not isinstance(data, MusicStateData):
-                logger.warning(f"收到非法的音乐状态数据: {type(data)}")
+                logger.warning(f"Received invalid music state data: {type(data)}")
                 return
 
             template = self.MUSIC_STATE_TEXT.get(data.state)
@@ -86,20 +86,20 @@ class UiPresenter:
                 return
             text = template.format(song=data.song)
             self.set_music_line(text)
-            logger.debug(f"UI 更新音乐状态: {data.state}")
+            logger.debug(f"UI updated music state: {data.state}")
         except Exception as e:
-            logger.error(f"处理音乐状态变化失败: {e}", exc_info=True)
+            logger.error(f"Failed to handle music state change: {e}", exc_info=True)
 
     def show_music_lyrics(self, data) -> None:
         try:
             from src.mcp.tools.music.events import MusicLyricsData
 
             if not isinstance(data, MusicLyricsData):
-                logger.warning(f"收到非法的歌词数据: {type(data)}")
+                logger.warning(f"Received invalid lyrics data: {type(data)}")
                 return
             self.set_music_line(data.text)
         except Exception as e:
-            logger.error(f"处理歌词更新失败: {e}", exc_info=True)
+            logger.error(f"Failed to handle lyrics update: {e}", exc_info=True)
 
     def show_protocol_message(self, message) -> None:
         if not isinstance(message, dict):

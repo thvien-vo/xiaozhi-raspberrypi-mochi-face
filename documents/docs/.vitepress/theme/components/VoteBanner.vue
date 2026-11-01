@@ -45,10 +45,10 @@ onUnmounted(() => {
     <div class="banner-content">
       <div class="message">
         <span class="icon">🎉</span>
-        <span class="text">我正在参加 Gitee 2025 最受欢迎的开源软件投票活动，快来给我投票吧！</span>
+        <span class="text">We are participating in the Gitee 2025 Most Popular Open Source Software voting event. Come vote for us!</span>
       </div>
       <a href="https://gitee.com/activity/2025opensource?ident=IDNAQF" target="_blank" class="action-btn">
-        立即投票
+        Vote Now
       </a>
     </div>
     <button class="close-btn" @click="closeBanner" aria-label="Close banner">

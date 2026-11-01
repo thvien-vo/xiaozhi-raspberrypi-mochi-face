@@ -1,4 +1,4 @@
-"""EventBus 桥接器 - Python 信号与 QML 信号双向转换."""
+"""EventBus bridge - bidirectional conversion between Python signals and QML signals."""
 
 from PySide6.QtCore import QObject, QTimer, Signal, Slot
 
@@ -9,22 +9,22 @@ logger = get_logger()
 
 
 class EventBridge(QObject):
-    """EventBus 与 QML 的双向桥接.
+    """Bidirectional bridge between EventBus and QML.
 
-    QML → Python: QML 调用 slot，slot 内部 emit EventBus 事件
-    Python → QML: EventBus 事件触发 Python Signal，QML 连接该 Signal
+    QML -> Python: QML calls a slot, which internally emits an EventBus event
+    Python -> QML: EventBus events trigger a Python Signal, which QML connects to
 
-    设备激活由独立 GuiActivation 窗口处理，主界面桥接不再承载激活信号。
+    Device activation is handled by the standalone GuiActivation window; the main UI bridge no longer carries activation signals.
     """
 
-    # ========== Python → QML 信号 ==========
+    # ========== Python -> QML Signals ==========
 
-    # 窗口控制
+    # Window control
     showWindow = Signal()
     hideWindow = Signal()
-    showSettingsWindow = Signal()  # 显示设置窗口
+    showSettingsWindow = Signal()  # Show settings window
 
-    # ========== 构造 ==========
+    # ========== Constructor ==========
 
     def __init__(self, event_bus: EventBus, task_manager=None, parent: QObject | None = None):
         super().__init__(parent)
@@ -32,9 +32,9 @@ class EventBridge(QObject):
         self._task_manager = task_manager
 
     def _emit_event(self, event: str, data=None):
-        """安全地发射 EventBus 事件，在 Qt 主线程中调度到 asyncio loop."""
+        """Safely emit an EventBus event, scheduling onto the asyncio loop from the Qt main thread."""
         if self._task_manager is None:
-            logger.error("EventBridge: TaskManager 未注入，无法发射事件")
+            logger.error("EventBridge: TaskManager not injected, cannot emit event")
             return
 
         def do_emit():
@@ -43,67 +43,67 @@ class EventBridge(QObject):
                 self._task_manager.spawn(self._event_bus.emit(event, data), name=task_name)
             except Exception as e:
                 logger.warning(
-                    f"EventBridge: 发射事件 {event} 失败: {e}",
+                    f"EventBridge: Failed to emit event {event}: {e}",
                     exc_info=True,
                 )
 
-        # 使用 QTimer.singleShot 确保在 Qt 事件循环中执行
+        # Use QTimer.singleShot to ensure execution in the Qt event loop
         QTimer.singleShot(0, do_emit)
 
-    # ========== QML → Python (Slots) ==========
+    # ========== QML -> Python (Slots) ==========
 
     @Slot()
     def onButtonPress(self):
-        """手动模式按钮按下."""
-        logger.debug("EventBridge: 按钮按下")
+        """Manual mode button pressed."""
+        logger.debug("EventBridge: Button pressed")
         self._emit_event(Events.UI_BUTTON_PRESS)
 
     @Slot()
     def onButtonRelease(self):
-        """手动模式按钮释放."""
-        logger.debug("EventBridge: 按钮释放")
+        """Manual mode button released."""
+        logger.debug("EventBridge: Button released")
         self._emit_event(Events.UI_BUTTON_RELEASE)
 
     @Slot()
     def onManualToggle(self):
-        """手动模式录音切换（点击开始/停止）."""
-        logger.debug("EventBridge: 手动录音切换")
+        """Manual mode recording toggle (click to start/stop)."""
+        logger.debug("EventBridge: Manual recording toggle")
         self._emit_event(Events.UI_MANUAL_TOGGLE)
 
     @Slot()
     def onAutoToggle(self):
-        """自动模式切换."""
-        logger.debug("EventBridge: 自动模式切换")
+        """Auto mode toggle."""
+        logger.debug("EventBridge: Auto mode toggle")
         self._emit_event(Events.UI_AUTO_TOGGLE)
 
     @Slot()
     def onAutoStart(self):
-        """自动模式：开始或停止对话."""
-        logger.debug("EventBridge: 自动模式开始/停止对话")
+        """Auto mode: start or stop conversation."""
+        logger.debug("EventBridge: Auto mode start/stop conversation")
         self._emit_event(Events.UI_AUTO_START)
 
     @Slot()
     def onAbort(self):
-        """中断请求."""
-        logger.debug("EventBridge: 中断请求")
+        """Abort request."""
+        logger.debug("EventBridge: Abort request")
         self._emit_event(Events.UI_ABORT_REQUEST)
 
     @Slot(str)
     def onSendText(self, text: str):
-        """发送文本."""
+        """Send text."""
         if text.strip():
-            logger.debug(f"EventBridge: 发送文本: {text[:20]}...")
+            logger.debug(f"EventBridge: Sending text: {text[:20]}...")
             from src.ui.shared.events import UISendTextRequest
             self._emit_event(Events.UI_SEND_TEXT, UISendTextRequest(text=text))
 
     @Slot()
     def onQuitRequest(self):
-        """退出请求."""
-        logger.info("EventBridge: 退出请求")
+        """Quit request."""
+        logger.info("EventBridge: Quit request")
         self._emit_event(Events.UI_QUIT_REQUEST)
 
     @Slot()
     def onOpenSettings(self):
-        """打开设置窗口 - 直接发射信号到 QML."""
-        logger.debug("EventBridge: 打开设置窗口")
+        """Open settings window - directly emit signal to QML."""
+        logger.debug("EventBridge: Open settings window")
         self.showSettingsWindow.emit()

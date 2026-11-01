@@ -1,4 +1,4 @@
-"""MQTT 连接期 MCP 协商回归测试."""
+"""Regression tests for MCP negotiation over MQTT connections."""
 
 import asyncio
 import json
@@ -62,7 +62,7 @@ class _ConnectedMqttClient:
 
     def loop_start(self):
         self.on_connect(self, None, None, 0)
-        # 模拟旧客户端或后台线程迟到的重复回调。
+        # Simulate duplicate late callback from an old client or background thread.
         self.on_connect(self, None, None, 0)
 
     def subscribe(self, topic, qos):
@@ -133,7 +133,7 @@ async def _tool(_arguments):
 async def test_mqtt_mcp_tools_list_before_hello_reaches_server(
     monkeypatch,
 ):
-    """网关可在 MQTT CONNACK 后、客户端 hello 前拉取工具清单."""
+    """Gateway can fetch the tool list after MQTT CONNACK and before client hello."""
     from src.protocols import mqtt_protocol as mqtt_module
 
     monkeypatch.setattr(mqtt_module, "get_config", lambda: object())
@@ -216,7 +216,7 @@ async def test_mqtt_send_text_rejects_publish_enqueue_failure(monkeypatch):
 async def test_mqtt_connection_uses_controlled_reconnect_and_disconnects_cleanly(
     monkeypatch,
 ):
-    """MQTT 断线由 Protocol 处理，Paho 不得在后台自行重连。"""
+    """MQTT disconnects are handled by Protocol; Paho must not auto-reconnect in the background."""
     from src.protocols import mqtt_protocol as mqtt_module
 
     mqtt_info = {
@@ -261,18 +261,18 @@ async def test_mqtt_connection_uses_controlled_reconnect_and_disconnects_cleanly
     assert await protocol.connect() is True
     assert clients[0].kwargs["reconnect_on_failure"] is False
 
-    # 两次成功回调只会完成本次 connect() 的 Future 一次，不抛 InvalidStateError。
+    # Duplicate success callbacks settle the connect() Future only once without raising InvalidStateError.
     clients[0].on_disconnect(clients[0], None, 7)
     await asyncio.wait_for(closed.wait(), timeout=1.0)
 
     assert protocol.connected is False
     assert clients[0].loop_stop_called
-    assert errors == ["连接丢失: MQTT连接断开: 7"]
+    assert errors == ["Connection lost: MQTT disconnected: 7"]
 
 
 @pytest.mark.asyncio
 async def test_mqtt_closes_only_udp_session_and_reuses_broker(monkeypatch):
-    """正常 goodbye 释放 UDP，下一轮 hello 必须复用已连 broker。"""
+    """Normal goodbye releases UDP, and the next hello must reuse the connected broker."""
     from src.protocols import mqtt_protocol as mqtt_module
 
     mqtt_info = {
@@ -342,7 +342,7 @@ async def test_mqtt_closes_only_udp_session_and_reuses_broker(monkeypatch):
 async def test_mqtt_start_opens_only_control_connection_until_audio_is_requested(
     monkeypatch,
 ):
-    """启动时 MQTT 可接收 notify/MCP，但必须不提前发 hello 或开 UDP。"""
+    """On startup, MQTT can receive notify/MCP but must not send hello or open UDP early."""
     from src.protocols import mqtt_protocol as mqtt_module
 
     mqtt_info = {

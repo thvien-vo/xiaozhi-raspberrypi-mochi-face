@@ -8,13 +8,13 @@ hero:
   actions:
     - theme: brand
       text: Get Started
-      link: /guide/文档目录
+      link: /guide/documentation-directory
     - theme: alt
       text: View Source
       link: https://github.com/huangjunsen0406/py-xiaozhi
     - theme: alt
       text: Dev Guide
-      link: /guide/开发指南
+      link: /guide/development-guide
 
 features:
   - title: AI Voice Interaction

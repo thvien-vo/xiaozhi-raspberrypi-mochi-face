@@ -1,6 +1,6 @@
-"""Windows应用程序扫描器.
+"""Windows application scanner.
 
-专门用于Windows系统的应用程序扫描和管理
+Dedicated to scanning and managing applications on Windows systems.
 """
 
 import json
@@ -15,78 +15,78 @@ logger = get_logger()
 
 
 def scan_installed_applications() -> List[Dict[str, str]]:
-    """扫描Windows系统中已安装的应用程序.
+    """Scan installed applications on a Windows system.
 
     Returns:
-        List[Dict[str, str]]: 应用程序列表
+        List[Dict[str, str]]: List of applications
     """
     if platform.system() != "Windows":
         return []
 
     apps = []
 
-    # 1. 扫描开始菜单中的主要应用程序（最直接的方法）
+    # 1. Scan main applications in the Start Menu (most direct method)
     try:
-        logger.info("[WindowsScanner] 开始扫描开始菜单主要应用")
+        logger.info("[WindowsScanner] Scanning main applications in Start Menu")
         start_menu_apps = _scan_main_start_menu_apps()
         apps.extend(start_menu_apps)
         logger.info(
-            f"[WindowsScanner] 从开始菜单扫描到 {len(start_menu_apps)} 个主要应用"
+            f"[WindowsScanner] Scanned {len(start_menu_apps)} main applications from Start Menu"
         )
     except Exception as e:
-        logger.warning(f"[WindowsScanner] 开始菜单扫描失败: {e}", exc_info=True)
+        logger.warning(f"[WindowsScanner] Start Menu scan failed: {e}", exc_info=True)
 
-    # 2. 扫描注册表中的主要第三方应用（过滤系统组件）
+    # 2. Scan main third-party applications in the Registry (filtering out system components)
     try:
-        logger.info("[WindowsScanner] 开始扫描已安装的主要应用程序")
+        logger.info("[WindowsScanner] Scanning installed main applications in Registry")
         registry_apps = _scan_main_registry_apps()
-        # 去重：避免重复添加开始菜单中的应用
+        # Deduplicate: avoid re-adding applications already found in Start Menu
         existing_names = {app["display_name"].lower() for app in apps}
         for app in registry_apps:
             if app["display_name"].lower() not in existing_names:
                 apps.append(app)
         logger.info(
-            f"[WindowsScanner] 从注册表扫描到 {len([a for a in registry_apps if a['display_name'].lower() not in existing_names])} 个新的主要应用"
+            f"[WindowsScanner] Scanned {len([a for a in registry_apps if a['display_name'].lower() not in existing_names])} new main applications from Registry"
         )
     except Exception as e:
-        logger.warning(f"[WindowsScanner] 注册表扫描失败: {e}", exc_info=True)
+        logger.warning(f"[WindowsScanner] Registry scan failed: {e}", exc_info=True)
 
-    # 3. 添加常见的系统应用（只保留用户常用的）
+    # 3. Add common system applications (retaining only frequently used user utilities)
     system_apps = [
         {
             "name": "Calculator",
-            "display_name": "计算器",
+            "display_name": "Calculator",
             "path": "calc",
             "type": "system",
         },
         {
             "name": "Notepad",
-            "display_name": "记事本",
+            "display_name": "Notepad",
             "path": "notepad",
             "type": "system",
         },
-        {"name": "Paint", "display_name": "画图", "path": "mspaint", "type": "system"},
+        {"name": "Paint", "display_name": "Paint", "path": "mspaint", "type": "system"},
         {
             "name": "File Explorer",
-            "display_name": "文件资源管理器",
+            "display_name": "File Explorer",
             "path": "explorer",
             "type": "system",
         },
         {
             "name": "Task Manager",
-            "display_name": "任务管理器",
+            "display_name": "Task Manager",
             "path": "taskmgr",
             "type": "system",
         },
         {
             "name": "Control Panel",
-            "display_name": "控制面板",
+            "display_name": "Control Panel",
             "path": "control",
             "type": "system",
         },
         {
             "name": "Settings",
-            "display_name": "设置",
+            "display_name": "Settings",
             "path": "ms-settings:",
             "type": "system",
         },
@@ -94,16 +94,16 @@ def scan_installed_applications() -> List[Dict[str, str]]:
     apps.extend(system_apps)
 
     logger.info(
-        f"[WindowsScanner] Windows应用扫描完成，总共找到 {len(apps)} 个主要应用程序"
+        f"[WindowsScanner] Windows application scan complete, found {len(apps)} main applications in total"
     )
     return apps
 
 
 def scan_running_applications() -> List[Dict[str, str]]:
-    """扫描Windows系统中正在运行的应用程序.
+    """Scan currently running applications on a Windows system.
 
     Returns:
-        List[Dict[str, str]]: 正在运行的应用程序列表
+        List[Dict[str, str]]: List of running applications
     """
     if platform.system() != "Windows":
         return []
@@ -111,24 +111,24 @@ def scan_running_applications() -> List[Dict[str, str]]:
     apps = []
 
     try:
-        # 使用tasklist命令获取进程信息
+        # Use tasklist command to retrieve process information
         result = subprocess.run(
             ["tasklist", "/fo", "csv", "/v"], capture_output=True, text=True, timeout=10
         )
 
         if result.returncode == 0:
-            lines = result.stdout.strip().split("\n")[1:]  # 跳过标题行
+            lines = result.stdout.strip().split("\n")[1:]  # Skip header line
 
             for line in lines:
                 try:
-                    # 解析CSV格式
+                    # Parse CSV format
                     parts = [part.strip('"') for part in line.split('","')]
                     if len(parts) >= 8:
                         image_name = parts[0].strip('"')
                         pid = parts[1]
                         window_title = parts[8] if len(parts) > 8 else ""
 
-                        # 过滤掉不需要的进程
+                        # Filter out unwanted processes
                         if _should_include_process(image_name, window_title):
                             display_name = _extract_app_name(image_name, window_title)
                             clean_name = clean_app_name(display_name)
@@ -146,21 +146,21 @@ def scan_running_applications() -> List[Dict[str, str]]:
                 except (ValueError, IndexError):
                     continue
 
-        logger.info(f"[WindowsScanner] 找到 {len(apps)} 个正在运行的应用程序")
+        logger.info(f"[WindowsScanner] Found {len(apps)} running applications")
         return apps
 
     except Exception as e:
-        logger.error(f"[WindowsScanner] 扫描运行应用失败: {e}", exc_info=True)
+        logger.error(f"[WindowsScanner] Failed to scan running applications: {e}", exc_info=True)
         return []
 
 
 def _scan_main_start_menu_apps() -> List[Dict[str, str]]:
     """
-    扫描开始菜单中的主要应用程序（过滤系统组件和辅助工具）.
+    Scan main applications in the Start Menu (filtering out system components and helper tools).
     """
     apps = []
 
-    # 开始菜单目录
+    # Start Menu directories
     start_menu_paths = [
         os.path.join(
             os.environ.get("PROGRAMDATA", ""),
@@ -186,9 +186,9 @@ def _scan_main_start_menu_apps() -> List[Dict[str, str]]:
                         if file.lower().endswith(".lnk"):
                             try:
                                 shortcut_path = os.path.join(root, file)
-                                display_name = file[:-4]  # 移除.lnk扩展名
+                                display_name = file[:-4]  # Strip .lnk extension
 
-                                # 过滤掉不需要的应用程序
+                                # Filter out unwanted applications
                                 if _should_include_app(display_name):
                                     clean_name = clean_app_name(display_name)
                                     target_path = _resolve_shortcut_target(
@@ -206,18 +206,18 @@ def _scan_main_start_menu_apps() -> List[Dict[str, str]]:
 
                             except Exception as e:
                                 logger.debug(
-                                    f"[WindowsScanner] 处理快捷方式失败 {file}: {e}"
+                                    f"[WindowsScanner] Failed to process shortcut {file}: {e}"
                                 )
 
             except Exception as e:
-                logger.debug(f"[WindowsScanner] 扫描开始菜单失败 {start_path}: {e}")
+                logger.debug(f"[WindowsScanner] Failed to scan Start Menu {start_path}: {e}")
 
     return apps
 
 
 def _scan_main_registry_apps() -> List[Dict[str, str]]:
     """
-    扫描注册表中的主要应用程序（过滤系统组件）.
+    Scan main applications in the Windows Registry (filtering out system components).
     """
     apps = []
 
@@ -256,29 +256,29 @@ def _scan_main_registry_apps() -> List[Dict[str, str]]:
                         )
 
             except json.JSONDecodeError:
-                logger.warning("[WindowsScanner] 无法解析PowerShell输出")
+                logger.warning("[WindowsScanner] Failed to parse PowerShell output")
 
     except (subprocess.TimeoutExpired, subprocess.SubprocessError) as e:
-        logger.warning(f"[WindowsScanner] PowerShell扫描失败: {e}", exc_info=True)
+        logger.warning(f"[WindowsScanner] PowerShell scan failed: {e}", exc_info=True)
 
     return apps
 
 
 def _should_include_app(display_name: str, publisher: str = "") -> bool:
-    """判断是否应该包含该应用程序.
+    """Determine whether the application should be included.
 
     Args:
-        display_name: 应用程序显示名称
-        publisher: 发布者（可选）
+        display_name: Application display name
+        publisher: Publisher name (optional)
 
     Returns:
-        bool: 是否应该包含
+        bool: Whether to include
     """
     name_lower = display_name.lower()
 
-    # 明确排除的系统组件和运行库
+    # Explicitly excluded system components and runtimes
     exclude_keywords = [
-        # Microsoft系统组件
+        # Microsoft system components
         "microsoft visual c++",
         "microsoft .net",
         "microsoft office",
@@ -286,22 +286,22 @@ def _should_include_app(display_name: str, publisher: str = "") -> bool:
         "microsoft visual studio",
         "microsoft redistributable",
         "microsoft windows sdk",
-        # 系统工具和驱动
+        # System utilities and drivers
         "uninstall",
-        "卸载",
+        "uninstaller",
         "readme",
         "help",
-        "帮助",
+        "manual",
         "documentation",
-        "文档",
+        "docs",
         "driver",
-        "驱动",
+        "drivers",
         "update",
-        "更新",
+        "updater",
         "hotfix",
         "patch",
-        "补丁",
-        # 开发工具组件
+        "patches",
+        # Development tool components
         "development",
         "sdk",
         "runtime",
@@ -312,37 +312,37 @@ def _should_include_app(display_name: str, publisher: str = "") -> bool:
         "python executables",
         "java update",
         "java development kit",
-        # 系统服务
+        # System services
         "service pack",
         "security update",
         "language pack",
-        # 无用的快捷方式
+        # Non-application shortcuts
         "website",
         "web site",
-        "网站",
+        "homepage",
         "online",
-        "在线",
+        "support",
         "report",
-        "报告",
+        "bug report",
         "feedback",
-        "反馈",
+        "release notes",
     ]
 
-    # 检查是否包含排除关键词
+    # Check if any excluded keyword is present
     for keyword in exclude_keywords:
         if keyword in name_lower:
             return False
 
-    # 明确包含的知名应用程序
+    # Explicitly included well-known applications
     include_keywords = [
-        # 浏览器
+        # Browsers
         "chrome",
         "firefox",
         "edge",
         "safari",
         "opera",
         "brave",
-        # 办公软件
+        # Office software
         "office",
         "word",
         "excel",
@@ -353,7 +353,7 @@ def _should_include_app(display_name: str, publisher: str = "") -> bool:
         "typora",
         "notion",
         "obsidian",
-        # 开发工具
+        # Development tools
         "visual studio code",
         "vscode",
         "pycharm",
@@ -363,35 +363,36 @@ def _should_include_app(display_name: str, publisher: str = "") -> bool:
         "docker",
         "nodejs",
         "android studio",
-        # 通信软件
+        # Communication software
         "qq",
-        "微信",
+        "weixin",
         "wechat",
         "skype",
         "zoom",
         "teams",
-        "飞书",
+        "lark",
         "feishu",
         "discord",
         "slack",
         "telegram",
-        # 媒体软件
+        # Media software
         "vlc",
         "potplayer",
-        "网易云音乐",
+        "netease cloud music",
+        "cloudmusic",
         "spotify",
         "itunes",
         "photoshop",
         "premiere",
         "after effects",
         "illustrator",
-        # 游戏平台
+        # Gaming platforms
         "steam",
         "epic",
         "origin",
         "uplay",
         "battlenet",
-        # 实用工具
+        # Utilities
         "7-zip",
         "winrar",
         "bandizip",
@@ -402,12 +403,12 @@ def _should_include_app(display_name: str, publisher: str = "") -> bool:
         "atom",
     ]
 
-    # 检查是否包含明确包含的关键词
+    # Check if any explicitly included keyword is present
     for keyword in include_keywords:
         if keyword in name_lower:
             return True
 
-    # 如果有发布者信息，排除Microsoft发布的系统组件
+    # If publisher info is available, exclude system components published by Microsoft
     if publisher:
         publisher_lower = publisher.lower()
         if "microsoft corporation" in publisher_lower and any(
@@ -423,8 +424,8 @@ def _should_include_app(display_name: str, publisher: str = "") -> bool:
         ):
             return False
 
-    # 默认包含其他应用程序（假设是用户安装的）
-    # 但排除明显的系统组件
+    # Include other applications by default (assumed user-installed),
+    # while excluding obvious system component indicators
     system_indicators = ["(x64)", "(x86)", "redistributable", "runtime", "framework"]
     if any(indicator in name_lower for indicator in system_indicators):
         return False
@@ -433,16 +434,16 @@ def _should_include_app(display_name: str, publisher: str = "") -> bool:
 
 
 def _should_include_process(image_name: str, window_title: str) -> bool:
-    """判断是否应该包含该进程.
+    """Determine whether the process should be included.
 
     Args:
-        image_name: 进程映像名称
-        window_title: 窗口标题
+        image_name: Process image name
+        window_title: Window title
 
     Returns:
-        bool: 是否包含
+        bool: Whether to include
     """
-    # 排除系统进程
+    # Exclude system processes
     system_processes = {
         "dwm.exe",
         "winlogon.exe",
@@ -465,15 +466,15 @@ def _should_include_process(image_name: str, window_title: str) -> bool:
 
     image_lower = image_name.lower()
 
-    # 排除系统进程
+    # Exclude system processes
     if image_lower in system_processes:
         return False
 
-    # 排除无窗口标题的进程（通常是后台服务）
+    # Exclude processes without a window title (typically background services)
     if not window_title or window_title == "N/A":
         return False
 
-    # 只包含有意义的窗口标题
+    # Only include meaningful window titles
     if len(window_title.strip()) < 3:
         return False
 
@@ -481,20 +482,20 @@ def _should_include_process(image_name: str, window_title: str) -> bool:
 
 
 def _extract_app_name(image_name: str, window_title: str) -> str:
-    """从进程信息中提取应用程序名称.
+    """Extract application name from process information.
 
     Args:
-        image_name: 进程映像名称
-        window_title: 窗口标题
+        image_name: Process image name
+        window_title: Window title
 
     Returns:
-        str: 应用程序名称
+        str: Application name
     """
-    # 优先使用窗口标题
+    # Prefer window title
     if window_title and window_title != "N/A" and len(window_title.strip()) > 0:
         return window_title.strip()
 
-    # 使用进程名称（去掉.exe后缀）
+    # Fall back to process name (stripping .exe suffix)
     if image_name.lower().endswith(".exe"):
         return image_name[:-4]
 
@@ -502,13 +503,13 @@ def _extract_app_name(image_name: str, window_title: str) -> str:
 
 
 def _resolve_shortcut_target(shortcut_path: str) -> Optional[str]:
-    """解析Windows快捷方式的目标路径.
+    """Resolve the target path of a Windows shortcut.
 
     Args:
-        shortcut_path: 快捷方式文件路径
+        shortcut_path: Shortcut file path
 
     Returns:
-        目标路径，如果解析失败则返回None
+        Target path, or None if resolution fails
     """
     try:
         import win32com.client
@@ -521,9 +522,9 @@ def _resolve_shortcut_target(shortcut_path: str) -> Optional[str]:
             return target_path
 
     except ImportError:
-        logger.debug("[WindowsScanner] win32com模块不可用，无法解析快捷方式")
+        logger.debug("[WindowsScanner] win32com module unavailable, cannot resolve shortcut")
     except Exception as e:
-        logger.debug(f"[WindowsScanner] 解析快捷方式失败: {e}")
+        logger.debug(f"[WindowsScanner] Failed to resolve shortcut: {e}")
 
     return None
 

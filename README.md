@@ -29,7 +29,7 @@
   </a>
 </p>
 
-English | [简体中文](README.zh.md)
+English | [Simplified Chinese](README.zh.md)
 
 ## ❤️ Sponsors
 
@@ -46,8 +46,8 @@ Thanks to GitDo.net for sponsoring this project! GitDo.net is an AI API aggregat
 
 |                                                                     |                                                                                                                                                                                                                                             |
 | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [**Token能量站**](https://factory.pub/register?aff=3rXc)            | Thanks to Token能量站 (Factory.pub) for sponsoring this project! Providing API relay for **GPT, Grok, Claude** and other major models — stable, reliable, and affordable. **[Register here](https://factory.pub/register?aff=3rXc)**        |
-| [**良心AI**](https://www.openailaozu.com/register?aff=5Y7JEH5HBTXS) | Thanks to 良心AI for sponsoring this project! Providing API relay for **GPT, Claude, Gemini** and other major models — direct connection, stable and high-speed. **[Register here](https://www.openailaozu.com/register?aff=5Y7JEH5HBTXS)** |
+| [**Token Energy Station**](https://factory.pub/register?aff=3rXc)   | Thanks to Token Energy Station (Factory.pub) for sponsoring this project! Providing API relay for **GPT, Grok, Claude** and other major models — stable, reliable, and affordable. **[Register here](https://factory.pub/register?aff=3rXc)** |
+| [**Conscience AI**](https://www.openailaozu.com/register?aff=5Y7JEH5HBTXS) | Thanks to Conscience AI for sponsoring this project! Providing API relay for **GPT, Claude, Gemini** and other major models — direct connection, stable and high-speed. **[Register here](https://www.openailaozu.com/register?aff=5Y7JEH5HBTXS)** |
 
 </details>
 
@@ -65,7 +65,7 @@ py-xiaozhi is a lightweight, cross-platform multi-modal AI interaction framework
 
 - [Bilibili Demo Video](https://www.bilibili.com/video/BV1HmPjeSED2/#reply255921347937)
 
-![Image](./documents/docs/guide/images/系统界面.png)
+![Image](./documents/docs/guide/images/%E7%B3%BB%E7%BB%9F%E7%95%8C%E9%9D%A2.png)
 
 ## Key Features
 
@@ -102,7 +102,7 @@ py-xiaozhi is a lightweight, cross-platform multi-modal AI interaction framework
 
 ## Read This First
 
-- Carefully read [项目文档](https://huangjunsen0406.github.io/py-xiaozhi/) for startup tutorials and file descriptions
+- Carefully read [Project Documentation](https://huangjunsen0406.github.io/py-xiaozhi/) for startup tutorials and file descriptions
 - The main branch has the latest code; manually reinstall pip dependencies after each update to ensure you have new dependencies
 
 [Zero to Xiaozhi Client (Video Tutorial)](https://www.bilibili.com/video/BV1dWQhYEEmq/?vd_source=2065ec11f7577e7107a55bbdc3d12fce)

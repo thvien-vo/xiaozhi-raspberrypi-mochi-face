@@ -17,7 +17,7 @@ jobs:
             platform: macos-arm64
             artifact: "installer/*.dmg"
             mac_arch: arm64
-          # 在 arm runner 上经 Rosetta 打 Intel 包，避免 macos-13 排队
+          # Build Intel package via Rosetta on arm runner to avoid macos-13 queue delays
           - os: macos-latest
             platform: macos-x64
             artifact: "installer/*.dmg"
@@ -42,8 +42,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # mac x64：Rosetta + 自包含 x86_64 Python
-      # 不用 actions/setup-python 的 darwin-x64（依赖 /usr/local/opt/gettext 的 Intel Homebrew）
+      # macOS x64: Rosetta + self-contained x86_64 Python
+      # Do not use actions/setup-python darwin-x64 (depends on Intel Homebrew at /usr/local/opt/gettext)
       - name: Install Rosetta (macOS x64 cross-build)
         if: runner.os == 'macOS' && matrix.mac_arch == 'x64'
         run: |
@@ -58,8 +58,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # python-build-standalone：自带 lib，不依赖 Intel Homebrew
-          # 版本与 tag 对齐时可随 upstream 升级；安装后用 file/platform 校验架构
+          # python-build-standalone: bundles its own libs, no Intel Homebrew dependency
+          # Can be upgraded alongside upstream when version and tag align; verify architecture after install using file/platform
           RELEASE_TAG="20260718"
           PY_VER="3.10.20"
           ASSET="cpython-${PY_VER}+${RELEASE_TAG}-x86_64-apple-darwin-install_only.tar.gz"
@@ -69,7 +69,7 @@ jobs:
           echo "Downloading $URL"
           curl -fsSL --retry 3 -o "$RUNNER_TEMP/py-x64.tgz" "$URL"
           tar -xzf "$RUNNER_TEMP/py-x64.tgz" -C "$DEST"
-          # install_only 解压后为 python/ 目录
+          # install_only extracts into a python/ directory
           if [ -x "$DEST/python/bin/python3" ]; then
             PY="$DEST/python/bin/python3"
           elif [ -x "$DEST/bin/python3" ]; then
@@ -82,7 +82,7 @@ jobs:
           echo "$DEST/python/bin" >> "$GITHUB_PATH"
           echo "$DEST/bin" >> "$GITHUB_PATH"
           file "$PY"
-          # 在 Rosetta 下跑 x86_64 解释器
+          # Run x86_64 interpreter under Rosetta
           arch -x86_64 "$PY" -c "import platform; print(platform.machine(), platform.platform(), platform.python_version())"
 
       - name: Install uv
@@ -90,7 +90,7 @@ jobs:
         with:
           enable-cache: true
 
-      # arm64 构建需要系统 portaudio/opus；x64 走 wheel + 项目内 libs，避免 arm Homebrew 混链
+      # arm64 build requires system portaudio/opus; x64 uses wheels + in-repo libs to avoid arm Homebrew cross-linking
       - name: Install system dependencies (macOS arm64)
         if: runner.os == 'macOS' && matrix.mac_arch == 'arm64'
         run: brew install portaudio opus
@@ -128,7 +128,7 @@ jobs:
             echo "Using x86_64 Python: $PY_X64"
             file "$PY_X64"
             arch -x86_64 "$PY_X64" -c "import platform; print(platform.machine(), platform.platform())"
-            # uv 用该解释器解析/安装 x86_64 wheel
+            # uv uses this interpreter to resolve and install x86_64 wheels
             uv sync --python "$PY_X64" --extra gui --group dev
           else
             uv sync --extra gui --group dev
@@ -137,8 +137,8 @@ jobs:
       - name: Install unifypy
         shell: bash
         run: |
-          # 与 uv sync 同一项目 venv（x64 job 的 venv 已基于 x86_64 Python）
-          # pyinstaller 必须在 PATH 可发现（unifypy environment_check 查可执行文件）
+          # Same project venv as uv sync (x64 job venv is already based on x86_64 Python)
+          # pyinstaller must be discoverable in PATH (unifypy environment_check looks for the executable)
           uv pip install --upgrade unifypy pyinstaller
 
       - name: Extract version from tag
@@ -153,24 +153,24 @@ jobs:
         shell: bash
         run: where.exe ISCC.exe && echo "Inno Setup found"
 
-      # 注入可移植 ffmpeg/ffprobe（禁止 brew/apt/choco 动态链接副本）
-      # libs/ffmpeg/ 已 gitignore，仅 CI / 本地打包前注入
+      # Inject portable ffmpeg/ffprobe (forbid dynamically linked copies from brew/apt/choco)
+      # libs/ffmpeg/ is gitignored and only injected in CI or before local packaging
       - name: Bundle portable FFmpeg into libs/
         shell: bash
         run: |
           chmod +x scripts/bundle_ffmpeg.sh
           if [ "$RUNNER_OS" = "macOS" ]; then
-            # mac 无官方多架构 static CDN；从 static-ffmpeg 提取，禁止 Homebrew
-            # 装进项目 venv（x64 job 的 venv 已是 x86_64）
+            # macOS has no official multi-arch static CDN; extract from static-ffmpeg, forbidding Homebrew
+            # Install into project venv (x64 job venv is already x86_64)
             uv pip install static-ffmpeg
             if [ "${{ matrix.mac_arch }}" = "x64" ]; then
-              # PYTHON 指向 venv，确保 static_ffmpeg 可 import；arch -x86_64 让 platform.machine=x86_64
+              # PYTHON points to venv so static_ffmpeg is importable; arch -x86_64 sets platform.machine=x86_64
               VENV_PY="${PWD}/.venv/bin/python"
               file "$VENV_PY" || true
               arch -x86_64 env PYTHON="$VENV_PY" ./scripts/bundle_ffmpeg.sh mac x64
               file libs/ffmpeg/mac/x64/ffmpeg libs/ffmpeg/mac/x64/ffprobe
               if ! file libs/ffmpeg/mac/x64/ffmpeg | grep -Eq 'x86_64|i386'; then
-                echo "::error::ffmpeg 不是 x86_64: $(file libs/ffmpeg/mac/x64/ffmpeg)"
+                echo "::error::ffmpeg is not x86_64: $(file libs/ffmpeg/mac/x64/ffmpeg)"
                 exit 1
               fi
             else
@@ -190,12 +190,12 @@ jobs:
         if: runner.os == 'macOS'
         shell: bash
         run: |
-          # unifypy 透传 pyinstaller.target_architecture
+          # unifypy passes through pyinstaller.target_architecture
           TARGET="arm64"
           if [ "${{ matrix.mac_arch }}" = "x64" ]; then
             TARGET="x86_64"
           fi
-          # 用任意可用 Python 改 JSON 即可
+          # Any available Python can be used to update the JSON
           if [ -n "${PY_X64:-}" ] && [ -x "${PY_X64:-}" ]; then
             PY="$PY_X64"
           else
@@ -217,11 +217,11 @@ jobs:
           PYTHONIOENCODING: utf-8
         run: |
           rm -f *.spec
-          # unifypy>=2.0.18: --version 仅打印工具版本并退出；应用版本用 --app-version
+          # unifypy>=2.0.18: --version only prints tool version and exits; use --app-version for application version
           #
-          # 不要 arch -x86_64 uv（uv 本体 arm64 → Bad CPU type）。
-          # mac x64：把 .venv/bin 放进 PATH，让 unifypy 能找到 x86_64 的 pyinstaller；
-          # 用 venv 的 x86_64 python -m unifypy，内核自动走 Rosetta。
+          # Do not run arch -x86_64 uv (the uv binary itself is arm64 -> Bad CPU type).
+          # macOS x64: prepend .venv/bin to PATH so unifypy finds x86_64 pyinstaller;
+          # run x86_64 python -m unifypy from venv so the kernel automatically routes through Rosetta.
           export PATH="${PWD}/.venv/bin:${PATH}"
           if [ "${{ runner.os }}" = "macOS" ] && [ "${{ matrix.mac_arch }}" = "x64" ]; then
             VENV_PY="${PWD}/.venv/bin/python"
@@ -247,10 +247,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # 找到 .app 内主可执行文件，确认架构符合 matrix
+          # Locate main executable inside .app and verify architecture matches matrix
           app="$(find dist -name '*.app' -type d | head -1 || true)"
           if [ -z "$app" ]; then
-            echo "::warning::未找到 .app，跳过架构校验（仍依赖 installer 产物检查）"
+            echo "::warning::.app not found, skipping architecture check (still relying on installer artifact check)"
             exit 0
           fi
           bin="$app/Contents/MacOS/$(basename "$app" .app)"
@@ -266,7 +266,7 @@ jobs:
           fi
           if ! lipo -info "$bin" 2>/dev/null | grep -q "$EXPECT"; then
             if ! file "$bin" | grep -q "$EXPECT"; then
-              echo "::error::期望架构 $EXPECT，实际: $(file "$bin")"
+              echo "::error::Expected architecture $EXPECT, actual: $(file "$bin")"
               exit 1
             fi
           fi
@@ -279,7 +279,7 @@ jobs:
           shopt -s nullglob
           files=(${{ matrix.artifact }})
           if [ ${#files[@]} -eq 0 ]; then
-            echo "::error::未找到安装包产物: ${{ matrix.artifact }}（unifypy 可能空跑成功）"
+            echo "::error::Installer artifact not found: ${{ matrix.artifact }} (unifypy may have exited 0 without producing output)"
             ls -la installer 2>/dev/null || true
             exit 1
           fi

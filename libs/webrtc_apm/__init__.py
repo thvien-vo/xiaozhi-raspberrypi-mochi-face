@@ -1,6 +1,6 @@
 """
-WebRTC 音频处理模块的 Python ctypes 封装器。
-基于 Unity C# 封装器接口。
+Python ctypes wrapper for the WebRTC Audio Processing Module.
+Based on the Unity C# wrapper interface.
 """
 
 import ctypes
@@ -9,15 +9,15 @@ from enum import IntEnum
 from pathlib import Path
 
 
-# 平台特定的库加载
+# Platform-specific library loading
 def _get_library_path() -> str:
-    """获取平台特定的库路径。"""
+    """Get the platform-specific library path."""
     current_dir = Path(__file__).parent
 
     system = platform.system().lower()
     arch = platform.machine().lower()
 
-    # 标准化架构名称
+    # Normalize architecture names
     if arch in ["x86_64", "amd64"]:
         arch = "x64"
     elif arch in ["aarch64", "arm64"]:
@@ -40,12 +40,12 @@ def _get_library_path() -> str:
     return str(lib_path)
 
 
-# 延迟加载库（三端：linux / macos / windows）
+# Lazy-load library (three platforms: linux / macos / windows)
 _lib = None
 
 
 def _ensure_library_loaded():
-    """按当前平台加载 libs/webrtc_apm/<os>/<arch>/ 下的动态库。"""
+    """Load the dynamic library under libs/webrtc_apm/<os>/<arch>/ for the current platform."""
     global _lib
 
     if _lib is not None:
@@ -55,16 +55,16 @@ def _ensure_library_loaded():
     _init_function_signatures()
 
 
-# 枚举类型
+# Enumerations
 class DownmixMethod(IntEnum):
-    """多声道音轨转换为单声道的方式。"""
+    """Method for converting multi-channel audio tracks to mono."""
 
     AVERAGE_CHANNELS = 0
     USE_FIRST_CHANNEL = 1
 
 
 class NoiseSuppressionLevel(IntEnum):
-    """噪声抑制级别。"""
+    """Noise suppression level."""
 
     LOW = 0
     MODERATE = 1
@@ -73,7 +73,7 @@ class NoiseSuppressionLevel(IntEnum):
 
 
 class GainController1Mode(IntEnum):
-    """AGC1 控制器模式。"""
+    """AGC1 controller mode."""
 
     ADAPTIVE_ANALOG = 0
     ADAPTIVE_DIGITAL = 1
@@ -81,16 +81,16 @@ class GainController1Mode(IntEnum):
 
 
 class ClippingPredictorMode(IntEnum):
-    """削波预测器模式。"""
+    """Clipping predictor mode."""
 
     CLIPPING_EVENT_PREDICTION = 0
     ADAPTIVE_STEP_CLIPPING_PEAK_PREDICTION = 1
     FIXED_STEP_CLIPPING_PEAK_PREDICTION = 2
 
 
-# 结构体
+# Structures
 class Pipeline(ctypes.Structure):
-    """音频处理管道配置。"""
+    """Audio processing pipeline configuration."""
 
     _fields_ = [
         ("maximum_internal_processing_rate", ctypes.c_int),
@@ -101,7 +101,7 @@ class Pipeline(ctypes.Structure):
 
 
 class PreAmplifier(ctypes.Structure):
-    """前置放大器配置。"""
+    """Pre-amplifier configuration."""
 
     _fields_ = [
         ("enabled", ctypes.c_bool),
@@ -110,7 +110,7 @@ class PreAmplifier(ctypes.Structure):
 
 
 class AnalogMicGainEmulation(ctypes.Structure):
-    """模拟麦克风增益仿真配置。"""
+    """Analog microphone gain emulation configuration."""
 
     _fields_ = [
         ("enabled", ctypes.c_bool),
@@ -119,7 +119,7 @@ class AnalogMicGainEmulation(ctypes.Structure):
 
 
 class CaptureLevelAdjustment(ctypes.Structure):
-    """采集电平调整配置。"""
+    """Capture level adjustment configuration."""
 
     _fields_ = [
         ("enabled", ctypes.c_bool),
@@ -130,7 +130,7 @@ class CaptureLevelAdjustment(ctypes.Structure):
 
 
 class HighPassFilter(ctypes.Structure):
-    """高通滤波器配置。"""
+    """High-pass filter configuration."""
 
     _fields_ = [
         ("enabled", ctypes.c_bool),
@@ -139,7 +139,7 @@ class HighPassFilter(ctypes.Structure):
 
 
 class EchoCanceller(ctypes.Structure):
-    """回声消除器配置。"""
+    """Echo canceller configuration."""
 
     _fields_ = [
         ("enabled", ctypes.c_bool),
@@ -150,7 +150,7 @@ class EchoCanceller(ctypes.Structure):
 
 
 class NoiseSuppression(ctypes.Structure):
-    """噪声抑制配置。"""
+    """Noise suppression configuration."""
 
     _fields_ = [
         ("enabled", ctypes.c_bool),
@@ -160,7 +160,7 @@ class NoiseSuppression(ctypes.Structure):
 
 
 class TransientSuppression(ctypes.Structure):
-    """瞬态抑制配置。"""
+    """Transient suppression configuration."""
 
     _fields_ = [
         ("enabled", ctypes.c_bool),
@@ -168,7 +168,7 @@ class TransientSuppression(ctypes.Structure):
 
 
 class ClippingPredictor(ctypes.Structure):
-    """削波预测器配置。"""
+    """Clipping predictor configuration."""
 
     _fields_ = [
         ("enabled", ctypes.c_bool),
@@ -183,7 +183,7 @@ class ClippingPredictor(ctypes.Structure):
 
 
 class AnalogGainController(ctypes.Structure):
-    """模拟增益控制器配置。"""
+    """Analog gain controller configuration."""
 
     _fields_ = [
         ("enabled", ctypes.c_bool),
@@ -198,7 +198,7 @@ class AnalogGainController(ctypes.Structure):
 
 
 class GainController1(ctypes.Structure):
-    """AGC1 配置。"""
+    """AGC1 configuration."""
 
     _fields_ = [
         ("enabled", ctypes.c_bool),
@@ -211,7 +211,7 @@ class GainController1(ctypes.Structure):
 
 
 class InputVolumeController(ctypes.Structure):
-    """输入音量控制器配置。"""
+    """Input volume controller configuration."""
 
     _fields_ = [
         ("enabled", ctypes.c_bool),
@@ -219,7 +219,7 @@ class InputVolumeController(ctypes.Structure):
 
 
 class AdaptiveDigital(ctypes.Structure):
-    """自适应数字控制器配置。"""
+    """Adaptive digital controller configuration."""
 
     _fields_ = [
         ("enabled", ctypes.c_bool),
@@ -232,7 +232,7 @@ class AdaptiveDigital(ctypes.Structure):
 
 
 class FixedDigital(ctypes.Structure):
-    """固定数字控制器配置。"""
+    """Fixed digital controller configuration."""
 
     _fields_ = [
         ("gain_db", ctypes.c_float),
@@ -240,7 +240,7 @@ class FixedDigital(ctypes.Structure):
 
 
 class GainController2(ctypes.Structure):
-    """AGC2 配置。"""
+    """AGC2 configuration."""
 
     _fields_ = [
         ("enabled", ctypes.c_bool),
@@ -251,7 +251,7 @@ class GainController2(ctypes.Structure):
 
 
 class Config(ctypes.Structure):
-    """WebRTC 音频处理的主配置结构。"""
+    """Main configuration structure for WebRTC audio processing."""
 
     _fields_ = [
         ("pipeline_config", Pipeline),
@@ -266,9 +266,9 @@ class Config(ctypes.Structure):
     ]
 
 
-# 函数定义（延迟初始化）
+# Function definitions (lazy initialization)
 def _init_function_signatures():
-    """初始化函数签名（仅在库加载后调用）。"""
+    """Initialize function signatures (called only after library is loaded)."""
     global _lib
     if _lib is None:
         raise RuntimeError("Library not loaded. Call _ensure_library_loaded() first.")
@@ -311,11 +311,11 @@ def _init_function_signatures():
 
 
 class WebRTCAudioProcessing:
-    """WebRTC 音频处理的高级 Python 封装器。"""
+    """High-level Python wrapper for WebRTC audio processing."""
 
     def __init__(self):
-        """初始化音频处理模块。"""
-        # 确保库已按当前平台加载
+        """Initialize the audio processing module."""
+        # Ensure library is loaded for the current platform
         _ensure_library_loaded()
         _init_function_signatures()
 
@@ -324,19 +324,19 @@ class WebRTCAudioProcessing:
             raise RuntimeError("Failed to create WebRTC APM instance")
 
     def __del__(self):
-        """清理资源。"""
+        """Clean up resources."""
         if hasattr(self, "_handle") and self._handle:
             _lib.WebRTC_APM_Destroy(self._handle)
 
     def create_stream_config(self, sample_rate: int, num_channels: int) -> int:
-        """创建流配置。
+        """Create a stream configuration.
 
         Args:
-            sample_rate: 采样率（Hz）（例如：16000, 48000）
-            num_channels: 声道数（1为单声道，2为立体声）
+            sample_rate: Sample rate in Hz (e.g., 16000, 48000)
+            num_channels: Number of channels (1 for mono, 2 for stereo)
 
         Returns:
-            流配置句柄
+            Stream configuration handle
         """
         config_handle = _lib.WebRTC_APM_CreateStreamConfig(sample_rate, num_channels)
         if not config_handle:
@@ -344,33 +344,33 @@ class WebRTCAudioProcessing:
         return config_handle
 
     def destroy_stream_config(self, config_handle: int) -> None:
-        """销毁流配置。"""
+        """Destroy a stream configuration."""
         _lib.WebRTC_APM_DestroyStreamConfig(config_handle)
 
     def apply_config(self, config: Config) -> int:
-        """将配置应用到音频处理模块。
+        """Apply configuration to the audio processing module.
 
         Args:
-            config: 配置结构体
+            config: Configuration structure
 
         Returns:
-            状态码（0表示成功）
+            Status code (0 indicates success)
         """
         return _lib.WebRTC_APM_ApplyConfig(self._handle, ctypes.byref(config))
 
     def process_reverse_stream(
         self, src: ctypes.Array, src_config: int, dest_config: int, dest: ctypes.Array
     ) -> int:
-        """处理反向流（渲染/播放音频）。
+        """Process reverse stream (render/playback audio).
 
         Args:
-            src: 源音频缓冲区
-            src_config: 源流配置句柄
-            dest_config: 目标流配置句柄
-            dest: 目标音频缓冲区
+            src: Source audio buffer
+            src_config: Source stream configuration handle
+            dest_config: Destination stream configuration handle
+            dest: Destination audio buffer
 
         Returns:
-            状态码（0表示成功）
+            Status code (0 indicates success)
         """
         return _lib.WebRTC_APM_ProcessReverseStream(
             self._handle, src, src_config, dest_config, dest
@@ -379,67 +379,67 @@ class WebRTCAudioProcessing:
     def process_stream(
         self, src: ctypes.Array, src_config: int, dest_config: int, dest: ctypes.Array
     ) -> int:
-        """处理采集流（麦克风音频）。
+        """Process capture stream (microphone audio).
 
         Args:
-            src: 源音频缓冲区
-            src_config: 源流配置句柄
-            dest_config: 目标流配置句柄
-            dest: 目标音频缓冲区
+            src: Source audio buffer
+            src_config: Source stream configuration handle
+            dest_config: Destination stream configuration handle
+            dest: Destination audio buffer
 
         Returns:
-            状态码（0表示成功）
+            Status code (0 indicates success)
         """
         return _lib.WebRTC_APM_ProcessStream(
             self._handle, src, src_config, dest_config, dest
         )
 
     def set_stream_delay_ms(self, delay_ms: int) -> None:
-        """设置流延迟（毫秒）。
+        """Set stream delay in milliseconds.
 
         Args:
-            delay_ms: 延迟（毫秒）
+            delay_ms: Delay in milliseconds
         """
         _lib.WebRTC_APM_SetStreamDelayMs(self._handle, delay_ms)
 
 
 def create_default_config() -> Config:
-    """创建默认设置的配置。"""
+    """Create a configuration with default settings."""
     config = Config()
 
-    # 管道配置
+    # Pipeline configuration
     config.pipeline_config.maximum_internal_processing_rate = 48000
     config.pipeline_config.multi_channel_render = False
     config.pipeline_config.multi_channel_capture = False
     config.pipeline_config.capture_downmix_method = DownmixMethod.AVERAGE_CHANNELS
 
-    # 前置放大器
+    # Pre-amplifier
     config.pre_amp.enabled = False
     config.pre_amp.fixed_gain_factor = 1.0
 
-    # 电平调整
+    # Level adjustment
     config.level_adjustment.enabled = False
     config.level_adjustment.pre_gain_factor = 1.0
     config.level_adjustment.post_gain_factor = 1.0
     config.level_adjustment.mic_gain_emulation.enabled = False
     config.level_adjustment.mic_gain_emulation.initial_level = 255
 
-    # 高通滤波器
+    # High-pass filter
     config.high_pass.enabled = False
     config.high_pass.apply_in_full_band = True
 
-    # 回声消除器
+    # Echo canceller
     config.echo.enabled = False
     config.echo.mobile_mode = False
     config.echo.export_linear_aec_output = False
     config.echo.enforce_high_pass_filtering = True
 
-    # 噪声抑制
+    # Noise suppression
     config.noise_suppress.enabled = False
     config.noise_suppress.noise_level = NoiseSuppressionLevel.MODERATE
     config.noise_suppress.analyze_linear_aec_output_when_available = False
 
-    # 瞬态抑制
+    # Transient suppression
     config.transient_suppress.enabled = False
 
     # AGC1
@@ -449,7 +449,7 @@ def create_default_config() -> Config:
     config.gain_control1.compression_gain_db = 9
     config.gain_control1.enable_limiter = True
 
-    # AGC1 模拟控制器
+    # AGC1 analog controller
     config.gain_control1.analog_controller.enabled = True
     config.gain_control1.analog_controller.startup_min_volume = 0
     config.gain_control1.analog_controller.clipped_level_min = 70
@@ -458,7 +458,7 @@ def create_default_config() -> Config:
     config.gain_control1.analog_controller.clipped_ratio_threshold = 0.1
     config.gain_control1.analog_controller.clipped_wait_frames = 300
 
-    # 削波预测器
+    # Clipping predictor
     config.gain_control1.analog_controller.predictor.enabled = False
     config.gain_control1.analog_controller.predictor.predictor_mode = (
         ClippingPredictorMode.CLIPPING_EVENT_PREDICTION

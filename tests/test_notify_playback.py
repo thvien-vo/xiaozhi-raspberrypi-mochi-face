@@ -1,4 +1,4 @@
-"""服务端单向 notify 的状态与播放回归测试。"""
+"""Regression tests for one-way server notify state transitions and playback."""
 
 import asyncio
 
@@ -252,7 +252,7 @@ async def test_stale_underrun_drain_does_not_finish_newly_queued_audio(monkeypat
         async def write_notification_pcm(self, pcm):
             await super().write_notification_pcm(pcm)
             if len(self.pcm) == 2:
-                # 上一段断粮产生的回调，延迟到新 PCM 入队后才到达。
+                # Drain callback from a previous underrun arriving after new PCM is queued.
                 self.drained_callback()
                 await asyncio.sleep(0)
 

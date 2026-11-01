@@ -7,14 +7,14 @@
 .idea/
 venv/
 
-# 音乐缓存
+# Music cache
 cache/
 
 
-# CI 注入的 FFmpeg 二进制（不进仓库）
+# FFmpeg binaries injected by CI (not tracked in repository)
 libs/ffmpeg/
 
-# 打包相关
+# Packaging artifacts
 /build
 /dist
 
@@ -37,11 +37,11 @@ xiaozhi-desktop/
 chakra-qml/
 py-xiaozhi/
 
-# Claude Code 本地私人配置(权限选择等)
+# Claude Code local private configuration (permissions, etc.)
 .claude/settings.local.json
 
-# 本地草稿/笔记
+# Local drafts/notes
 /impl.md
 
-# 项目分析报告（本地查看）
+# Project analysis reports (local viewing)
 reports/

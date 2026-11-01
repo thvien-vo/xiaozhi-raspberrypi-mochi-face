@@ -1,4 +1,4 @@
-"""截图 MCP 工具注册与工厂."""
+"""Screenshot MCP tool registration and factory."""
 
 import asyncio
 import json
@@ -13,7 +13,7 @@ logger = get_logger()
 
 
 def create_screenshot_camera() -> ScreenshotCamera:
-    """创建桌面截图实现."""
+    """Create a desktop screenshot camera instance."""
     return ScreenshotCamera()
 
 
@@ -21,13 +21,13 @@ def register_screenshot_tools(
     add_tool: Callable[[McpTool], None],
     photo_camera=None,
 ) -> None:
-    """注册 take_screenshot.
+    """Register take_screenshot.
 
-    photo_camera: 可选，用于分析时复用 explain URL/token（与 take_photo 同一 camera）。
+    photo_camera: Optional, used to reuse explain URL/token during analysis (same camera as take_photo).
     """
     camera = create_screenshot_camera()
     if photo_camera is not None and hasattr(photo_camera, "get_explain_url"):
-        # 与拍照共用 vision 配置（若已配置）
+        # Share vision configuration with photo camera (if configured)
         try:
             url = getattr(photo_camera, "explain_url", None) or getattr(
                 photo_camera, "_explain_url", None
@@ -40,9 +40,9 @@ def register_screenshot_tools(
             if token and hasattr(camera, "set_explain_token"):
                 camera.set_explain_token(token)
         except Exception as e:
-            logger.debug(f"同步 vision 配置到截图摄像头失败: {e}", exc_info=True)
+            logger.debug(f"Failed to sync vision config to screenshot camera: {e}", exc_info=True)
 
-    # analyze 若需要 fallback 到 photo camera 的 explain 设置，挂引用
+    # Attach reference if analyze needs to fall back to photo camera's explain settings
     camera._photo_camera_ref = photo_camera  # type: ignore[attr-defined]
 
     async def take_screenshot(arguments: dict) -> str:
@@ -55,15 +55,14 @@ def register_screenshot_tools(
 
         if display_id:
             if isinstance(display_id, str):
-                if display_id.lower() in ["main", "主屏", "主显示器", "笔记本", "内屏"]:
+                if display_id.lower() in ["main", "primary", "main display", "laptop", "internal"]:
                     display_id = "main"
                 elif display_id.lower() in [
                     "secondary",
-                    "副屏",
-                    "副显示器",
-                    "外接",
-                    "外屏",
-                    "第二屏",
+                    "external",
+                    "secondary display",
+                    "external display",
+                    "second",
                 ]:
                     display_id = "secondary"
                 else:
@@ -93,14 +92,16 @@ def register_screenshot_tools(
         McpTool(
             "take_screenshot",
             (
-                "【桌面截图/屏幕分析】当用户提到：截屏、截图、看看桌面、分析屏幕、桌面上有什么、"
-                "屏幕截图、查看当前界面、分析当前页面、读取屏幕内容、屏幕OCR 时调用本工具。"
-                "功能：①截取整个桌面画面；②屏幕内容识别与分析；③屏幕OCR文字提取；④界面元素分析；"
-                "⑤应用程序识别；⑥错误信息截图分析；⑦桌面状态检查；⑧多屏幕截图。"
-                "参数说明：{ question: '你想了解的关于桌面/屏幕的问题', display: '显示器选择(可选)' }；"
-                "display可选值：'main'/'主屏'/'笔记本'(主显示器), 'secondary'/'副屏'/'外屏'(副显示器), 或留空(所有显示器)；"
-                "适用场景：桌面截图、屏幕分析、界面问题诊断、应用状态查看、错误截图分析等。"
-                "注意：该工具会截取桌面，请确保用户同意截图操作。"
+                "[Desktop Screenshot / Screen Analysis] Call this tool when the user asks to take a screenshot, "
+                "look at the desktop, analyze the screen, check what is on the desktop, view the current interface, "
+                "analyze the current page, read screen content, or perform screen OCR. "
+                "Features: (1) Capture the full desktop screen; (2) Screen content recognition and analysis; "
+                "(3) Screen OCR text extraction; (4) UI element analysis; (5) Application identification; "
+                "(6) Error message screenshot analysis; (7) Desktop status inspection; (8) Multi-display screenshot capture. "
+                "Parameters: { question: 'Question you want answered about the desktop/screen', display: 'Display selection (optional)' }; "
+                "Valid values for display: 'main'/'primary'/'laptop' (primary display), 'secondary'/'external'/'second' (secondary display), or leave empty (all displays); "
+                "Applicable scenarios: desktop screenshot capture, screen analysis, UI troubleshooting, application status inspection, error screenshot analysis, etc. "
+                "Note: This tool captures the desktop screen; ensure the user has consented to taking a screenshot."
             ),
             PropertyList(
                 [
@@ -111,4 +112,4 @@ def register_screenshot_tools(
             take_screenshot,
         )
     )
-    logger.info("已注册 take_screenshot（无全局单例）")
+    logger.info("Registered take_screenshot (no global singleton)")

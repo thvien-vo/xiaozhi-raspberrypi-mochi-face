@@ -34,7 +34,7 @@ const createChartOption = (darkMode) => ({
     orient: 'vertical',
     right: 10,
     top: 'center',
-    data: ['核心基础设施', '主要模块', '子模块'],
+    data: ['Core Infrastructure', 'Main Modules', 'Submodules'],
     textStyle: {
       color: darkMode ? '#f3f4f6' : '#374151'
     },
@@ -44,7 +44,7 @@ const createChartOption = (darkMode) => ({
   },
   series: [
     {
-      name: '架构图',
+      name: 'Architecture Diagram',
       type: 'graph',
       layout: 'force',
       data: [
@@ -79,7 +79,7 @@ const createChartOption = (darkMode) => ({
       ],
       categories: [
         {
-          name: '核心基础设施',
+          name: 'Core Infrastructure',
           itemStyle: {
             color: '#5470c6',
             borderColor: '#5470c6',
@@ -87,7 +87,7 @@ const createChartOption = (darkMode) => ({
           }
         },
         {
-          name: '主要模块',
+          name: 'Main Modules',
           itemStyle: {
             color: '#93cc76',
             borderColor: '#93cc76',
@@ -95,7 +95,7 @@ const createChartOption = (darkMode) => ({
           }
         },
         {
-          name: '子模块',
+          name: 'Submodules',
           itemStyle: {
             color: '#fac858',
             borderColor: '#fac858',

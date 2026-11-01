@@ -1,151 +1,151 @@
-# 摄像头工具 (Camera Tools)
+# Camera Tools
 
-摄像头工具是一个智能视觉识别 MCP 工具，提供了图像捕获、视觉分析和图像理解等功能。
+The camera tool is an intelligent vision recognition MCP tool, providing image capture, visual analysis, and image understanding capabilities.
 
-### 常见使用场景
+### Common Use Cases
 
-**图像识别分析:**
-- "帮我拍张照片看看这是什么"
-- "拍照识别一下这个物体"
-- "用摄像头看看我面前是什么东西"
-- "看看这个东西是什么"
-- "识别一下这个是什么"
-- "帮我看看这个"
-- "拍照分析这个物品"
+**Image Recognition and Analysis:**
+- "Take a photo and tell me what this is"
+- "Take a photo to identify this object"
+- "Use the camera to see what's in front of me"
+- "See what this thing is"
+- "Identify what this is"
+- "Help me look at this"
+- "Take a photo to analyze this item"
 
-**场景理解:**
-- "拍照描述一下现在的场景"
-- "用摄像头看看房间里有什么"
-- "拍照分析一下这个环境"
-- "看看周围的情况"
-- "描述一下这个场景"
-- "分析一下这里的环境"
+**Scene Understanding:**
+- "Take a photo and describe the current scene"
+- "Use the camera to see what's in the room"
+- "Take a photo to analyze this environment"
+- "Look at the surroundings"
+- "Describe this scene"
+- "Analyze the environment here"
 
-**文字识别:**
-- "拍照识别这个文档上的文字"
-- "用摄像头读取这个标签上的信息"
-- "拍照翻译这段英文"
-- "读取这个文字"
-- "识别文字内容"
-- "帮我读一下这个"
-- "翻译这段文字"
-- "提取文字信息"
+**Text Recognition:**
+- "Take a photo to recognize the text on this document"
+- "Use the camera to read the information on this label"
+- "Take a photo to translate this English text"
+- "Read this text"
+- "Recognize text content"
+- "Help me read this"
+- "Translate this text"
+- "Extract text information"
 
-**问题解答:**
-- "拍照帮我看看这道题怎么做"
-- "用摄像头分析这个图表"
-- "拍照解释这个标志是什么意思"
-- "这道题怎么解"
-- "分析这个图表"
-- "解释这个标志"
-- "帮我解答这个问题"
+**Problem Solving:**
+- "Take a photo to help me solve this problem"
+- "Use the camera to analyze this chart"
+- "Take a photo to explain what this sign means"
+- "How to solve this problem"
+- "Analyze this chart"
+- "Explain this sign"
+- "Help me answer this question"
 
-**生活助手:**
-- "拍照识别这个植物的品种"
-- "用摄像头看看这个菜谱"
-- "拍照帮我识别这个商品"
-- "这是什么植物"
-- "识别这个花"
-- "看看这个菜谱"
-- "这个商品是什么"
-- "帮我看看这个产品"
+**Daily Life Assistant:**
+- "Take a photo to identify the species of this plant"
+- "Use the camera to look at this recipe"
+- "Take a photo to help me identify this product"
+- "What plant is this"
+- "Identify this flower"
+- "Look at this recipe"
+- "What product is this"
+- "Help me check this product"
 
-### 使用提示
+### Usage Tips
 
-1. **确保光线充足**: 良好的光线条件有助于提高识别准确率
-2. **保持稳定**: 拍照时尽量保持设备稳定，避免模糊
-3. **明确问题**: 详细描述您想了解的内容，如"识别这个植物"而不是"这是什么"
-4. **合适距离**: 保持适当的拍摄距离，确保目标物体清晰可见
+1. **Ensure Adequate Lighting**: Good lighting conditions help improve recognition accuracy
+2. **Keep Steady**: Keep the device as steady as possible when taking photos to avoid blur
+3. **Be Specific**: Describe in detail what you want to know, e.g., "Identify this plant" rather than "What is this"
+4. **Appropriate Distance**: Maintain an appropriate shooting distance to ensure the target object is clearly visible
 
-AI 助手会根据您的需求自动调用摄像头工具，捕获图像并进行智能分析。
+The AI assistant will automatically invoke the camera tool based on your needs, capturing images and performing intelligent analysis.
 
-## 功能概览
+## Feature Overview
 
-### 图像捕获功能
-- **智能拍照**: 自动调节摄像头参数，捕获清晰图像
-- **尺寸优化**: 自动调整图像尺寸，提高处理效率
-- **格式转换**: 将图像转换为标准JPEG格式
+### Image Capture Features
+- **Smart Photo Capture**: Automatically adjust camera parameters to capture clear images
+- **Size Optimization**: Automatically resize images to improve processing efficiency
+- **Format Conversion**: Convert images to standard JPEG format
 
-### 视觉分析功能
-- **物体识别**: 识别图像中的物体和场景
-- **文字识别**: 提取图像中的文字内容
-- **场景理解**: 分析图像内容并提供描述
-- **问题解答**: 基于图像内容回答用户问题
+### Visual Analysis Features
+- **Object Recognition**: Identify objects and scenes in images
+- **Text Recognition**: Extract text content from images
+- **Scene Understanding**: Analyze image content and provide descriptions
+- **Problem Solving**: Answer user questions based on image content
 
-### 设备管理功能
-- **摄像头配置**: 自动检测和配置摄像头设备
-- **参数调节**: 支持分辨率、帧率等参数设置
-- **错误处理**: 完善的错误处理和恢复机制
+### Device Management Features
+- **Camera Configuration**: Automatically detect and configure camera devices
+- **Parameter Adjustment**: Support resolution, frame rate, and other parameter settings
+- **Error Handling**: Comprehensive error handling and recovery mechanisms
 
-## 工具列表
+## Tool List
 
-### 1. 图像捕获与分析工具
+### 1. Image Capture and Analysis Tool
 
-#### take_photo - 拍照并分析
-捕获图像并进行智能分析。
+#### take_photo - Take Photo and Analyze
+Capture an image and perform intelligent analysis.
 
-**参数:**
-- `question` (可选): 对图像的具体问题或分析需求
+**Parameters:**
+- `question` (optional): A specific question or analysis requirement about the image
 
-**使用场景:**
-- 物体识别
-- 场景分析
-- 文字识别
-- 问题解答
-- 生活助手
+**Use Cases:**
+- Object recognition
+- Scene analysis
+- Text recognition
+- Problem solving
+- Daily life assistant
 
-## 使用示例
+## Usage Examples
 
-### 基础拍照分析示例
+### Basic Photo Analysis Examples
 
 ```python
-# 简单拍照分析
+# Simple photo analysis
 result = await mcp_server.call_tool("take_photo", {
-    "question": "这是什么物体？"
+    "question": "What object is this?"
 })
 
-# 场景描述
+# Scene description
 result = await mcp_server.call_tool("take_photo", {
-    "question": "描述一下这个场景"
+    "question": "Describe this scene"
 })
 
-# 文字识别
+# Text recognition
 result = await mcp_server.call_tool("take_photo", {
-    "question": "识别图片中的文字内容"
+    "question": "Recognize the text content in the image"
 })
 
-# 问题解答
+# Problem solving
 result = await mcp_server.call_tool("take_photo", {
-    "question": "这道数学题怎么解？"
+    "question": "How to solve this math problem?"
 })
 ```
 
-## 技术架构
+## Technical Architecture
 
-### 摄像头管理
-- **容器注入**: 由 `McpPlugin` 创建 camera 实例并 `register_camera_tools`，不使用全局单例
-- **可插拔采集后端** (`src/mcp/tools/camera/capture_backend.py`):
-  - **OpenCV / V4L2**: 桌面 USB、Linux USB（Linux 优先 `CAP_V4L2`）
-  - **picamera2**: 树莓派官方 CSI（Bookworm libcamera 栈）
-  - **`backend=auto`**: 先 OpenCV，失败再回退 picamera2
-- **预热帧**: 打开设备后丢弃若干帧再取图（USB / Pi 前几帧常无效）
-- **超时保护**: 采集在线程池中执行，避免驱动挂死拖死主流程
-- **资源管理**: 每次拍照 open → 读帧 → release / stop，不长期占设备
+### Camera Management
+- **Container injection**: `McpPlugin` creates the camera and calls `register_camera_tools` (no global singleton)
+- **Pluggable capture backends** (`src/mcp/tools/camera/capture_backend.py`):
+  - **OpenCV / V4L2**: Desktop USB; on Linux prefers `CAP_V4L2`
+  - **picamera2**: Raspberry Pi official CSI (Bookworm libcamera stack)
+  - **`backend=auto`**: try OpenCV first, then fall back to picamera2
+- **Warm-up frames**: drop a few frames after open (USB/Pi often return empty early frames)
+- **Timeout**: capture runs in a thread pool so a stuck driver cannot hang the app forever
+- **Resource lifecycle**: open → read → release/stop per shot (no long-lived exclusive hold)
 
-### 图像处理
-- **OpenCV 编码**: 采集后缩放（默认最长边 320）并编码为 JPEG
-- **格式优化**: JPEG 降低上传体积
+### Image Processing
+- **OpenCV encode**: resize (default max side 320) and JPEG-encode
+- **Format optimization**: smaller upload payload
 
-### 视觉服务
-- **远程分析**: 支持连接远程视觉分析服务（`NormalCamera`）
-- **智谱 VL**: 配置 `VLapi_key` + `Local_VL_url` 时使用 `VLCamera`
-- **身份验证**: Token 和设备 ID
-- **错误处理**: 网络与采集失败返回 JSON 错误信息
+### Vision Service
+- **Remote analysis**: `NormalCamera` + explain URL
+- **Zhipu VL**: when both `VLapi_key` and `Local_VL_url` are set → `VLCamera`
+- **Authentication**: Token and device ID
+- **Errors**: capture/network failures return JSON error messages
 
-## 配置说明
+## Configuration
 
-### 摄像头配置
-摄像头相关配置位于配置文件中：
+### Camera Configuration
+Camera-related settings are located in the configuration file:
 
 ```json
 {
@@ -164,30 +164,29 @@ result = await mcp_server.call_tool("take_photo", {
 }
 ```
 
-**配置项说明:**
+**Configuration Items:**
 
-| 配置项 | 类型 | 默认 | 说明 |
-| ------ | ---- | ---- | ---- |
+| Key | Type | Default | Description |
+| --- | ---- | ------- | ----------- |
 | `backend` | String | `"auto"` | `auto` / `opencv` / `picamera2` |
-| `device` | String | `""` | 设备路径，如 `"/dev/video0"`；非空时优先于 `camera_index` |
-| `camera_index` | Integer | `0` | OpenCV 设备索引（桌面常用） |
-| `frame_width` / `frame_height` | Integer | 640 / 480 | 期望分辨率（驱动可能回落） |
-| `warm_up_frames` | Integer | `5` | 打开后丢弃的预热帧数 |
-| `Local_VL_url` / `VLapi_key` / `models` | — | — | 智谱等多模态 VL；二者都配齐则走 VL 分析 |
+| `device` | String | `""` | Path such as `"/dev/video0"`; overrides `camera_index` when set |
+| `camera_index` | Integer | `0` | OpenCV device index (desktop) |
+| `frame_width` / `frame_height` | Integer | 640 / 480 | Preferred resolution (driver may fall back) |
+| `warm_up_frames` | Integer | `5` | Frames to discard after open |
+| `Local_VL_url` / `VLapi_key` / `models` | — | — | Optional Zhipu-style VL analysis |
 
-### 平台与后端选择
+### Platform / Backend Guide
 
-| 场景 | 推荐 |
-| ---- | ---- |
-| macOS / Windows USB 或内置摄像头 | `backend=auto` 或 `opencv`，用 `camera_index` |
-| Linux / 树莓派 **USB UVC** | `backend=opencv`，优先配置 `device` 为 `/dev/videoX` |
-| 树莓派 **官方 CSI** | 安装系统 `python3-picamera2`，`backend=auto` 或 `picamera2` |
-| 桌面 macOS **不要** pip 安装 picamera2 | 会拉 `python-prctl` 导致构建失败 |
+| Scenario | Recommendation |
+| -------- | ---------------- |
+| macOS / Windows built-in or USB | `backend=auto` or `opencv`, use `camera_index` |
+| Linux / Pi **USB UVC** | `backend=opencv`, set `device` to `/dev/videoX` |
+| Pi **official CSI** | install system `python3-picamera2`, `backend=auto` or `picamera2` |
+| **Do not** pip-install picamera2 on macOS | pulls `python-prctl` and breaks the build |
 
-### 扫描与试拍
+### Scan & Test Capture
 
 ```bash
-# 列出设备；可选写入配置并试拍
 python scripts/camera_scanner.py
 python scripts/camera_scanner.py --test
 python scripts/camera_scanner.py --select 0 --test
@@ -195,136 +194,134 @@ python scripts/camera_scanner.py --device /dev/video0 --test
 python scripts/camera_scanner.py --backend picamera2 --test
 ```
 
-GUI：设置 → 摄像头 → 刷新 → 选择 **摄像头 N / V4L2 /dev/videoX / 树莓派 CSI** → 测试。
+GUI: Settings → Camera → Refresh → pick **Camera N / V4L2 path / Pi CSI** → Test.
 
-### 视觉服务配置
-视觉分析服务需要配置：
-- **服务URL**: 视觉分析服务的接口地址（服务端下发或 VL URL）
-- **身份验证**: Token 或 API 密钥
-- **设备信息**: 设备 ID 和客户端 ID
+### Vision Service Configuration
+The visual analysis service requires configuration of:
+- **Service URL**: explain URL or VL base URL
+- **Authentication**: Token or API key
+- **Device Information**: Device ID and client ID
 
-## 数据结构
+## Data Structures
 
-### 图像数据格式
+### Image Data Format
 ```python
 {
-    "buf": bytes,      # JPEG图像字节数据
-    "len": int         # 数据长度
+    "buf": bytes,      # JPEG image byte data
+    "len": int         # Data length
 }
 ```
 
-### 分析结果格式
+### Analysis Result Format
 ```python
 {
-    "success": bool,           # 是否成功
-    "message": str,            # 结果信息或错误信息
-    "analysis": {              # 分析结果（成功时）
-        "objects": [...],      # 识别的物体
-        "text": str,           # 提取的文字
-        "description": str,    # 场景描述
-        "answer": str          # 问题答案
+    "success": bool,           # Whether the operation was successful
+    "message": str,            # Result message or error message
+    "analysis": {              # Analysis result (on success)
+        "objects": [...],      # Recognized objects
+        "text": str,           # Extracted text
+        "description": str,    # Scene description
+        "answer": str          # Answer to question
     }
 }
 ```
 
-## 图像处理流程
+## Image Processing Flow
 
-### 1. 图像捕获
-1. 按 `CAMERA.backend` / `device` / `camera_index` 选择后端
-2. OpenCV：打开设备（Linux 优先 V4L2）→ 尝试设分辨率 → 预热帧 → 读有效帧
-3. 或 picamera2：still 配置 → start → 预热 → `capture_array` → 转 BGR
-4. 缩放并编码 JPEG，释放设备
+### 1. Image Capture
+1. Choose backend from `CAMERA.backend` / `device` / `camera_index`
+2. OpenCV: open (V4L2 on Linux) → try resolution → warm-up → read a valid frame
+3. Or picamera2: still config → start → warm-up → `capture_array` → convert to BGR
+4. Resize, JPEG-encode, release the device
 
-### 2. 图像预处理
-1. 获取图像尺寸信息
-2. 计算缩放比例（最长边不超过320像素）
-3. 等比例缩放图像
-4. 转换为JPEG格式
+### 2. Image Preprocessing
+1. Obtain image dimensions
+2. Calculate scaling ratio (longest edge not exceeding 320 pixels)
+3. Scale image proportionally
+4. Convert to JPEG format
 
-### 3. 视觉分析
-1. 准备请求头信息
-2. 构建多媒体请求
-3. 发送到视觉分析服务
-4. 解析分析结果
+### 3. Visual Analysis
+1. Prepare request headers
+2. Build multimedia request
+3. Send to visual analysis service
+4. Parse analysis results
 
-## 最佳实践
+## Best Practices
 
-### 1. 图像质量优化
-- 确保充足的光线条件
-- 保持摄像头清洁
-- 避免过度曝光或阴暗
-- 保持拍摄对象清晰
+### 1. Image Quality Optimization
+- Ensure adequate lighting conditions
+- Keep the camera lens clean
+- Avoid overexposure or darkness
+- Keep the subject clear
 
-### 2. 问题描述技巧
-- 使用具体明确的问题
-- 避免模糊不清的表述
-- 提供上下文信息
-- 指明分析重点
+### 2. Question Description Tips
+- Use specific and clear questions
+- Avoid vague expressions
+- Provide contextual information
+- Indicate the focus of analysis
 
-### 3. 性能优化
-- 合理设置图像分辨率
-- 避免频繁拍照
-- 及时释放资源
-- 处理网络超时
+### 3. Performance Optimization
+- Set appropriate image resolution
+- Avoid frequent photo capture
+- Release resources promptly
+- Handle network timeouts
 
-### 4. 错误处理
-- 检查摄像头可用性
-- 处理网络连接错误
-- 验证分析结果
-- 提供用户友好的错误信息
+### 4. Error Handling
+- Check camera availability
+- Handle network connection errors
+- Validate analysis results
+- Provide user-friendly error messages
 
-## 支持的分析类型
+## Supported Analysis Types
 
-### 物体识别
-- 日常用品识别
-- 动植物识别
-- 食物识别
-- 商品识别
+### Object Recognition
+- Everyday item recognition
+- Animal and plant recognition
+- Food recognition
+- Product recognition
 
-### 文字识别
-- 印刷文字识别
-- 手写文字识别
-- 多语言文字识别
-- 文档内容提取
+### Text Recognition
+- Printed text recognition
+- Handwritten text recognition
+- Multi-language text recognition
+- Document content extraction
 
-### 场景理解
-- 室内场景分析
-- 户外环境描述
-- 人物动作识别
-- 活动场景理解
+### Scene Understanding
+- Indoor scene analysis
+- Outdoor environment description
+- Human action recognition
+- Activity scene understanding
 
-### 问题解答
-- 数学题解答
-- 图表分析
-- 标志解释
-- 技术问题
+### Problem Solving
+- Math problem solving
+- Chart analysis
+- Sign explanation
+- Technical problems
 
-## 注意事项
+## Notes
 
-1. **隐私保护**: 拍照功能涉及隐私，请谨慎使用
-2. **网络依赖**: 视觉分析需要网络连接
-3. **设备权限**: 需要摄像头访问权限
-4. **处理时间**: 图像分析可能需要一定时间
+1. **Privacy Protection**: The photo capture feature involves privacy; please use with caution
+2. **Network Dependency**: Visual analysis requires a network connection
+3. **Device Permissions**: Camera access permission is required
+4. **Processing Time**: Image analysis may take some time
 
-## 故障排除
+## Troubleshooting
 
-### 常见问题
-1. **摄像头无法打开**: 检查连接、权限（Linux `video` 组）、`camera_index` / `device`
-2. **电脑正常、树莓派 CSI 不行**: CSI 需 libcamera + `python3-picamera2`，不要只靠 `VideoCapture(0)`
-3. **Pi 上 index 0 打不开**: 查看 `ls /dev/video*`，用 `--device /dev/videoX` 或换 index
-4. **open 成功但黑图/失败**: 增大 `warm_up_frames`，或放宽分辨率
-5. **分析失败**: 检查网络、explain URL / VL Key
-6. **macOS 上 `uv` 因 picamera2 / python-prctl 失败**: 不要在 Mac 安装 picamera2，仅在 Pi 用 apt
+### Common Issues
+1. **Camera cannot open**: connection, permissions (Linux `video` group), `camera_index` / `device`
+2. **Works on PC, fails on Pi CSI**: need libcamera + `python3-picamera2`, not bare `VideoCapture(0)`
+3. **Index 0 fails on Pi**: check `ls /dev/video*`, set `--device /dev/videoX` or another index
+4. **Opens but black/empty frame**: increase `warm_up_frames` or relax resolution
+5. **Analysis fails**: network, explain URL / VL key
+6. **macOS uv fails on picamera2 / python-prctl**: never install picamera2 on Mac; use apt only on Pi
 
-### 调试方法
+### Debugging Methods
 ```bash
-# Linux / Pi
 ls -l /dev/video*
-groups   # 应包含 video
-# CSI 系统栈
-rpicam-hello -t 1000   # 或 libcamera-hello
+groups   # should include video
+rpicam-hello -t 1000   # or libcamera-hello
 
 python scripts/camera_scanner.py --test
 ```
 
-通过摄像头工具，您可以轻松实现智能视觉识别和图像分析，为日常生活和工作提供便利。
+With the camera tool, you can easily achieve intelligent visual recognition and image analysis, bringing convenience to daily life and work.

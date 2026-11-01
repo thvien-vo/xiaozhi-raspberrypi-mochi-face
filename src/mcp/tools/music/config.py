@@ -1,4 +1,4 @@
-"""音乐相关配置读取."""
+"""Music configuration loader."""
 
 from src.logging import get_logger
 
@@ -11,7 +11,7 @@ DEFAULT_LYRICS_URL = "http://m.kuwo.cn/newh5/singles/songinfoandlrc"
 
 
 def _cfg_str(cm, path: str, default: str) -> str:
-    # 设置页允许留空=用默认；get_config 对 "" 不会回落 default
+    # Settings UI allows empty string to mean default; get_config does not fall back on ""
     value = cm.get_config(path, default)
     if value is None:
         return default

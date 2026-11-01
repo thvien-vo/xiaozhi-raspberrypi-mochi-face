@@ -1,8 +1,8 @@
-"""系统选项：设备 ID、网络、MQTT、音乐、AEC."""
+"""System options: device ID, network, MQTT, music, AEC."""
 
 
 class SettingsSystemOptionsMixin:
-    # ========== 系统选项 ==========
+    # ========== System Options ==========
 
     # CLIENT_ID
     def _get_clientId(self) -> str:
@@ -60,7 +60,7 @@ class SettingsSystemOptionsMixin:
     def _set_windowSizeMode(self, value: str):
         self._set_value("SYSTEM_OPTIONS.WINDOW_SIZE_MODE", value)
 
-    # 音乐配置
+    # Music configuration
     def _get_musicSearchUrl(self) -> str:
         return self._get_value("MUSIC.SEARCH_URL", "")
 
@@ -91,7 +91,7 @@ class SettingsSystemOptionsMixin:
     def _set_musicDefaultQuality(self, value: str):
         self._set_value("MUSIC.DEFAULT_QUALITY", value)
 
-    # MQTT 配置
+    # MQTT configuration
     def _get_mqttEndpoint(self) -> str:
         return self._get_value("SYSTEM_OPTIONS.NETWORK.MQTT_INFO.endpoint", "")
 
@@ -128,21 +128,21 @@ class SettingsSystemOptionsMixin:
     def _set_mqttSubscribeTopic(self, value: str):
         self._set_value("SYSTEM_OPTIONS.NETWORK.MQTT_INFO.subscribe_topic", value)
 
-    # AEC 启用
+    # AEC enabled
     def _get_aecEnabled(self) -> bool:
         return self._get_value("AEC_OPTIONS.ENABLED", False)
 
     def _set_aecEnabled(self, value: bool):
         self._set_value("AEC_OPTIONS.ENABLED", value)
 
-    # AEC 在位时 TTS 与音乐并行播放（闪避混音）
+    # Play TTS and music in parallel when AEC is active (ducking mix)
     def _get_aecMusicParallel(self) -> bool:
         return self._get_value("AEC_OPTIONS.MUSIC_PARALLEL", True)
 
     def _set_aecMusicParallel(self, value: bool):
         self._set_value("AEC_OPTIONS.MUSIC_PARALLEL", value)
 
-    # 延迟补偿帧数（40ms + N × 协议帧长）
+    # Delay compensation frames (40ms + N * protocol frame duration)
     def _get_aecFrameDelay(self) -> int:
         try:
             return int(self._get_value("AEC_OPTIONS.FRAME_DELAY", 3))
@@ -152,14 +152,14 @@ class SettingsSystemOptionsMixin:
     def _set_aecFrameDelay(self, value: int):
         self._set_value("AEC_OPTIONS.FRAME_DELAY", int(value))
 
-    # 噪声抑制/高通预处理
+    # Noise suppression / high-pass preprocessing
     def _get_aecEnablePreprocess(self) -> bool:
         return self._get_value("AEC_OPTIONS.ENABLE_PREPROCESS", True)
 
     def _set_aecEnablePreprocess(self, value: bool):
         self._set_value("AEC_OPTIONS.ENABLE_PREPROCESS", value)
 
-    # ========== 可写目录 PATHS（config 目录不由此改）==========
+    # ========== Writable directories PATHS (config directory is not modified here) ==========
 
     def _get_pathCacheDir(self) -> str:
         return self._get_value("PATHS.CACHE_DIR", "") or ""
@@ -192,7 +192,7 @@ class SettingsSystemOptionsMixin:
         self._set_value("MCP_PLUGINS.DIR", value.strip() if value else "")
 
     def _default_data_paths(self) -> dict[str, str]:
-        """配置留空时各目录的系统默认绝对路径（不含 PATHS 覆盖）."""
+        """System default absolute paths when configuration is left empty (without PATHS overrides)."""
         from pathlib import Path
 
         from src.utils.resource_finder import get_user_data_dir
@@ -203,7 +203,7 @@ class SettingsSystemOptionsMixin:
         return {
             "cache": str(data / "cache"),
             "log": str(data / "logs"),
-            # 音乐默认挂在「当前缓存」下：自定义了缓存则跟随
+            # Music defaults under "current cache": follows custom cache if set
             "music": str(cache_default / "music"),
             "keywords": str(data / "keywords"),
             "mcp": str(data / "mcp_plugins"),
@@ -240,20 +240,20 @@ class SettingsSystemOptionsMixin:
             return ""
 
     def _get_pathHints(self) -> str:
-        """只读：数据根与操作提示（默认路径已显示在各输入框占位符）."""
+        """Read-only: data root and usage hints (default paths are shown as placeholders in each input box)."""
         try:
             from src.utils.resource_finder import get_user_data_dir
 
             data = get_user_data_dir()
             return (
-                f"数据根(配置固定在此): {data}\n"
-                f"留空=默认；点「选择」用系统对话框；保存后下次启动迁移"
+                f"Data Root (config is fixed here): {data}\n"
+                f'Leave empty = default; click "Browse" for system dialog; migrates on next startup after saving'
             )
         except Exception:
-            return "留空使用默认路径；保存后下次启动迁移"
+            return "Leave empty to use default path; migrates on next startup after saving"
 
     def _browse_directory(self, title: str, current: str, which: str = "") -> str:
-        """打开系统文件夹选择对话框；取消返回空串（调用方勿覆盖）."""
+        """Open system folder selection dialog; returns empty string if cancelled (caller should not overwrite)."""
         from pathlib import Path
 
         from PySide6.QtWidgets import QApplication, QFileDialog
@@ -280,4 +280,3 @@ class SettingsSystemOptionsMixin:
             | QFileDialog.Option.DontResolveSymlinks,
         )
         return path or ""
-
