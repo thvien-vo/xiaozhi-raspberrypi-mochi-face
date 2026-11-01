@@ -290,6 +290,7 @@ def face_window(qt_app):
     context.setContextProperty("eventBridge", None)
     context.setContextProperty("mainModel", main_model)
     context.setContextProperty("faceModel", model)
+    context.setContextProperty("cameraPreview", None)
     engine.addImportPath(str(QML_DIR))
     engine.load(str(QML_DIR / "face_main.qml"))
     roots = engine.rootObjects()

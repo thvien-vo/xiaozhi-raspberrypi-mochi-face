@@ -3,3 +3,4 @@ Eye 1.0 Eye.qml
 FaceOverlays 1.0 FaceOverlays.qml
 SpeechText 1.0 SpeechText.qml
 FaceControls 1.0 FaceControls.qml
+CameraPreview 1.0 CameraPreview.qml

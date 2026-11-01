@@ -8,7 +8,8 @@ from src.core.task_manager import TaskManager
 from src.logging import get_logger
 from src.ui.gui.main_controller import MainWindowController
 from src.ui.gui.qml_host import QmlAppHost
-from src.ui.gui.services import TrayService
+from src.ui.gui.services import CameraPreviewService, TrayService
+from src.ui.gui.services.camera_preview import PROVIDER_ID
 from src.ui.gui.settings_controller import SettingsController
 from src.ui.shared.bridge import EventBridge
 
@@ -40,6 +41,7 @@ class GuiViewManager(QObject):
         self._settings = SettingsController(event_bus, self._tasks, self._bridge)
         self._tray_service: TrayService | None = None
         self._cursor_hidden = False
+        self._preview: CameraPreviewService | None = None
 
         self._event_bus.on(Events.UI_TOGGLE_WINDOW, self._on_toggle_window)
         logger.debug("GuiViewManager: Subscribed to window toggle event")
@@ -60,9 +62,14 @@ class GuiViewManager(QObject):
                 "settingsModel": self._settings.ensure_model(),
                 "emotionService": self._main.emotion_service,
                 "faceModel": self._main.face_model,
+                "cameraPreview": self._preview,
             }
         )
+        if self._preview:
+            self._host.add_image_provider(PROVIDER_ID, self._preview.provider)
         self._load_window()
+        if self._preview:
+            self._preview.start()
         # Show without stealing focus on cold start, preventing macOS from switching out of other fullscreen app Spaces
         self._host.show_root(activate=False)
         self._setup_tray()
@@ -73,6 +80,8 @@ class GuiViewManager(QObject):
         logger.info("GuiViewManager: Closing...")
         self._running = False
         self._main.face_model.stop()
+        if self._preview:
+            self._preview.stop()
         if self._cursor_hidden:
             QGuiApplication.restoreOverrideCursor()
             self._cursor_hidden = False
@@ -80,6 +89,15 @@ class GuiViewManager(QObject):
             self._tray_service.hide()
         self._host.shutdown()
         logger.info("GuiViewManager: Closed")
+
+    def attach_vision(self, runtime) -> bool:
+        """Create the camera preview. Returns whether detection must run continuously."""
+        settings = runtime.settings
+        face_style = self._main.face_model.config["style"]
+        if not (settings.enabled and settings.preview.enabled and face_style == "robot"):
+            return False
+        self._preview = CameraPreviewService(runtime)
+        return True
 
     def _load_window(self) -> None:
         """Load the configured face; a broken face falls back to the GIF window."""

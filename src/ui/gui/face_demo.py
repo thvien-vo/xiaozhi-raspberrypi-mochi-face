@@ -9,7 +9,11 @@ from PySide6.QtWidgets import QApplication
 from src.logging import get_logger
 from src.ui.gui.models import FaceModel, MainModel, load_face_config
 from src.ui.gui.qml_host import QmlAppHost
-from src.ui.gui.services import EmotionService
+from src.ui.gui.services import CameraPreviewService, EmotionService
+from src.ui.gui.services.camera_preview import PROVIDER_ID
+from src.vision.camera_service import CameraService, TestPatternSource
+from src.vision.runtime import VisionRuntime
+from src.vision.settings import load_vision_settings
 
 logger = get_logger()
 
@@ -77,7 +81,20 @@ class _DemoRunner:
         self._index = (self._index + 1) % len(self._steps)
 
 
-def run_face_demo(step_ms: int = 2500) -> int:
+def _create_vision(camera_mode: str) -> VisionRuntime | None:
+    """Vision for the demo: camera_mode is off, test-pattern or real."""
+    if camera_mode == "off":
+        return None
+    settings = load_vision_settings()
+    camera = None
+    if camera_mode == "test-pattern":
+        camera = CameraService(source_factory=lambda cfg: TestPatternSource())
+    runtime = VisionRuntime(settings, camera)
+    runtime.set_keep_alive(True)
+    return runtime
+
+
+def run_face_demo(step_ms: int = 2500, camera_mode: str = "off") -> int:
     """Open the face window and run the demo until the window closes."""
     app = QApplication.instance() or QApplication(sys.argv)
 
@@ -86,11 +103,21 @@ def run_face_demo(step_ms: int = 2500) -> int:
     face_config.update(sleepyAfterS=0, asleepAfterS=0)
     face_model = FaceModel(face_config)
 
+    vision = _create_vision(camera_mode)
+    preview = CameraPreviewService(vision) if vision else None
+
     host = QmlAppHost()
     host.create_engine()
     host.inject_context(
-        {"eventBridge": None, "mainModel": MainModel(), "faceModel": face_model}
+        {
+            "eventBridge": None,
+            "mainModel": MainModel(),
+            "faceModel": face_model,
+            "cameraPreview": preview,
+        }
     )
+    if preview:
+        host.add_image_provider(PROVIDER_ID, preview.provider)
     host.load_main("face_main.qml")
     host.set_fullscreen(face_config["fullscreen"])
     if face_config["fullscreen"]:
@@ -99,4 +126,11 @@ def run_face_demo(step_ms: int = 2500) -> int:
 
     runner = _DemoRunner(face_model, step_ms)
     runner.start()
-    return app.exec()
+    if vision:
+        vision.start()
+        preview.start()
+    exit_code = app.exec()
+    if vision:
+        preview.stop()
+        vision.shutdown()
+    return exit_code

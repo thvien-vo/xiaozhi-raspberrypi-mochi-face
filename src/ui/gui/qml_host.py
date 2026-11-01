@@ -74,6 +74,11 @@ class QmlAppHost:
             ctx.setContextProperty(name, obj)
         logger.debug("QmlAppHost: Injected QML context %s", list(properties))
 
+    def add_image_provider(self, provider_id: str, provider) -> None:
+        if not self._engine:
+            raise RuntimeError("QML engine not created")
+        self._engine.addImageProvider(provider_id, provider)
+
     def load_main(self, filename: str = "main.qml") -> None:
         if not self._engine:
             raise RuntimeError("QML engine not created")

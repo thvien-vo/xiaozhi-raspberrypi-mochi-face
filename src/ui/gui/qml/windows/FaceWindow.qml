@@ -78,6 +78,17 @@ Window {
         onFaded: faceModel.clearText()
     }
 
+    Loader {
+        anchors.fill: parent
+        active: cameraPreview !== null
+        sourceComponent: Item {
+            CameraPreview {
+                preview: cameraPreview
+                unit: root.unit
+            }
+        }
+    }
+
     TapHandler {
         onTapped: root.onFaceTapped()
     }

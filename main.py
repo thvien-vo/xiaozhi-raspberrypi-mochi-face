@@ -60,6 +60,12 @@ def parse_args():
         metavar="MS",
         help="Time per step in --face-demo (default: 2500)",
     )
+    parser.add_argument(
+        "--demo-camera",
+        choices=["off", "test-pattern", "real"],
+        default="off",
+        help="Camera preview in --face-demo: off, synthetic frames, or the real camera",
+    )
     return parser.parse_args()
 
 
@@ -149,7 +155,7 @@ if __name__ == "__main__":
         if args.face_demo:
             from src.ui.gui.face_demo import run_face_demo
 
-            exit_code = run_face_demo(step_ms=args.demo_step_ms)
+            exit_code = run_face_demo(args.demo_step_ms, args.demo_camera)
             sys.exit(exit_code)
 
         # Detect Wayland environment and configure Qt platform plugin

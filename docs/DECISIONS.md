@@ -94,6 +94,24 @@ image. If the camera is mounted so this feels reversed, that is a change to make
 **`.python-version` is now 3.12.** It said 3.10, which would make a plain `uv sync` build
 the wrong environment.
 
+## Preview
+
+**`QQuickImageProvider`, not a video sink.** `QVideoSink` would bring in QtMultimedia for a
+240 px picture. A background thread scales and annotates each frame, and the GUI thread
+only swaps in the finished image. Measured with the full pipeline running on the laptop,
+a 5 ms GUI timer stayed under 11 ms at p99.
+
+**Boxes are drawn into the frame** instead of as QML items, so no items are created or
+destroyed per detection, and boxes always line up with the frame they are shown on. Boxes
+older than 1.5 s are dropped so they cannot linger on a changed scene.
+
+**The overlay hides when vision fails**, as requested, including when the model is missing
+even though the camera works. The camera is released in that case rather than held open
+with the indicator light on and nothing using it.
+
+**The GIF window has no preview.** It is a fallback, and it is not sized for an overlay.
+Detection stays on demand there.
+
 ## Dependencies and environment
 
 **`vl_camera.py` no longer imports `httpx`.** `openai` 3.x dropped `httpx` as a
