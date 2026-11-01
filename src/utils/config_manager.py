@@ -103,6 +103,31 @@ class ConfigManager:
             "VLapi_key": "",
             "models": "glm-4v-plus",
         },
+        # GUI face (see docs/DECISIONS.md)
+        "FACE": {
+            # robot: code-drawn animated eyes; gif: classic window with assets/emojis
+            "STYLE": "robot",
+            # Kiosk mode: fullscreen, no title bar or controls, hidden cursor
+            "FULLSCREEN": False,
+            "WINDOW_WIDTH": 1024,
+            "WINDOW_HEIGHT": 600,
+            "ESC_TO_EXIT": True,
+            # Show the recognized user speech in a dimmer style above the assistant text
+            "SHOW_USER_TEXT": True,
+            "TYPEWRITER_CHARS_PER_S": 28,
+            # How long finished text stays before fading out
+            "TEXT_HOLD_MS": 1800,
+            # Stop showing "thinking" if no reply arrives within this time
+            "THINKING_TIMEOUT_S": 15,
+            # Seconds of inactivity while idle; 0 disables the transition
+            "SLEEPY_AFTER_S": 90,
+            "ASLEEP_AFTER_S": 240,
+            "BLINK_MIN_MS": 2000,
+            "BLINK_MAX_MS": 6000,
+            "DOUBLE_BLINK_CHANCE": 0.2,
+            # Small frames-per-second readout, for checking performance on the Pi
+            "SHOW_FPS": False,
+        },
         "SHORTCUTS": {
             "ENABLED": True,
             "MANUAL_PRESS": {"modifier": "ctrl", "key": "j", "description": "Hold to Talk"},

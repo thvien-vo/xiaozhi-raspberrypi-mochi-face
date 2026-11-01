@@ -48,6 +48,18 @@ def parse_args():
         action="store_true",
         help="Skip activation flow and start the application directly (for debugging only)",
     )
+    parser.add_argument(
+        "--face-demo",
+        action="store_true",
+        help="Cycle the robot face through all emotions and states, no server needed",
+    )
+    parser.add_argument(
+        "--demo-step-ms",
+        type=int,
+        default=2500,
+        metavar="MS",
+        help="Time per step in --face-demo (default: 2500)",
+    )
     return parser.parse_args()
 
 
@@ -133,6 +145,12 @@ if __name__ == "__main__":
     try:
         # Use already parsed arguments
         args = _args
+
+        if args.face_demo:
+            from src.ui.gui.face_demo import run_face_demo
+
+            exit_code = run_face_demo(step_ms=args.demo_step_ms)
+            sys.exit(exit_code)
 
         # Detect Wayland environment and configure Qt platform plugin
         import os

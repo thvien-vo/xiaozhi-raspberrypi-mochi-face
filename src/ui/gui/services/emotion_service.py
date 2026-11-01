@@ -17,6 +17,37 @@ class EmotionService(QObject):
 
     EXTENSIONS = (".gif", ".png", ".jpg", ".jpeg", ".webp")
 
+    # Emotion names the server can send; each has an asset and a robot face preset
+    KNOWN_EMOTIONS = (
+        "angry",
+        "confident",
+        "confused",
+        "cool",
+        "crying",
+        "delicious",
+        "embarrassed",
+        "funny",
+        "happy",
+        "kissy",
+        "laughing",
+        "loving",
+        "neutral",
+        "relaxed",
+        "sad",
+        "shocked",
+        "silly",
+        "sleepy",
+        "surprised",
+        "thinking",
+        "winking",
+    )
+
+    @classmethod
+    def normalize_emotion(cls, emotion_name: str) -> str:
+        """Return a known emotion name; anything unknown becomes neutral."""
+        name = str(emotion_name or "").strip().lower()
+        return name if name in cls.KNOWN_EMOTIONS else "neutral"
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self._cache: dict[str, str] = {}
