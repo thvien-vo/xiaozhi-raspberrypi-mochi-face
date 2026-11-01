@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Xiaozhi robot face
+Comment=Starts xiaozhi.service with the display settings of this desktop session
+Exec=sh -c "systemctl --user import-environment WAYLAND_DISPLAY DISPLAY XDG_SESSION_TYPE XDG_CURRENT_DESKTOP && systemctl --user restart xiaozhi.service"
+Terminal=false
+X-GNOME-Autostart-enabled=true

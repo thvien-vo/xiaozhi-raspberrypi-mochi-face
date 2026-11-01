@@ -34,6 +34,11 @@ Rectangle {
         }
     }
 
+    // Clicks between the buttons must not reach the face behind the bar
+    MouseArea {
+        anchors.fill: parent
+    }
+
     RowLayout {
         anchors.fill: parent
         anchors.margins: 9

@@ -38,7 +38,7 @@ Window {
 
     Shortcut {
         sequence: "Esc"
-        enabled: root.faceConfig.escToExit
+        enabled: root.kiosk && root.faceConfig.escToExit
         context: Qt.ApplicationShortcut
         onActivated: root.requestQuit()
     }

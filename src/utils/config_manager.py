@@ -111,7 +111,7 @@ class ConfigManager:
             "FULLSCREEN": False,
             "WINDOW_WIDTH": 1024,
             "WINDOW_HEIGHT": 600,
-            "ESC_TO_EXIT": True,
+            "ESC_TO_EXIT": True,  # Kiosk mode only
             # Show the recognized user speech in a dimmer style above the assistant text
             "SHOW_USER_TEXT": True,
             "TYPEWRITER_CHARS_PER_S": 28,

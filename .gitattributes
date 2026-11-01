@@ -1,0 +1,2 @@
+# Bash and systemd on the Pi cannot read CRLF, including checkouts made on Windows
+deploy/raspberry-pi/** text eol=lf
