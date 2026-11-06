@@ -22,3 +22,9 @@ Already present before this work and left alone: lingering for `admin`
 (`loginctl enable-linger`), which is what lets the user services start at boot.
 
 The laptop and the Pi use the same device identity. Do not run both at once.
+
+## Bản sửa lỗi chữ và âm thanh (không thêm file hệ thống)
+
+Chỉ đổi code trong `~/Xiaozhi_RaspberryPi` (`src/ui/gui/fonts.py`, `main.py`, `face_demo.py`,
+`src/audio_codecs/audio_converter.py`). Không thêm file nào ngoài các mục ở bảng trên. Ảnh chụp
+framebuffer dùng file tạm trong `/tmp`, đã xóa. Để quay lại, `git checkout` các file đó.
