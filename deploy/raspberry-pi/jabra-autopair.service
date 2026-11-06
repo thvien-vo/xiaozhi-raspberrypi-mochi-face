@@ -1,0 +1,15 @@
+# Pairs and connects a Bluetooth Jabra automatically. Installed by install-autostart.sh.
+[Unit]
+Description=Auto-pair a Bluetooth Jabra speakerphone
+
+[Service]
+Type=simple
+ExecStart=@APP_DIR@/deploy/raspberry-pi/jabra-autopair.sh
+Restart=always
+RestartSec=10
+StandardOutput=null
+LogRateLimitIntervalSec=60
+LogRateLimitBurst=20
+
+[Install]
+WantedBy=default.target
