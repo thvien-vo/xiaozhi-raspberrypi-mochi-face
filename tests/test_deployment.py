@@ -192,3 +192,25 @@ def test_camera_glob_resolves_to_first_match(tmp_path):
     assert resolve_device_path(str(tmp_path / "none-*")) == str(tmp_path / "none-*")
     assert resolve_device_path(2) == 2
     assert resolve_device_path("/dev/video0") == "/dev/video0"
+
+
+def test_forced_output_sample_rate_overrides_what_the_device_reports(monkeypatch):
+    monkeypatch.setattr(
+        audio_device, "find_device_by_name", lambda kind, name: device("Jabra: Audio")
+    )
+
+    class Forced(StubConfig):
+        def get_config(self, path, default=None):
+            if path == "AUDIO_DEVICES.force_output_sample_rate":
+                return 48000
+            return super().get_config(path, default)
+
+    config = Forced({"input_device_name": "Jabra", "output_device_name": "Jabra"})
+    result = AudioDeviceManager(config).load_or_detect_devices()
+    assert result.output_sample_rate == 48000
+    assert result.input_sample_rate == 48000  # Input untouched: the stub reports 48000
+
+
+def test_pi_preset_forces_48k_playback_for_the_jabra():
+    preset = json.loads(PRESET.read_text(encoding="utf-8"))
+    assert preset["AUDIO_DEVICES"]["force_output_sample_rate"] == 48000

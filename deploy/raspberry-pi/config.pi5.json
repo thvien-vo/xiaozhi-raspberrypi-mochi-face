@@ -15,7 +15,8 @@
   },
   "AUDIO_DEVICES": {
     "input_device_name": "Jabra",
-    "output_device_name": "Jabra"
+    "output_device_name": "Jabra",
+    "force_output_sample_rate": 48000
   },
   "CAMERA": {
     "backend": "opencv",

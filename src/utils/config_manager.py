@@ -215,6 +215,7 @@ class ConfigManager:
             "output_sample_rate": None,
             "input_channels": None,
             "output_channels": None,
+            "force_output_sample_rate": None,  # Play at this rate whatever the device reports (e.g. 48000)
             "opus_output_sample_rate": 24000,  # Opus decode sample rate: 24000 (official) or 16000 (third-party)
             "frame_duration": 20,  # Audio frame duration (ms): 20 (low latency) / 40 (balanced) / 60 (low CPU)
         },

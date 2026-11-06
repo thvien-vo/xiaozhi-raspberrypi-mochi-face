@@ -89,6 +89,16 @@ class AudioDeviceManager:
 
         device_input_sample_rate = input_info["sample_rate"]
         device_output_sample_rate = output_info["sample_rate"]
+        # Some USB speakerphones list 8/16 kHz but really clock playback at 48 kHz (a
+        # Jabra Speak 510 plays 16 kHz audio three times too fast on a Pi 5), which starves
+        # the output FIFO and sounds like harsh stuttering. Let the config force a rate.
+        forced_rate = self.config.get_config("AUDIO_DEVICES.force_output_sample_rate")
+        if forced_rate:
+            logger.info(
+                f"Output sample rate forced to {forced_rate}Hz "
+                f"(device reports {device_output_sample_rate}Hz)"
+            )
+            device_output_sample_rate = int(forced_rate)
 
         logger.info(
             f"Using input device: {input_info['name']} | "
