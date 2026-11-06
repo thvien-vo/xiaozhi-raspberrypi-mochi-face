@@ -154,3 +154,22 @@ class TestMixing:
         codec._tts_fifo.clear()
         # Clearing TTS does not affect music
         assert codec._music_fifo.size == n
+
+
+def test_output_resampling_does_not_fold_high_frequencies_into_the_audio_band():
+    import numpy as np
+
+    from src.audio_codecs.audio_converter import AudioConverter
+
+    converter = AudioConverter()
+    converter.setup_output_converter(24000, 16000, from_channels=1, to_channels=1)
+    # 10 kHz is above the 8 kHz Nyquist of 16 kHz output: it must be removed, not aliased
+    t = np.arange(24000) / 24000
+    tone = (0.5 * np.sin(2 * np.pi * 10000 * t)).astype(np.float32)
+    chunks = []
+    for start in range(0, len(tone), 480):
+        out = converter.convert_output(tone[start : start + 480], 320)
+        if out is not None:
+            chunks.append(out)
+    audio = np.concatenate(chunks)[4000:]
+    assert np.sqrt(np.mean(audio**2)) < 0.01
