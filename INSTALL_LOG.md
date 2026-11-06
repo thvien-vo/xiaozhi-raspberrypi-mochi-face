@@ -28,3 +28,8 @@ The laptop and the Pi use the same device identity. Do not run both at once.
 Chỉ đổi code trong `~/Xiaozhi_RaspberryPi` (`src/ui/gui/fonts.py`, `main.py`, `face_demo.py`,
 `src/audio_codecs/audio_converter.py`). Không thêm file nào ngoài các mục ở bảng trên. Ảnh chụp
 framebuffer dùng file tạm trong `/tmp`, đã xóa. Để quay lại, `git checkout` các file đó.
+
+## Chạm không nghe: bật chế độ auto
+
+Thêm `FACE.AUTO_MODE` (preset Pi: `true`) vào `config.json` của Pi. Gỡ: đặt lại `false` rồi
+`systemctl --user restart xiaozhi`. Không thêm file hệ thống.
