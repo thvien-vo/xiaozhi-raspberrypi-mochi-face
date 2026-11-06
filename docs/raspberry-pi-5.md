@@ -88,6 +88,19 @@ settings, including the device identity, stay as they are.
 
 ## 6. Select the Jabra
 
+`deploy/raspberry-pi/jabra-audio.sh` runs before the app (it is `ExecStartPre` of
+`xiaozhi.service`). It waits up to 120 s for a device whose name contains "Jabra" and prefers
+**USB** over Bluetooth. For USB it writes `~/.config/alsa/asoundrc` so the ALSA default is the
+Jabra card, and also calls `wpctl set-default` if PipeWire is installed. The choice is recorded
+in `~/.local/state/xiaozhi/audio-selected`. If neither is found the script exits and the app
+uses the system default.
+
+Bluetooth is the fallback. `jabra-autopair.service` scans, pairs, trusts and connects a device
+named "Jabra" with `bluetoothctl`. Audio over Bluetooth also needs PipeWire (or PulseAudio),
+which Raspberry Pi OS Lite does not install: `sudo apt install pipewire wireplumber
+libspa-0.2-bluetooth pipewire-pulse`. A Bluetooth microphone usually works only in the
+low-quality HFP profile (8 or 16 kHz mono), so prefer the USB cable.
+
 Plug it in and list the devices:
 
 ```bash
@@ -138,6 +151,9 @@ check, and hold up something with writing on it.
 
 ## 8. Set the screen resolution
 
+On a Lite install (no desktop) the app draws straight onto the framebuffer, which takes the
+resolution the screen reports at boot, so plug the Waveshare in before powering on.
+
 The kiosk window fills whatever resolution the screen reports, and the face scales to fit.
 To force 1024x600, add this to the single line in `/boot/firmware/cmdline.txt`, then reboot:
 
@@ -170,7 +186,20 @@ If the second benchmark is faster, set `VISION.BACKEND` to `onnxruntime`.
 
 ## 10. Start on boot
 
-Log in to the desktop automatically, then install the service:
+`install-autostart.sh` installs and enables `xiaozhi.service` and `jabra-autopair.service` as
+systemd user services. They start at boot, with no login, because lingering is on for the
+user (`loginctl show-user $USER -p Linger`; if it says `no`, run `sudo loginctl enable-linger
+$USER` once). `run-xiaozhi.sh` waits until an HDMI port reports a connected display, then:
+
+- with a Wayland desktop it uses it;
+- without one (Raspberry Pi OS Lite, as on the test Pi) it uses Qt's `linuxfb` platform with
+  the software Qt Quick renderer on `/dev/fb0`, and Qt's evdev plugin reads the touch screen.
+  The PySide6 wheel has no KMS/eglfs support, so this needs no compositor and no root.
+
+If `libfontconfig1` or `libfreetype6` are missing and there is no sudo, the installer
+unpacks them under `~/.local/xiaozhi-libs` (`install-user-libs.sh`).
+
+With a desktop and sudo you can instead log in automatically and use the desktop session:
 
 ```bash
 sudo raspi-config nonint do_boot_behaviour B4
@@ -178,8 +207,7 @@ bash deploy/raspberry-pi/install-autostart.sh
 sudo reboot
 ```
 
-The desktop session starts `xiaozhi.service`, which restarts the app after a crash. Pressing
-Esc is a deliberate exit, so it stays closed until the next boot or until you start it:
+The service uses `Restart=always` (5 s), so the app also comes back after Esc. Stop it by hand:
 
 ```bash
 systemctl --user start xiaozhi.service
@@ -188,6 +216,17 @@ journalctl --user -u xiaozhi.service -f
 ```
 
 Application logs are in `~/.local/share/py-xiaozhi/logs/`.
+
+## Hands-free use
+
+The preset turns the wake word off (`WAKE_WORD_OPTIONS.USE_WAKE_WORD`): the bundled model
+listens for the Chinese word "Sophia" and does not suit Vietnamese. Instead, tap the screen
+once to start a conversation. Because software AEC is off, the app uses `auto_stop`
+listening: it keeps listening after each reply until you tap again to stop. Touch needs no
+calibration on a single screen, Qt maps the panel to the whole display.
+
+The device identity (`config.json`, `efuse.json`) was copied from the laptop, so the laptop
+and the Pi are the same device to the server. Do not run both at once.
 
 ## Tuning
 
