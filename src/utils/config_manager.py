@@ -112,6 +112,8 @@ class ConfigManager:
             "STYLE": "robot",
             # Kiosk mode: fullscreen, no title bar or controls, hidden cursor
             "FULLSCREEN": False,
+            # Start in auto mode (tap to start/stop a continuously listening conversation)
+            "AUTO_MODE": False,
             "WINDOW_WIDTH": 1024,
             "WINDOW_HEIGHT": 600,
             "ESC_TO_EXIT": True,  # Kiosk mode only

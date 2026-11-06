@@ -43,6 +43,13 @@ class SessionActions:
         return self._manual_recording
 
     def subscribe(self, bus) -> None:
+        # Kiosk robots start in auto mode: one tap starts a conversation that keeps
+        # listening, instead of the press-to-talk toggle (which a single tap would start
+        # and stop at once, sending no audio).
+        if self._ctx.get_config().get_config("FACE.AUTO_MODE", False):
+            self._auto_mode = True
+            self._ui.set_auto_mode(True)
+            logger.info("Auto mode enabled by FACE.AUTO_MODE")
         bus.on(Events.UI_BUTTON_PRESS, self.press)
         bus.on(Events.UI_BUTTON_RELEASE, self.release)
         bus.on(Events.UI_MANUAL_TOGGLE, self.manual_toggle)

@@ -44,6 +44,7 @@ def test_pi_preset_only_uses_known_settings():
 def test_pi_preset_matches_requirements():
     preset = json.loads(PRESET.read_text(encoding="utf-8"))
     assert preset["FACE"]["FULLSCREEN"] is True
+    assert preset["FACE"]["AUTO_MODE"] is True  # One tap, not press-to-talk
     assert 1 <= preset["WAKE_WORD_OPTIONS"]["NUM_THREADS"] <= 2
     assert preset["VISION"]["NUM_THREADS"] == 2
     assert preset["AEC_OPTIONS"]["ENABLED"] is False
