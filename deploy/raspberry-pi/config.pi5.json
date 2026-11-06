@@ -6,7 +6,8 @@
     "WINDOW_HEIGHT": 600
   },
   "WAKE_WORD_OPTIONS": {
-    "NUM_THREADS": 2
+    "USE_WAKE_WORD": false,
+    "NUM_THREADS": 1
   },
   "AEC_OPTIONS": {
     "ENABLED": false
@@ -19,7 +20,9 @@
     "backend": "opencv",
     "fps": 15,
     "frame_width": 640,
-    "frame_height": 480
+    "frame_height": 480,
+    "device": "/dev/v4l/by-id/*-video-index0",
+    "flip": "horizontal"
   },
   "VISION": {
     "ENABLED": true,
@@ -33,5 +36,10 @@
       "WIDTH": 240,
       "FPS": 12.0
     }
+  },
+  "LOGGING": {
+    "ENABLE_CONSOLE": false,
+    "MAX_BYTES": 5242880,
+    "BACKUP_COUNT": 3
   }
 }
