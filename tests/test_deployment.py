@@ -47,6 +47,11 @@ def test_pi_preset_matches_requirements():
     assert 1 <= preset["WAKE_WORD_OPTIONS"]["NUM_THREADS"] <= 2
     assert preset["VISION"]["NUM_THREADS"] == 2
     assert preset["AEC_OPTIONS"]["ENABLED"] is False
+    assert preset["WAKE_WORD_OPTIONS"]["USE_WAKE_WORD"] is False
+    assert preset["CAMERA"]["flip"] == "horizontal"
+    assert "*" in preset["CAMERA"]["device"]  # Stable path, not a /dev/video number
+    log = preset["LOGGING"]
+    assert 2 * (log["BACKUP_COUNT"] + 1) * log["MAX_BYTES"] < 50 * 1024 * 1024
 
 
 def run_preset(data_dir, *args):
@@ -100,9 +105,12 @@ def test_service_file_is_valid_and_restarts_on_crash():
     parser.optionxform = str
     parser.read_string((PI_DIR / "xiaozhi.service").read_text(encoding="utf-8"))
     service = parser["Service"]
-    assert service["Restart"] == "on-failure"
+    assert service["Restart"] == "always"
+    assert service["RestartSec"] == "5"
     assert service["WorkingDirectory"] == "@APP_DIR@"
-    assert "main.py --mode gui" in service["ExecStart"]
+    assert "run-xiaozhi.sh" in service["ExecStart"]
+    assert "main.py --mode gui" in (PI_DIR / "run-xiaozhi.sh").read_text(encoding="utf-8")
+    assert parser["Install"]["WantedBy"] == "default.target"
     # An unprivileged systemd user service cannot raise its priority and fails to start
     assert not service.get("Nice", "0").startswith("-")
 
@@ -159,3 +167,27 @@ def test_first_run_saves_detected_names(monkeypatch):
     AudioDeviceManager(config).load_or_detect_devices()
     assert config.writes["AUDIO_DEVICES.input_device_name"] == "Built-in"
     assert config.writes["AUDIO_DEVICES.output_device_name"] == "Built-in"
+
+
+def test_shell_scripts_have_valid_syntax():
+    import shutil
+
+    bash = shutil.which("bash")
+    if bash is None:
+        return
+    for script in PI_DIR.glob("*.sh"):
+        result = subprocess.run([bash, "-n", str(script)], capture_output=True, text=True)
+        assert result.returncode == 0, f"{script.name}: {result.stderr}"
+
+
+def test_camera_glob_resolves_to_first_match(tmp_path):
+    from src.mcp.tools.camera.capture_backend import resolve_device_path
+
+    (tmp_path / "usb-B-video-index0").touch()
+    (tmp_path / "usb-A-video-index0").touch()
+    pattern = str(tmp_path / "*-video-index0")
+    assert resolve_device_path(pattern) == str(tmp_path / "usb-A-video-index0")
+    # Nothing plugged in: keep the pattern so opening fails and the service retries
+    assert resolve_device_path(str(tmp_path / "none-*")) == str(tmp_path / "none-*")
+    assert resolve_device_path(2) == 2
+    assert resolve_device_path("/dev/video0") == "/dev/video0"
