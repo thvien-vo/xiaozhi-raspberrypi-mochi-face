@@ -6,6 +6,8 @@ from PySide6.QtCore import QTimer
 from PySide6.QtGui import QCursor, QGuiApplication, Qt
 from PySide6.QtWidgets import QApplication
 
+from src.ui.gui.fonts import ensure_default_font
+
 from src.logging import get_logger
 from src.ui.gui.models import FaceModel, MainModel, load_face_config
 from src.ui.gui.qml_host import QmlAppHost
@@ -97,6 +99,7 @@ def _create_vision(camera_mode: str) -> VisionRuntime | None:
 def run_face_demo(step_ms: int = 2500, camera_mode: str = "off") -> int:
     """Open the face window and run the demo until the window closes."""
     app = QApplication.instance() or QApplication(sys.argv)
+    ensure_default_font()
 
     face_config = load_face_config()
     # The demo drives activity itself, so inactivity timers stay off

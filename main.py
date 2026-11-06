@@ -203,6 +203,9 @@ if __name__ == "__main__":
 
             qt_app = QApplication.instance() or QApplication(sys.argv)
             qt_app.setQuitOnLastWindowClosed(False)
+            from src.ui.gui.fonts import ensure_default_font
+
+            ensure_default_font()
 
             loop = qasync.QEventLoop(qt_app)
             asyncio.set_event_loop(loop)
