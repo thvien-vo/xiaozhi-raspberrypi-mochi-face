@@ -1,16 +1,28 @@
 # Fullscreen robot face. Installed by install-autostart.sh, which fills in @APP_DIR@.
-# Started from the desktop session (xiaozhi-autostart.desktop) once the display exists,
-# so there is deliberately no [Install] section.
+# It runs from the user manager, which starts at boot because lingering is enabled
+# (loginctl enable-linger), so no desktop login is needed. On a machine with a Wayland
+# desktop, xiaozhi-autostart.desktop restarts it with that session's display settings.
 [Unit]
 Description=Xiaozhi robot face
-After=pipewire.service wireplumber.service
-StartLimitIntervalSec=300
-StartLimitBurst=10
+StartLimitIntervalSec=0
 
 [Service]
 Type=simple
 WorkingDirectory=@APP_DIR@
-ExecStart=@APP_DIR@/.venv/bin/python main.py --mode gui
-# Restart after a crash, but stay closed after a deliberate exit (Esc)
-Restart=on-failure
-RestartSec=3
+# Pick the Jabra first (waits up to 120 s). A failure here must not block the app.
+ExecStartPre=-@APP_DIR@/deploy/raspberry-pi/jabra-audio.sh
+ExecStart=@APP_DIR@/deploy/raspberry-pi/run-xiaozhi.sh
+Restart=always
+RestartSec=5
+# Covers ExecStartPre (up to 120 s of waiting for the speaker)
+TimeoutStartSec=200
+Environment=PYTHONUNBUFFERED=1
+# The app writes its own rotating log files (see LOGGING in config.pi5.json). Keep the
+# journal small so the SSD is not written twice.
+StandardOutput=null
+StandardError=journal
+LogRateLimitIntervalSec=30
+LogRateLimitBurst=100
+
+[Install]
+WantedBy=default.target
