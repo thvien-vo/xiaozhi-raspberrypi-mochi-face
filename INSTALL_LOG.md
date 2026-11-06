@@ -33,3 +33,9 @@ framebuffer dùng file tạm trong `/tmp`, đã xóa. Để quay lại, `git che
 
 Thêm `FACE.AUTO_MODE` (preset Pi: `true`) vào `config.json` của Pi. Gỡ: đặt lại `false` rồi
 `systemctl --user restart xiaozhi`. Không thêm file hệ thống.
+
+## Tiếng rè: Jabra phát nhanh gấp 3 ở 16 kHz
+
+Thêm `AUDIO_DEVICES.force_output_sample_rate` = 48000 vào `config.json` của Pi (gỡ: đặt lại
+`null`, restart dịch vụ). Không thêm file hệ thống. File tạm `/tmp/harness.py`, `/tmp/*.wav`
+đã xóa.
