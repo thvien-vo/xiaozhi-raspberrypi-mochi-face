@@ -129,9 +129,27 @@ def _opencv_open_kwargs():
     return {}
 
 
+def resolve_device_path(source: Any) -> Any:
+    """Expand a glob such as ``/dev/v4l/by-id/*-video-index0`` to the first match.
+
+    Stable USB paths survive reboots and replugging, unlike ``/dev/video<N>``. Anything
+    that is not a glob is returned unchanged; with no match the pattern is returned as
+    is, so opening fails and the caller retries later instead of crashing.
+    """
+    if isinstance(source, str) and any(ch in source for ch in "*?["):
+        import glob
+
+        matches = sorted(glob.glob(source))
+        if matches:
+            return matches[0]
+    return source
+
+
 def _open_capture(source: Any):
-    """Open VideoCapture; source is an int index or device path string."""
+    """Open VideoCapture; source is an int index or device path string (or a glob)."""
     import cv2
+
+    source = resolve_device_path(source)
 
     kwargs = _opencv_open_kwargs()
     if kwargs:
