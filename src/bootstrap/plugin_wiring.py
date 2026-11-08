@@ -101,14 +101,21 @@ async def setup_plugins(
     )
     vision_plugin = VisionPlugin(container.vision)
 
-    container.plugins.register(
+    plugins = [
         mcp_plugin,
         audio_plugin,
         wake_word_plugin,
         ui_plugin,
         vision_plugin,
         shortcuts_plugin,
-    )
+    ]
+    # Robot kiosk: keep listening whatever stops it (needs the UI session actions for taps)
+    if container.config.get_config("FACE.ALWAYS_LISTEN", False):
+        from src.plugins.always_listen import AlwaysListenPlugin
+
+        plugins.append(AlwaysListenPlugin())
+
+    container.plugins.register(*plugins)
 
     await container.plugins.setup_all(ctx, cmd)
 

@@ -114,6 +114,10 @@ class ConfigManager:
             "FULLSCREEN": False,
             # Start in auto mode (tap to start/stop a continuously listening conversation)
             "AUTO_MODE": False,
+            # Never stop listening: start on launch, resume after every reply and after any
+            # disconnect (with backoff); a tap interrupts speech instead of ending the chat.
+            # Implies AUTO_MODE.
+            "ALWAYS_LISTEN": False,
             "WINDOW_WIDTH": 1024,
             "WINDOW_HEIGHT": 600,
             "ESC_TO_EXIT": True,  # Kiosk mode only
