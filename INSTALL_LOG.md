@@ -39,3 +39,16 @@ Thêm `FACE.AUTO_MODE` (preset Pi: `true`) vào `config.json` của Pi. Gỡ: đ
 Thêm `AUDIO_DEVICES.force_output_sample_rate` = 48000 vào `config.json` của Pi (gỡ: đặt lại
 `null`, restart dịch vụ). Không thêm file hệ thống. File tạm `/tmp/harness.py`, `/tmp/*.wav`
 đã xóa.
+
+## AI luôn nghe: FACE.ALWAYS_LISTEN
+
+Code mới: `src/plugins/always_listen.py` (bộ giám sát, chỉ nạp khi `FACE.ALWAYS_LISTEN` true),
+`src/plugins/ui_session.py` (chạm = ngắt lời, không dừng), `src/bootstrap/session.py` (ngắt lời
+xóa hàng đợi âm thanh). Preset Pi bật `FACE.ALWAYS_LISTEN: true`; mặc định `false` nên laptop
+không đổi. Khi mất nghe, thử lại sau 0,5 s rồi 1, 2, 5, 10, 30 s (giữ 30 s); chỉ reset sau khi
+nghe ổn định 10 s. Nếu transcript giống câu AI vừa nói hoặc đến trong 1 s sau khi AI nói xong,
+log ghi `possible self-hearing` (AEC phần mềm vẫn tắt). Không thêm file hệ thống.
+
+Áp dụng trên Pi: lấy các commit này vào nhánh `pi5-deploy`, chạy
+`python scripts/apply_config_preset.py` (hoặc đặt `FACE.ALWAYS_LISTEN` true trong `config.json`),
+rồi `systemctl --user restart xiaozhi`. Gỡ: đặt lại `false` và restart.
