@@ -29,6 +29,8 @@ class SessionActions:
         self._auto_mode = False
         # Whether a chat session is active in auto mode (button shows "Stop Chat")
         self._auto_session_active = False
+        # Always-listen kiosk: taps never end the conversation (set in subscribe)
+        self._always_listen = False
 
     @property
     def auto_mode(self) -> bool:
@@ -46,7 +48,9 @@ class SessionActions:
         # Kiosk robots start in auto mode: one tap starts a conversation that keeps
         # listening, instead of the press-to-talk toggle (which a single tap would start
         # and stop at once, sending no audio).
-        if self._ctx.get_config().get_config("FACE.AUTO_MODE", False):
+        config = self._ctx.get_config()
+        self._always_listen = bool(config.get_config("FACE.ALWAYS_LISTEN", False))
+        if self._always_listen or config.get_config("FACE.AUTO_MODE", False):
             self._auto_mode = True
             self._ui.set_auto_mode(True)
             logger.info("Auto mode enabled by FACE.AUTO_MODE")
@@ -147,6 +151,8 @@ class SessionActions:
             await self._cmd.stop_listening()
 
     async def auto_toggle(self, _data=None) -> None:
+        if self._always_listen:
+            return  # Always-listen is auto-only; leaving it would stop the listening
         # Only toggle between auto and manual without automatically starting listening
         self._auto_mode = not self._auto_mode
         if not self._auto_mode:
@@ -158,6 +164,9 @@ class SessionActions:
 
     async def auto_session_toggle(self, _data=None) -> None:
         # Primary button: Start Chat / Stop Chat
+        if self._always_listen:
+            await self._tap_interrupt()
+            return
         if self._auto_session_active or self._ctx.is_listening() or self._ctx.is_speaking():
             await self._stop_auto_session()
             return
@@ -165,6 +174,16 @@ class SessionActions:
         if not await self._ensure_listen_session():
             return
         logger.debug("Auto mode: start chat")
+
+    async def _tap_interrupt(self) -> None:
+        """Always-listen tap: cut off the assistant if it is talking, otherwise do nothing.
+
+        abort_speaking keeps continuous listening, so listening resumes right away. If the
+        session is not listening at all, the always-listen supervisor restores it.
+        """
+        if self._ctx.is_speaking():
+            logger.info("Always-listen: tap interrupts speech")
+            await self._cmd.abort_speaking(AbortReason.USER_INTERRUPTION)
 
     async def _stop_auto_session(self) -> None:
         # Stop first to clear keep_listening, then abort to avoid auto-resuming listening after interruption

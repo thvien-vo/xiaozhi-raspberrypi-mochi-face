@@ -343,6 +343,13 @@ class ConversationSession:
                             f"Failed to restart listening after abort: {e}",
                             exc_info=True,
                         )
+            # Drop speech already queued for playback so the interruption is heard at once
+            try:
+                audio_plugin = self.plugins.get_plugin("audio")
+                if audio_plugin and audio_plugin.codec:
+                    await audio_plugin.codec.clear_audio_queue()
+            except Exception as e:
+                logger.warning(f"Failed to clear audio queue after abort: {e}", exc_info=True)
             await self.state.set_device_state(DeviceState.LISTENING)
             self._aborted = False
             self.state.set_aborted(False)
