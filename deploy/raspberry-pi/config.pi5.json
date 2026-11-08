@@ -3,6 +3,7 @@
     "STYLE": "robot",
     "FULLSCREEN": true,
     "AUTO_MODE": true,
+    "ALWAYS_LISTEN": true,
     "WINDOW_WIDTH": 1024,
     "WINDOW_HEIGHT": 600
   },
