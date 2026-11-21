@@ -38,6 +38,7 @@ class CaptureConfig:
     frame_height: int = 480
     warm_up_frames: int = 5
     flip: str = "none"  # none | horizontal | vertical | both
+    fourcc: str = ""  # e.g. "MJPG"; empty keeps the driver default
     jpeg_max_side: int = 320
 
 
@@ -63,6 +64,21 @@ def normalize_flip(value: Any) -> str:
             "Invalid CAMERA.flip %r, using 'none' (valid: %s)", value, ", ".join(FLIP_MODES)
         )
     return "none"
+
+
+def normalize_fourcc(value: Any) -> str:
+    """A 4-character pixel format code, or "" for the driver default."""
+    code = str(value or "").strip().upper()
+    return code if len(code) == 4 else ""
+
+
+def apply_fourcc(capture: Any, fourcc: str) -> None:
+    """Ask a cv2.VideoCapture for a pixel format. Must be set before width/height."""
+    if not fourcc:
+        return
+    import cv2
+
+    capture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter.fourcc(*fourcc))
 
 
 def load_capture_config() -> CaptureConfig:
@@ -101,6 +117,7 @@ def load_capture_config() -> CaptureConfig:
         frame_height=max(1, height),
         warm_up_frames=warm,
         flip=normalize_flip(cfg.get_config("CAMERA.flip", "none")),
+        fourcc=normalize_fourcc(cfg.get_config("CAMERA.fourcc", "")),
     )
 
 
@@ -219,6 +236,7 @@ def _capture_opencv(cfg: CaptureConfig) -> bytes | None:
         return None
 
     try:
+        apply_fourcc(cap, cfg.fourcc)
         # Resolution: best-effort setting, non-fatal if unsupported
         if cfg.frame_width > 0:
             cap.set(cv2.CAP_PROP_FRAME_WIDTH, cfg.frame_width)

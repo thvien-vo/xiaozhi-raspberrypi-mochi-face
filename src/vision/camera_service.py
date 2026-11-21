@@ -84,6 +84,7 @@ class OpenCvSource:
         from src.mcp.tools.camera.capture_backend import (
             _open_capture,
             _silence_opencv_logs,
+            apply_fourcc,
         )
 
         _silence_opencv_logs()
@@ -94,6 +95,7 @@ class OpenCvSource:
             capture.release()
             logger.warning("Camera %r could not be opened", source)
             return False
+        apply_fourcc(capture, getattr(cfg, "fourcc", ""))
         capture.set(cv2.CAP_PROP_FRAME_WIDTH, cfg.frame_width)
         capture.set(cv2.CAP_PROP_FRAME_HEIGHT, cfg.frame_height)
         if self._fps > 0:
