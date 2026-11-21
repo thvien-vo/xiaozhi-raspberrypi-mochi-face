@@ -6,6 +6,7 @@ AudioCodec is published via Events.AUDIO_CODEC_CHANGED without coupling directly
 
 import asyncio
 import os
+import time
 from typing import TYPE_CHECKING
 
 from src.audio_codecs.audio_codec import AudioCodec
@@ -18,6 +19,7 @@ if TYPE_CHECKING:
 logger = get_logger()
 
 MAX_CONCURRENT_AUDIO_SENDS = 4
+AUDIO_RETRY_INTERVAL_S = 3.0
 
 
 class AudioPlugin(Plugin):
@@ -29,6 +31,7 @@ class AudioPlugin(Plugin):
         self.codec: AudioCodec | None = None
         self._send_sem = asyncio.Semaphore(MAX_CONCURRENT_AUDIO_SENDS)
         self._in_silence_period = False
+        self._retry_task = None
 
     async def setup(self, ctx: "PluginContext", cmd: "PluginCommands") -> None:
         await super().setup(ctx, cmd)
@@ -37,24 +40,65 @@ class AudioPlugin(Plugin):
             logger.warning("XIAOZHI_DISABLE_AUDIO=1, running audio plugin in disabled mode")
             return
 
+        retry_s = self._init_retry_s(ctx)
         try:
-            self.codec = AudioCodec()
-            await self.codec.initialize()
-            self.codec.set_encoded_callback(self._on_encoded_audio)
-
-            from src.core.event_bus import Events
-
-            ctx.event_bus.on(Events.CONFIG_CHANGED, self._on_config_changed)
-            ctx.event_bus.on(
-                Events.AUDIO_DEVICES_REFRESH_REQUEST, self._on_devices_refresh_request
-            )
-            # Codec is published in start(): MusicPlayer subscribes to EventBus in McpPlugin.setup
-
+            await self._open_codec(ctx)
         except Exception as e:
-            logger.error(f"Failed to initialize audio plugin: {e}", exc_info=True)
             self.codec = None
+            if retry_s > 0:
+                # Kiosk: keep the app (face, vision) up and keep trying for the audio device
+                logger.warning(
+                    f"AudioPlugin: audio device not ready ({e}); retrying for up to {retry_s:.0f}s"
+                )
+                self._retry_task = cmd.spawn(self._retry_open(ctx, retry_s), name="audio:init-retry")
+                return
+            logger.error(f"Failed to initialize audio plugin: {e}", exc_info=True)
             self.mark_failed()
             raise
+
+    @staticmethod
+    def _init_retry_s(ctx) -> float:
+        try:
+            return float(ctx.get_config().get_config("AUDIO_DEVICES.init_retry_s", 0) or 0)
+        except (AttributeError, TypeError, ValueError):
+            return 0.0
+
+    async def _open_codec(self, ctx) -> None:
+        codec = AudioCodec()
+        await codec.initialize()
+        codec.set_encoded_callback(self._on_encoded_audio)
+        self.codec = codec
+
+        from src.core.event_bus import Events
+
+        ctx.event_bus.on(Events.CONFIG_CHANGED, self._on_config_changed)
+        ctx.event_bus.on(Events.AUDIO_DEVICES_REFRESH_REQUEST, self._on_devices_refresh_request)
+        # Codec is published in start(): MusicPlayer subscribes to EventBus in McpPlugin.setup
+
+    async def _retry_open(self, ctx, window_s: float) -> None:
+        from src.utils.audio_utils import refresh_portaudio_devices
+
+        deadline = time.monotonic() + window_s
+        attempt = 0
+        while time.monotonic() < deadline:
+            await asyncio.sleep(AUDIO_RETRY_INTERVAL_S)
+            attempt += 1
+            try:
+                refresh_portaudio_devices(reinitialize=True)
+                await self._open_codec(ctx)
+            except Exception as e:
+                logger.warning(f"AudioPlugin: waiting for audio device (attempt {attempt}): {e}")
+                self.codec = None
+                continue
+            logger.info(f"AudioPlugin: audio device opened after {attempt} retries")
+            await self._publish_audio_codec(self.codec)
+            return
+        logger.error(f"AudioPlugin: no usable audio device after {window_s:.0f}s, giving up")
+
+    @property
+    def audio_ready(self) -> bool:
+        """True once the codec exists and its streams are running."""
+        return self.codec is not None
 
     async def start(self) -> None:
         await super().start()

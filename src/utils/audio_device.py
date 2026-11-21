@@ -70,7 +70,17 @@ class AudioDeviceManager:
             else:
                 logger.warning(f"Device '{output_device_name}' not found, will reselect")
 
-        # 2. Auto-select new device if lookup by name failed
+        # 2. Strict names: a configured device that is missing is an error, never a silent
+        # fallback to another device (a webcam microphone, say)
+        if audio_config.get("strict_names"):
+            for kind, name, info in (
+                ("input", input_device_name, input_info),
+                ("output", output_device_name, output_info),
+            ):
+                if name and not info:
+                    raise RuntimeError(f"Configured {kind} audio device '{name}' not found")
+
+        # 2b. Auto-select new device if lookup by name failed
         if not input_info:
             logger.info("Auto-selecting input device...")
             input_info = select_audio_device("input")
