@@ -13,7 +13,19 @@ logger = get_logger()
 DEFAULT_STEP_DEG = 20
 
 
-def register_servo_tools(add_tool: Callable[[McpTool], None], controller, tracker=None) -> None:
+BUSY_MESSAGE = "Đầu robot đang được điều khiển từ trang web, chưa làm theo lệnh giọng nói được"
+
+
+def register_servo_tools(
+    add_tool: Callable[[McpTool], None],
+    controller,
+    tracker=None,
+    arbiter=None,
+    player=None,
+) -> None:
+    """arbiter: ControlArbiter (web panel beats voice); player: MotionPlayer for gestures."""
+    from src.servo.motion import SOURCE_VOICE, start_gesture
+
     def status(message: str) -> str:
         pan, tilt = controller.angles
         connected = controller.connected
@@ -29,7 +41,12 @@ def register_servo_tools(add_tool: Callable[[McpTool], None], controller, tracke
         return json.dumps(result, ensure_ascii=False)
 
     def manual(move: Callable[[], object], message: str) -> str:
-        if tracker is not None:
+        if arbiter is not None:
+            if not arbiter.request(SOURCE_VOICE):
+                return json.dumps({"success": False, "message": BUSY_MESSAGE}, ensure_ascii=False)
+            if player is not None and player.playing:
+                player.stop()
+        elif tracker is not None:
             tracker.hold()
         move()
         return status(message)
@@ -114,6 +131,30 @@ def register_servo_tools(add_tool: Callable[[McpTool], None], controller, tracke
             lambda args: set_tracking(bool(args["enabled"])),
         ),
     ]
+
+    def gesture(args: dict) -> str:
+        name = str(args.get("name", ""))
+        if player is None or arbiter is None:
+            return json.dumps({"success": False, "message": "Cử chỉ không khả dụng"}, ensure_ascii=False)
+        ok, message = start_gesture(player, controller, name, SOURCE_VOICE)
+        if not ok:
+            return json.dumps({"success": False, "message": message}, ensure_ascii=False)
+        return status(message)
+
+    if player is not None and arbiter is not None:
+        tools.append(
+            McpTool(
+                "self.head.gesture",
+                "Cho đầu robot làm một cử chỉ bằng cách quay/gật đầu. Tham số name là một "
+                "trong: 'nod' (gật đầu: 'gật đầu đi', 'gật gật', 'đồng ý đi'), 'shake' (lắc "
+                "đầu: 'lắc đầu đi', 'không đi'), 'look_around' (nhìn quanh: 'nhìn quanh "
+                "xem', 'nhìn xung quanh'), 'surprised' (ngạc nhiên: 'giả vờ ngạc nhiên'), "
+                "'dance' (nhảy: 'nhảy đi', 'nhảy một điệu', 'lắc lư đi'). Cử chỉ chạy vài "
+                "giây rồi đầu về lại vị trí cũ.",
+                PropertyList([Property("name", PropertyType.STRING)]),
+                gesture,
+            )
+        )
 
     def set_tracking(enabled: bool) -> str:
         if tracker is None:

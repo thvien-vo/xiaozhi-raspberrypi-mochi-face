@@ -12,7 +12,8 @@
       "scripts:scripts",
       "src:src",
       "libs:libs",
-      "assets:assets"
+      "assets:assets",
+      "web_assets:web_assets"
     ],
     "clean": true,
     "noconfirm": true

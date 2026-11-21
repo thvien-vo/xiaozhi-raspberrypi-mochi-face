@@ -54,5 +54,11 @@
     "ENABLE_CONSOLE": false,
     "MAX_BYTES": 5242880,
     "BACKUP_COUNT": 3
+  },
+  "WEB": {
+    "ENABLED": true,
+    "HOST": "0.0.0.0",
+    "PORT": 8080,
+    "CAMERA_STREAM_FPS": 8
   }
 }

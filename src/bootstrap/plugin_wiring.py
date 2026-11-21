@@ -51,7 +51,9 @@ def bind_shared_services(container: "ServiceContainer") -> None:
 
 
 def bind_servo(container: "ServiceContainer") -> None:
-    """Pan/tilt head controller, plus person tracking when YOLO is available."""
+    """Pan/tilt head controller, plus person tracking when YOLO is available, and the
+    control arbiter and motion player shared by voice commands and the web panel."""
+    from src.servo.motion import ControlArbiter, MotionPlayer
     from src.servo.servo_controller import ServoController
     from src.servo.settings import load_servo_settings
     from src.servo.tracker import HeadTracker
@@ -67,6 +69,8 @@ def bind_servo(container: "ServiceContainer") -> None:
             settings,
             flip=lambda: str(config.get_config("CAMERA.flip", "none") or "none"),
         )
+    container.head_arbiter = ControlArbiter(container.head_tracker, settings.manual_hold_sec)
+    container.head_player = MotionPlayer(container.servo, container.head_arbiter)
 
 
 def unbind_shared_services(container: "ServiceContainer") -> None:
@@ -95,6 +99,8 @@ def unbind_shared_services(container: "ServiceContainer") -> None:
     container.vision = None
     container.servo = None
     container.head_tracker = None
+    container.head_arbiter = None
+    container.head_player = None
 
 
 async def setup_plugins(
@@ -124,6 +130,8 @@ async def setup_plugins(
         vision=container.vision,
         servo=container.servo,
         head_tracker=container.head_tracker,
+        head_arbiter=container.head_arbiter,
+        head_player=container.head_player,
     )
     vision_plugin = VisionPlugin(container.vision)
 
@@ -139,8 +147,18 @@ async def setup_plugins(
         from src.plugins.servo import ServoPlugin
 
         plugins.append(
-            ServoPlugin(container.servo, container.head_tracker, container.vision)
+            ServoPlugin(
+                container.servo,
+                container.head_tracker,
+                container.vision,
+                player=container.head_player,
+            )
         )
+    # Web control panel (WEB.ENABLED): 3D head control, camera, face and chat
+    if container.config.get_config("WEB.ENABLED", False):
+        from src.plugins.web_panel import WebPanelPlugin
+
+        plugins.append(WebPanelPlugin.from_container(container))
     # Robot kiosk: keep listening whatever stops it (needs the UI session actions for taps)
     if container.config.get_config("FACE.ALWAYS_LISTEN", False):
         from src.plugins.always_listen import AlwaysListenPlugin

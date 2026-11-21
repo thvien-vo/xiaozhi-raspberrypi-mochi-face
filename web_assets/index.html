@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#0f1115" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
+<title>Xiaozhi Điều Khiển</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='6' y='14' width='52' height='36' rx='10' fill='%23f97316'/%3E%3Crect x='18' y='24' width='9' height='14' rx='3' fill='white'/%3E%3Crect x='37' y='24' width='9' height='14' rx='3' fill='white'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/static/style.css">
+<script type="importmap">
+{ "imports": {
+    "three": "/static/vendor/three/three.module.min.js",
+    "three/addons/": "/static/vendor/three/addons/"
+} }
+</script>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <svg viewBox="0 0 64 64" aria-hidden="true"><rect x="6" y="14" width="52" height="36" rx="10" fill="currentColor"/><rect x="18" y="24" width="9" height="14" rx="3" fill="var(--bg)"/><rect x="37" y="24" width="9" height="14" rx="3" fill="var(--bg)"/></svg>
+    <span>Xiaozhi</span>
+  </div>
+  <div class="chips" id="chips">
+    <span class="chip" id="chip-ws" data-tone="bad"><i></i><b>Mất kết nối</b></span>
+    <span class="chip" id="chip-servo" data-tone="muted"><i></i><b>Servo</b></span>
+    <span class="chip" id="chip-app" data-tone="muted"><i></i><b>App</b></span>
+    <span class="chip" id="chip-owner" data-tone="muted" hidden><i></i><b></b></span>
+  </div>
+</header>
+
+<main class="layout">
+  <section class="stage" id="stage">
+    <canvas id="scene" aria-label="Mô hình 3D robot, kéo vào đầu robot để xoay"></canvas>
+    <div class="stage-loading" id="stage-loading">Đang tải mô hình 3D…</div>
+    <div class="hud">
+      <div class="hud-row"><span>Xoay</span><b id="hud-pan">0°</b><small id="hud-pan-t"></small></div>
+      <div class="hud-row"><span>Gật</span><b id="hud-tilt">0°</b><small id="hud-tilt-t"></small></div>
+    </div>
+    <div class="stage-hint" id="stage-hint">Kéo vào <b>đầu robot</b>: ngang để xoay, dọc để gật. Kéo chỗ trống để xoay góc nhìn.</div>
+    <div class="stage-actions">
+      <button class="btn ghost small" id="btn-view-front" title="Góc nhìn trước">Trước</button>
+      <button class="btn ghost small" id="btn-view-back" title="Góc nhìn sau lưng robot">Sau</button>
+      <button class="btn ghost small" id="btn-view-top" title="Nhìn từ trên">Trên</button>
+      <button class="btn primary small" id="btn-center-stage">Nhìn thẳng</button>
+    </div>
+    <div class="legend"><span class="sw real"></span>Góc thật <span class="sw ghost"></span>Góc đích</div>
+  </section>
+
+  <section class="panel">
+    <nav class="tabs" role="tablist">
+      <button role="tab" aria-selected="true" data-tab="control">Điều khiển</button>
+      <button role="tab" aria-selected="false" data-tab="motion">Động tác</button>
+      <button role="tab" aria-selected="false" data-tab="camera">Camera</button>
+      <button role="tab" aria-selected="false" data-tab="face">Mặt</button>
+      <button role="tab" aria-selected="false" data-tab="chat">Trò chuyện</button>
+    </nav>
+
+    <!-- Điều khiển -->
+    <div class="tabpage" data-page="control">
+      <div class="card">
+        <div class="card-head"><h2>Góc đầu</h2><button class="btn primary" id="btn-center">Nhìn thẳng</button></div>
+        <label class="slider">
+          <span class="slider-label"><span>Xoay ngang</span><output id="out-pan">Giữa</output></span>
+          <input type="range" id="sl-pan" min="-90" max="90" step="1" value="0">
+          <span class="slider-ends"><span>Trái robot</span><span>Phải robot</span></span>
+        </label>
+        <label class="slider">
+          <span class="slider-label"><span>Gật</span><output id="out-tilt">Giữa</output></span>
+          <input type="range" id="sl-tilt" min="-45" max="45" step="1" value="0">
+          <span class="slider-ends"><span>Cúi</span><span>Ngẩng</span></span>
+        </label>
+        <p class="note" id="servo-note"></p>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Cần điều khiển</h2>
+          <div class="seg" role="group" aria-label="Chế độ">
+            <button class="on" data-mode="stick">Joystick</button>
+            <button data-mode="tilt" id="btn-tilt-mode">Nghiêng máy</button>
+          </div>
+        </div>
+        <div class="stick-wrap" id="stick-wrap">
+          <div class="stick" id="stick" aria-label="Joystick: trái phải để xoay, lên xuống để gật">
+            <span class="stick-axis h"></span><span class="stick-axis v"></span>
+            <span class="stick-tag t">Ngẩng</span><span class="stick-tag b">Cúi</span>
+            <span class="stick-tag l">Trái</span><span class="stick-tag r">Phải</span>
+            <div class="knob" id="knob"></div>
+          </div>
+          <p class="note">Giữ và kéo: đầu quay theo hướng kéo, càng xa càng nhanh. Trái/phải là của robot.</p>
+        </div>
+        <div class="tiltmode" id="tiltmode" hidden>
+          <div id="tilt-ready" hidden>
+            <p class="note">Cầm điện thoại như lúc đầu bấm <b>Bắt đầu</b>. Nghiêng trái/phải để xoay, ngả về trước/sau để gật.</p>
+            <div class="row"><button class="btn primary" id="btn-tilt-start">Bắt đầu</button><button class="btn" id="btn-tilt-stop" disabled>Dừng</button></div>
+            <p class="note mono" id="tilt-readout"></p>
+          </div>
+          <div id="tilt-help" class="callout" hidden></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Bám theo người</h2>
+          <label class="switch"><input type="checkbox" id="sw-track"><span></span></label>
+        </div>
+        <p class="note" id="track-note">Dùng YOLO trên webcam, quay đầu về phía người lớn nhất trong khung hình.</p>
+        <label class="slider compact">
+          <span class="slider-label"><span>Độ nhạy xoay (KP)</span><output id="out-kpp">-</output></span>
+          <input type="range" id="sl-kpp" min="0" max="30" step="0.5">
+        </label>
+        <label class="slider compact">
+          <span class="slider-label"><span>Độ nhạy gật (KP)</span><output id="out-kpt">-</output></span>
+          <input type="range" id="sl-kpt" min="0" max="30" step="0.5">
+        </label>
+        <label class="slider compact">
+          <span class="slider-label"><span>Vùng chết</span><output id="out-db">-</output></span>
+          <input type="range" id="sl-db" min="0" max="0.4" step="0.01">
+        </label>
+        <div class="row end"><button class="btn small" id="btn-track-save">Lưu vào cấu hình</button></div>
+      </div>
+    </div>
+
+    <!-- Động tác -->
+    <div class="tabpage" data-page="motion" hidden>
+      <div class="card">
+        <div class="card-head"><h2>Cử chỉ</h2><button class="btn small" id="btn-stop-motion" disabled>Dừng</button></div>
+        <div class="grid-buttons" id="gestures"></div>
+        <div class="progress" id="motion-progress" hidden><div></div></div>
+        <p class="note">Chạy trên robot: đóng trang web cử chỉ vẫn chạy tiếp.</p>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>Ghi động tác</h2><span class="rec-time" id="rec-time" hidden>● 0.0 s</span></div>
+        <p class="note">Bấm Ghi rồi kéo đầu robot (mô hình 3D, thanh trượt hoặc joystick). Robot làm theo và lưu lại.</p>
+        <div class="row">
+          <button class="btn danger" id="btn-rec">Ghi</button>
+          <input class="input" id="rec-name" maxlength="40" placeholder="Tên động tác" autocomplete="off">
+          <button class="btn primary" id="btn-rec-save" disabled>Lưu</button>
+          <button class="btn" id="btn-rec-cancel" disabled>Hủy</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>Đã lưu</h2></div>
+        <ul class="list" id="motion-list"></ul>
+      </div>
+    </div>
+
+    <!-- Camera -->
+    <div class="tabpage" data-page="camera" hidden>
+      <div class="card">
+        <div class="card-head"><h2>Webcam trực tiếp</h2>
+          <label class="switch"><input type="checkbox" id="sw-cam" checked><span></span></label>
+        </div>
+        <div class="camera" id="camera-box">
+          <img id="camera-img" alt="Hình webcam của robot có khung nhận diện YOLO">
+          <div class="camera-msg" id="camera-msg">Camera đang tắt</div>
+        </div>
+        <p class="note" id="camera-note">Khung cam là người robot đang bám theo, khung xanh là vật khác YOLO thấy.</p>
+      </div>
+    </div>
+
+    <!-- Mặt -->
+    <div class="tabpage" data-page="face" hidden>
+      <div class="card">
+        <div class="card-head"><h2>Biểu cảm</h2><span class="pill" id="face-current">neutral</span></div>
+        <div class="emotions" id="emotions"></div>
+        <p class="note" id="face-note">Biểu cảm giữ đến khi robot chuyển trạng thái (nghe, nói), giống khi server gửi biểu cảm.</p>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>Chế độ trò chuyện tự động</h2>
+          <label class="switch"><input type="checkbox" id="sw-auto"><span></span></label>
+        </div>
+        <p class="note" id="auto-note">FACE.AUTO_MODE: chạm màn hình một lần để bắt đầu cuộc trò chuyện nghe liên tục.</p>
+        <div class="row"><button class="btn" id="btn-wake">Đánh thức mặt</button></div>
+      </div>
+    </div>
+
+    <!-- Trò chuyện -->
+    <div class="tabpage" data-page="chat" hidden>
+      <div class="card chat-card">
+        <div class="card-head"><h2>Hội thoại</h2><span class="pill" id="chat-state">-</span></div>
+        <div class="chat" id="chat"><p class="empty">Chưa có hội thoại. Nói với robot hoặc gửi tin nhắn.</p></div>
+        <form class="row chat-form" id="chat-form">
+          <input class="input" id="chat-input" maxlength="300" placeholder="Nhắn cho Xiaozhi…" autocomplete="off">
+          <button class="btn primary" type="submit">Gửi</button>
+        </form>
+        <p class="note" id="chat-note"></p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<script type="module" src="/static/app.js"></script>
+</body>
+</html>

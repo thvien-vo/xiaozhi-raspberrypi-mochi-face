@@ -23,8 +23,10 @@ class ServoPlugin(Plugin):
         controller: "ServoController",
         tracker: "HeadTracker | None" = None,
         vision: "VisionRuntime | None" = None,
+        player=None,
     ) -> None:
         super().__init__()
+        self._player = player
         self._controller = controller
         self._tracker = tracker
         self._vision = vision
@@ -52,6 +54,8 @@ class ServoPlugin(Plugin):
 
     def register_resources(self, pool) -> None:
         async def _shutdown():
+            if self._player is not None:
+                await asyncio.to_thread(self._player.stop)
             if self._tracker is not None:
                 await asyncio.to_thread(self._tracker.stop)
             await asyncio.to_thread(self._controller.shutdown)

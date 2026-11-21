@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Xiaozhi Đăng Nhập</title>
+<link rel="stylesheet" href="/static/style.css">
+<style>
+  body { display: grid; place-items: center; min-height: 100vh; padding: 16px; }
+  .card { width: min(100%, 360px); gap: 14px; }
+  h1 { margin: 0; font-size: 20px; }
+  .err { color: var(--bad); font-size: 13px; margin: 0; }
+</style>
+</head>
+<body>
+<form class="card" method="post" action="/login">
+  <div class="brand"><svg viewBox="0 0 64 64" aria-hidden="true"><rect x="6" y="14" width="52" height="36" rx="10" fill="currentColor"/><rect x="18" y="24" width="9" height="14" rx="3" fill="var(--bg)"/><rect x="37" y="24" width="9" height="14" rx="3" fill="var(--bg)"/></svg><span>Xiaozhi</span></div>
+  <h1>Bảng điều khiển robot</h1>
+  <input class="input" type="password" name="password" placeholder="Mật khẩu" autocomplete="current-password" autofocus required>
+  <p class="err" id="err" hidden>Sai mật khẩu.</p>
+  <button class="btn primary" type="submit">Vào</button>
+</form>
+<script>
+  if (new URLSearchParams(location.search).has("error")) document.getElementById("err").hidden = false;
+</script>
+</body>
+</html>

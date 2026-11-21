@@ -7,7 +7,7 @@ a = Analysis(
     ['/Users/junsen/Desktop/workspace/py-xiaozhi/main.py'],
     pathex=[],
     binaries=[],
-    datas=[('models', 'models'), ('scripts', 'scripts'), ('src', 'src'), ('libs', 'libs'), ('assets', 'assets')],
+    datas=[('models', 'models'), ('scripts', 'scripts'), ('src', 'src'), ('libs', 'libs'), ('assets', 'assets'), ('web_assets', 'web_assets')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

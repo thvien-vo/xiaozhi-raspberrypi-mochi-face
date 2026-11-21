@@ -31,6 +31,8 @@ FIRST_REPLY_WAIT_S = 0.5
 RECONNECT_S = 2.0
 SHUTDOWN_SETTLE_S = 1.0
 _LOOP_S = 0.02
+# servo_bridge moves each servo 3 degrees every 20 ms toward its target
+FIRMWARE_DEG_PER_S = 150.0
 
 
 def _clamp(value: float, low: float, high: float) -> float:
@@ -106,6 +108,11 @@ class ServoController:
         self._last_reply: str | None = None
         self._rx = bytearray()
         self._warned_missing = False
+        # Last servo angles the board acknowledged ("OK p t") and a simulation of the
+        # firmware's ramp toward them: the board does not report where the servos are
+        self._acked: tuple[int, int] | None = None
+        self._sim: list[float] = [float(SERVO_CENTER), float(SERVO_CENTER)]
+        self._sim_time = time.monotonic()
 
     # ----- Angle API (head degrees) -----
 
@@ -166,6 +173,38 @@ class ServoController:
             int(round(_clamp(pan_servo, SERVO_MIN, SERVO_MAX))),
             int(round(_clamp(tilt_servo, SERVO_MIN, SERVO_MAX))),
         )
+
+    def head_angles(self, pan_servo: float, tilt_servo: float) -> tuple[float, float]:
+        """Inverse of servo_angles: head degrees for servo angles."""
+        s = self.settings
+        pan_sign = -1.0 if s.pan_invert else 1.0
+        tilt_sign = -1.0 if s.tilt_invert else 1.0
+        pan = (pan_servo - SERVO_CENTER - s.pan_offset) * pan_sign
+        tilt = (tilt_servo - SERVO_CENTER - s.tilt_offset) * tilt_sign / TILT_GEAR_RATIO
+        return pan, tilt
+
+    @property
+    def acked_angles(self) -> tuple[float, float] | None:
+        """Head angles of the last command the board confirmed, None before any."""
+        with self._lock:
+            acked = self._acked
+        return None if acked is None else self.head_angles(*acked)
+
+    def estimated_angles(self) -> tuple[float, float] | None:
+        """Where the head probably is now: the firmware ramp toward the last confirmed
+        command, simulated at its fixed speed. None while disconnected."""
+        if not self.connected:
+            return None
+        now = time.monotonic()
+        with self._lock:
+            step = FIRMWARE_DEG_PER_S * max(0.0, now - self._sim_time)
+            self._sim_time = now
+            if self._acked is not None:
+                for i, target in enumerate(self._acked):
+                    delta = target - self._sim[i]
+                    self._sim[i] = target if abs(delta) <= step else self._sim[i] + step * (1 if delta > 0 else -1)
+            sim = tuple(self._sim)
+        return self.head_angles(*sim)
 
     # ----- Lifecycle -----
 
@@ -281,11 +320,19 @@ class ServoController:
 
     def _handle_line(self, line: str) -> None:
         self._last_reply = line
+        if line.startswith("OK"):
+            parts = line.split()
+            if len(parts) == 3 and parts[1].isdigit() and parts[2].isdigit():
+                with self._lock:
+                    self._acked = (int(parts[1]), int(parts[2]))
         if line.startswith("ERR"):
             logger.warning("Servo board error: %s", line)
         elif line.startswith("READY"):
             logger.info("Servo board (re)started: %s", line)
             self._last_sent = None  # It went back to 90 90; resend the target
+            with self._lock:
+                self._sim = [float(SERVO_CENTER), float(SERVO_CENTER)]
+                self._acked = (SERVO_CENTER, SERVO_CENTER)
         else:
             logger.debug("Servo board: %s", line)
 
@@ -313,6 +360,8 @@ class ServoController:
     def _close(self) -> None:
         ser, self._serial = self._serial, None
         self._last_sent = None
+        with self._lock:
+            self._acked = None
         if ser is not None:
             try:
                 ser.close()

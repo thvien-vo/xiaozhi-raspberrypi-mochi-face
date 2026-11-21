@@ -206,6 +206,21 @@ class ConfigManager:
             # Tracking pauses this long after a voice command moves the head
             "MANUAL_HOLD_SEC": 5.0,
         },
+        # Web control panel (3D head control, camera, face, chat); see docs/web_panel.md.
+        # Plain HTTP for the local network only: there is no other protection than PASSWORD.
+        "WEB": {
+            "ENABLED": False,
+            "HOST": "0.0.0.0",
+            "PORT": 8080,
+            # Empty: no password (only on a trusted LAN)
+            "PASSWORD": "",
+            # Frames per second of the MJPEG camera stream (encoded only while someone watches)
+            "CAMERA_STREAM_FPS": 8,
+            # Also serve HTTPS with a self-signed certificate (made with openssl in the
+            # app data dir on first start); phones need it for the tilt-to-steer mode
+            "HTTPS_ENABLED": False,
+            "HTTPS_PORT": 8443,
+        },
         "SHORTCUTS": {
             "ENABLED": True,
             "MANUAL_PRESS": {"modifier": "ctrl", "key": "j", "description": "Hold to Talk"},
