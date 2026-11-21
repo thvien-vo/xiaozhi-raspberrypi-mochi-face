@@ -304,3 +304,71 @@ def test_from_config_reads_face_settings():
     assert plugin._greet and plugin._greet_text == "Chào bạn"
     assert plugin._greet_min_interval_s == 120
     assert plugin._audio_ready() is True
+
+
+# ---- the real ConversationSession: the microphone must stay shut during the greeting ----
+
+
+class _Plugins:
+    def get_plugin(self, name):
+        return None
+
+    async def notify_device_state_changed(self, state):
+        pass
+
+    async def notify_protocol_connected(self, protocol):
+        pass
+
+    async def notify_incoming_json(self, data):
+        pass
+
+
+class _Protocol:
+    """Opening the channel emits audio_channel_opened, as the real WebSocket protocol does."""
+
+    def __init__(self, bus):
+        self.bus = bus
+        self.open = False
+        self.sent = []
+        self.protocol = object()
+
+    def is_audio_channel_opened(self):
+        return self.open
+
+    async def connect(self):
+        self.open = True
+        await self.bus.emit("audio_channel_opened")
+        return True
+
+    async def send_wake_word_detected(self, text):
+        self.sent.append(("detect", text))
+
+    async def send_start_listening(self, mode):
+        self.sent.append(("listen", mode))
+
+
+async def test_session_greeting_keeps_the_microphone_shut_until_tts_stops():
+    from src.bootstrap.session import ConversationSession
+    from src.core.event_bus import EventBus, Events
+    from src.core.state_manager import StateManager
+
+    bus = EventBus()
+    state = StateManager(bus, aec_enabled=False)
+    protocol = _Protocol(bus)
+    session = ConversationSession(state, protocol, _Plugins(), bus)
+    session.bind_events(bus)
+
+    assert await session.begin_greeting(ListeningMode.AUTO_STOP, GREETING)
+    assert protocol.sent == [("detect", GREETING)]  # No start_listening yet
+    assert state.device_state == DeviceState.IDLE
+    assert not state.should_capture_audio()  # The mic is not streaming to the server
+
+    await session._on_incoming_json({"type": "tts", "state": "start"})
+    assert state.device_state == DeviceState.SPEAKING
+    assert not state.should_capture_audio()  # Does not hear its own greeting
+
+    await session._on_incoming_json({"type": "tts", "state": "stop"})
+    assert state.device_state == DeviceState.LISTENING
+    assert state.should_capture_audio()
+    assert protocol.sent[-1] == ("listen", ListeningMode.AUTO_STOP)
+    assert state.keep_listening  # And it keeps listening after every reply

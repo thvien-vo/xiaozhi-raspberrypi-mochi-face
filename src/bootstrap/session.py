@@ -284,6 +284,10 @@ class ConversationSession:
             return False
         self.state.set_listening_mode(mode)
         self.state.set_keep_listening(True)
+        # Opening the channel moves the state to LISTENING, which would stream microphone
+        # audio. Hold IDLE until the greeting's TTS starts and ends.
+        if self.state.is_listening():
+            await self.state.set_device_state(DeviceState.IDLE)
         await self.protocol.send_wake_word_detected(text)
         return True
 
