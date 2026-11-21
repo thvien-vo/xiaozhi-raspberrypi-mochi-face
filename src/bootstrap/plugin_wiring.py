@@ -44,7 +44,29 @@ def bind_shared_services(container: "ServiceContainer") -> None:
         # Owns the camera even with detection disabled: take_photo goes through it
         set_active_camera_service(container.vision.camera)
 
+    if container.servo is None and container.config.get_config("SERVO.ENABLED", False):
+        bind_servo(container)
+
     logger.debug("Shared services created: McpServer, MusicPlayer, NotificationPlayer")
+
+
+def bind_servo(container: "ServiceContainer") -> None:
+    """Pan/tilt head controller, plus person tracking when YOLO is available."""
+    from src.servo.servo_controller import ServoController
+    from src.servo.settings import load_servo_settings
+    from src.servo.tracker import HeadTracker
+
+    settings = load_servo_settings(container.config)
+    container.servo = ServoController(settings)
+    vision = container.vision
+    if vision is not None and vision.settings.enabled:
+        config = container.config
+        container.head_tracker = HeadTracker(
+            container.servo,
+            vision.detection.latest,
+            settings,
+            flip=lambda: str(config.get_config("CAMERA.flip", "none") or "none"),
+        )
 
 
 def unbind_shared_services(container: "ServiceContainer") -> None:
@@ -71,6 +93,8 @@ def unbind_shared_services(container: "ServiceContainer") -> None:
     container.mcp_server = None
     container.notification_player = None
     container.vision = None
+    container.servo = None
+    container.head_tracker = None
 
 
 async def setup_plugins(
@@ -98,6 +122,8 @@ async def setup_plugins(
         server=container.mcp_server,
         music_player=container.music_player,
         vision=container.vision,
+        servo=container.servo,
+        head_tracker=container.head_tracker,
     )
     vision_plugin = VisionPlugin(container.vision)
 
@@ -109,6 +135,12 @@ async def setup_plugins(
         vision_plugin,
         shortcuts_plugin,
     ]
+    if container.servo is not None:
+        from src.plugins.servo import ServoPlugin
+
+        plugins.append(
+            ServoPlugin(container.servo, container.head_tracker, container.vision)
+        )
     # Robot kiosk: keep listening whatever stops it (needs the UI session actions for taps)
     if container.config.get_config("FACE.ALWAYS_LISTEN", False):
         from src.plugins.always_listen import AlwaysListenPlugin

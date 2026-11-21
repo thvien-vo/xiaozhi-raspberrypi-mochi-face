@@ -40,6 +40,8 @@ dependencies = [
     "lunar_python>=1.3.0",
     # Clipboard
     "pyperclip>=1.8.0",
+    # USB serial to the servo board (pan/tilt head)
+    "pyserial>=3.5",
     # Keyboard shortcuts (cross-platform base)
     "pynput>=1.7.6",
     # ============================================================

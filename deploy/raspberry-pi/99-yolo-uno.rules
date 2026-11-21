@@ -1,0 +1,5 @@
+# Yolo UNO (ESP32-S3, Espressif VID 0x303a) driving the pan/tilt servos.
+# Stable name /dev/yolo_uno, readable without the dialout group, and kept away from
+# ModemManager, whose probing writes AT commands to the board.
+# Install: sudo cp 99-yolo-uno.rules /etc/udev/rules.d/ && sudo udevadm control --reload && sudo udevadm trigger
+SUBSYSTEM=="tty", ATTRS{idVendor}=="303a", SYMLINK+="yolo_uno", MODE="0666", ENV{ID_MM_DEVICE_IGNORE}="1"

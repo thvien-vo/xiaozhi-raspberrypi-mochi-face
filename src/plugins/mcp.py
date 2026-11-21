@@ -26,6 +26,8 @@ class McpPlugin(Plugin):
         server: Optional[McpServer] = None,
         music_player: Optional["MusicPlayer"] = None,
         vision: Optional["VisionRuntime"] = None,
+        servo=None,
+        head_tracker=None,
     ) -> None:
         super().__init__()
         if server is None:
@@ -35,6 +37,8 @@ class McpPlugin(Plugin):
         self._server: McpServer = server
         self._music_player = music_player
         self._vision = vision
+        self._servo = servo
+        self._head_tracker = head_tracker
 
     async def setup(self, ctx: "PluginContext", cmd: "PluginCommands") -> None:
         await super().setup(ctx, cmd)
@@ -63,6 +67,11 @@ class McpPlugin(Plugin):
                 from src.mcp.tools.vision import register_vision_tools
 
                 register_vision_tools(server.add_tool, self._vision)
+
+            if self._servo is not None:
+                from src.mcp.tools.servo import register_servo_tools
+
+                register_servo_tools(server.add_tool, self._servo, self._head_tracker)
 
             server.add_common_tools(music_player=self._music_player)
         except Exception as e:

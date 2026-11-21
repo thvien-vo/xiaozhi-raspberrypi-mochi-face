@@ -54,6 +54,9 @@ class ServiceContainer:
         self.music_player = None
         self.notification_player = None
         self.vision = None
+        # Pan/tilt head (SERVO.ENABLED) and its person tracker
+        self.servo = None
+        self.head_tracker = None
 
         # Session control (listen/speak/interrupt/TTS loopback)
         self.session = ConversationSession(

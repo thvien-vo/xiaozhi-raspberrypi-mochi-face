@@ -173,6 +173,39 @@ class ConfigManager:
                 "SHOW_BOXES": True,
             },
         },
+        # Pan/tilt head: two servos driven by a Yolo UNO (ESP32-S3) over USB serial running
+        # firmware/servo_bridge. Angles are the head's own: pan + = turn to the robot's left,
+        # tilt + = look up. See docs in firmware/servo_bridge/README.md.
+        "SERVO": {
+            "ENABLED": False,
+            # Empty: /dev/yolo_uno (udev symlink), then any port with USB VID 0x303a
+            "PORT": "",
+            "BAUD": 115200,
+            # Set from the webcam check: flip when a positive angle turns the wrong way
+            "PAN_INVERT": False,
+            "TILT_INVERT": False,
+            # Servo degrees added to 90 so the head looks straight at "center"
+            "PAN_OFFSET": 0,
+            "TILT_OFFSET": 0,
+            # Soft limits in head degrees (pan gear 1:1, at most 90; tilt gear 1:2, at most 45)
+            "PAN_LIMIT": 90,
+            "TILT_LIMIT": 45,
+            # Follow the largest person YOLO sees (needs VISION.ENABLED)
+            "TRACKING_ENABLED": True,
+            # Head degrees per unit of normalized offset (-1..1 from the frame center)
+            "KP_PAN": 12.0,
+            "KP_TILT": 8.0,
+            # Offsets smaller than this (normalized) are ignored, so the head stays still
+            "DEADBAND": 0.08,
+            # Largest correction per detection result, in head degrees
+            "MAX_STEP_DEG": 6.0,
+            # Weight of the newest offset in the moving average (1 = no smoothing)
+            "EMA_ALPHA": 0.5,
+            # No person for this long: drift back to center
+            "LOST_TIMEOUT_SEC": 3.0,
+            # Tracking pauses this long after a voice command moves the head
+            "MANUAL_HOLD_SEC": 5.0,
+        },
         "SHORTCUTS": {
             "ENABLED": True,
             "MANUAL_PRESS": {"modifier": "ctrl", "key": "j", "description": "Hold to Talk"},

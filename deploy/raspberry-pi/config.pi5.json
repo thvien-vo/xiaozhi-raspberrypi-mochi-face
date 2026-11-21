@@ -45,6 +45,11 @@
       "FPS": 12.0
     }
   },
+  "SERVO": {
+    "ENABLED": true,
+    "PORT": "",
+    "TRACKING_ENABLED": true
+  },
   "LOGGING": {
     "ENABLE_CONSOLE": false,
     "MAX_BYTES": 5242880,

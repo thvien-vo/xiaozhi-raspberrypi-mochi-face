@@ -23,6 +23,9 @@ openai>=1.0.0
 sherpa-onnx>=1.12.26
 sherpa-onnx-core>=1.12.26; sys_platform != "win32"
 
+# USB serial to the servo board (pan/tilt head)
+pyserial>=3.5
+
 # Image processing
 opencv-python-headless>=4.9.0
 pillow>=10.0.0
