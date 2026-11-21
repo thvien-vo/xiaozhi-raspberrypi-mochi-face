@@ -52,3 +52,40 @@ log ghi `possible self-hearing` (AEC phần mềm vẫn tắt). Không thêm fil
 Áp dụng trên Pi: lấy các commit này vào nhánh `pi5-deploy`, chạy
 `python scripts/apply_config_preset.py` (hoặc đặt `FACE.ALWAYS_LISTEN` true trong `config.json`),
 rồi `systemctl --user restart xiaozhi`. Gỡ: đặt lại `false` và restart.
+
+## Đổi sang webcam UGREEN: AI không nói/không nghe (2026-11-21)
+
+**Nguyên nhân tìm được.** Jabra vẫn được chọn đúng (card `USB`, hw:1,0; webcam là card `U2K`, mic
+webcam không được dùng), loa và mic Jabra đều chạy (thu thử RMS ≈ 690). Nhưng Pi đang chạy bản
+cũ trên nhánh `robot-face` (commit 2634b16, cộng bản sửa chưa commit) với `FACE.ALWAYS_LISTEN`
+= `false`: sau khi khởi động app không kết nối server, chỉ chạm màn hình mới mở phiên. Log cuối
+dừng ở dòng "Camera opened", không có dòng nào về server. Lần chạm đầu tiên sau khi đổi webcam
+không có phản hồi rõ nên trông như "không nói, không nghe". Nguồn ổn (`get_throttled=0x0`). `dmesg`
+chỉ có lỗi liệt kê USB của màn cảm ứng `1a86:e5e3` lúc khởi động (tự hết).
+
+**Đã sửa (code ở nhánh `pi5-deploy`, Pi đã được đưa lên cùng commit):**
+- `deploy/raspberry-pi/jabra-audio.sh`: chọn card theo TÊN dài chứa "Jabra" và phải có cả phát
+  lẫn thu; dùng `CARD=<id>` chỉ khi id không trùng card khác, trùng thì dùng số card; mỗi lần
+  khởi động đặt loa 75% và mic 70% bằng `amixer` (không cần root) và ghi vào log; không có Jabra
+  thì ghi `ERROR`, xóa `~/.config/alsa/asoundrc` cũ, không chọn thiết bị khác. Đổi mức bằng
+  `JABRA_SPK_PCT` / `JABRA_MIC_PCT`.
+- `AUDIO_DEVICES.strict_names` (preset Pi: true): app không rơi về thiết bị khác (mic webcam)
+  khi không thấy Jabra. `AUDIO_DEVICES.init_retry_s` (preset Pi: 90): chưa có Jabra thì thử lại
+  nền, giao diện và camera vẫn chạy (`src/utils/audio_device.py`, `src/plugins/audio.py`).
+- `CAMERA.fourcc` (preset Pi: `MJPG`, 640x480): webcam gửi MJPEG, đã kiểm bằng `v4l2-ctl`
+  (`src/mcp/tools/camera/capture_backend.py`, `src/vision/camera_service.py`).
+- `FACE.GREET_ON_START` (preset Pi: true), `FACE.GREET_TEXT` ("Xin chào"),
+  `FACE.GREET_MIN_INTERVAL_S` (300): `src/plugins/always_listen.py`,
+  `src/bootstrap/session.py` (`begin_greeting`). Mặc định false nên laptop không đổi.
+  Server từ chối câu dài trên kênh `detect` ("Detect is only for wake words"); câu ngắn như
+  "Xin chào" thì server đáp bằng giọng nói. Giữ GREET_TEXT ngắn một hai từ.
+
+**Cách chào hoạt động.** Chờ thiết bị âm thanh mở (tối đa 90 s) và kết nối server (thử lại
+1/2/5/10/30 s, bỏ chào sau 120 s), gửi `listen detect` rồi `listen start` như firmware, giữ
+trạng thái IDLE nên mic không gửi tiếng trong lúc AI chào; khi TTS kết thúc mới chuyển sang nghe.
+Giờ chào lần cuối lưu ở `~/.local/state/xiaozhi/last-greeting`: không chào quá một lần mỗi 5
+phút, kết nối lại WebSocket không chào lại. Xóa file này để thử chào ngay.
+
+**Gỡ / quay lại.** `FACE.GREET_ON_START=false` tắt chào; `git checkout 2634b16` trong
+`~/Xiaozhi_RaspberryPi` về bản cũ (bản sao lưu: `~/pi-uncommitted-*.patch`,
+`~/pre-sync-backup-*.tar.gz`, `~/config.json.bak-*`). Không sửa /boot, /etc, không reboot.
