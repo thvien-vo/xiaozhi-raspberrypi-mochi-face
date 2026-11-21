@@ -56,8 +56,14 @@ def find_port(configured: str = "") -> str | None:
 
 
 def open_serial(port: str, baud: int):
-    """Open without touching DTR/RTS, which on ESP32-S3 USB can reset the board or put it
-    into download mode."""
+    """Open the port without resetting the ESP32-S3.
+
+    Its USB Serial/JTAG resets the chip while RTS is asserted with DTR released. Linux
+    asserts both on open, and pyserial's open() then releases DTR before RTS, passing
+    through exactly that state (measured: every open printed a boot log and READY). So
+    open() is told to leave DTR alone (dsrdtr, which Linux ignores for flow control),
+    releases RTS, and DTR is released afterwards: (1,1) -> DTR 1 RTS 0 -> (0,0).
+    """
     import serial
 
     ser = serial.Serial()
@@ -65,9 +71,12 @@ def open_serial(port: str, baud: int):
     ser.baudrate = baud
     ser.timeout = 0  # Non-blocking reads
     ser.write_timeout = 0.5
-    ser.dtr = False
+    if os.name == "posix":
+        ser.dsrdtr = True  # Skip the DTR update inside open(); on Windows it is a handshake
     ser.rts = False
+    ser.dtr = False
     ser.open()
+    ser.dtr = False
     return ser
 
 
