@@ -359,7 +359,8 @@ async def test_session_greeting_keeps_the_microphone_shut_until_tts_stops():
     session.bind_events(bus)
 
     assert await session.begin_greeting(ListeningMode.AUTO_STOP, GREETING)
-    assert protocol.sent == [("detect", GREETING)]  # No start_listening yet
+    # Like the firmware: detect, then listen start (the server answers inside a listen session)
+    assert protocol.sent == [("detect", GREETING), ("listen", ListeningMode.AUTO_STOP)]
     assert state.device_state == DeviceState.IDLE
     assert not state.should_capture_audio()  # The mic is not streaming to the server
 
@@ -371,4 +372,5 @@ async def test_session_greeting_keeps_the_microphone_shut_until_tts_stops():
     assert state.device_state == DeviceState.LISTENING
     assert state.should_capture_audio()
     assert protocol.sent[-1] == ("listen", ListeningMode.AUTO_STOP)
+    assert len(protocol.sent) == 3
     assert state.keep_listening  # And it keeps listening after every reply
