@@ -41,12 +41,7 @@ Không cần cài thêm gì. three.js 0.170 (GLTFLoader, OrbitControls) nằm s�
 | Mặt | 21 biểu cảm mà mặt robot vẽ được, bật/tắt `FACE.AUTO_MODE`, "Đánh thức mặt" |
 | Trò chuyện | Câu người nói (STT) và câu robot trả lời (TTS), ô gửi tin nhắn chữ |
 
-**Chiều kéo:** đầu robot đi theo ngón tay, nhìn từ góc nào cũng vậy.
-
-- Nhìn từ phía sau (nút "Sau"): kéo sang trái thì robot quay sang trái của nó.
-- Nhìn từ phía trước: bên trái của robot nằm ở bên phải màn hình, nên kéo sang phải thì robot quay sang trái của nó.
-
-Thanh trượt, joystick và chữ "Trái/Phải" đều tính theo robot.
+**Chiều kéo:** kéo đầu sang trái thì robot quay sang trái của nó, kéo lên thì ngẩng. Nhìn từ góc nào cũng vậy, giống thanh trượt và joystick; chữ "Trái/Phải" đều tính theo robot.
 
 **Quy ước góc:** pan dương là robot quay sang trái của nó, tilt dương là ngẩng lên. Giới hạn: pan ±90°, tilt ±45° (`SERVO.PAN_LIMIT`, `TILT_LIMIT`).
 
@@ -99,18 +94,21 @@ python scripts/web_panel_check.py http://Pi5.local:8080 --out shots/ --max-deg 2
 
 Unit test: `pytest tests/test_web_panel.py`.
 
-Mô hình `web_assets/xiaozhi_robot.glb` được sinh bằng `python scripts/build_robot_glb.py`. Nó dựng từ khối đơn giản theo kích thước thật (đế 220×160×60 mm, đầu 244×147×46 mm), vì bộ STL v8 đang ở tư thế in chứ không ở tư thế lắp ráp. Cây node:
+Mô hình `web_assets/xiaozhi_robot.glb` là bản lắp ráp CAD (glTF, đơn vị mm). Cây node:
 
 ```
-robot → base, pan_pivot → turn, upper, tilt_pivot → head
+robot (xoay -90° quanh X) → pan_pivot → turn → upper → tilt_pivot → head_shell, bezel, webcam…
 ```
 
 Quy ước của mô hình:
 
-- `pan_pivot.rotation.z = +pan` và `tilt_pivot.rotation.x = +tilt`.
-- Robot nhìn về phía −Z của three.js.
+- `pan_pivot.rotation.z = +pan`: dương là robot quay sang trái của nó.
+- `tilt_pivot.rotation.x = -tilt`: tilt dương là ngẩng lên.
+- Hai pivot nằm đúng trục thật.
 
-Muốn thay bằng mô hình CAD thật, chỉ cần giữ tên hai node pivot, đặt chúng đúng trên trục xoay, và giữ đúng chiều quay.
+Trang tự đặt mô hình đứng trên sàn và tô màu theo tên node (file CAD không có vật liệu). Hướng mặt robot được tính từ node `bezel`, và trang vẽ thêm màn hình đen có hai mắt sau khung đó.
+
+`scripts/build_robot_glb.py` vẫn còn nhưng không dùng mặc định. Nó sinh mô hình khối đơn giản ra `web_assets/xiaozhi_robot_simple.glb`, chỉ để dự phòng. Mô hình đó ghi chiều quay riêng của nó bằng glTF extras `{"sign": 1}` trên hai pivot.
 
 ## Giới hạn hiện tại
 

@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Build web_assets/xiaozhi_robot.glb: a simplified 3D model of the pan/tilt robot.
+"""Build a simplified 3D model of the pan/tilt robot (fallback, not used by default).
+
+The web panel loads web_assets/xiaozhi_robot.glb, the assembled CAD model. This script
+writes web_assets/xiaozhi_robot_simple.glb unless given another path; copy it over
+xiaozhi_robot.glb only if the CAD model is missing. Its pivots carry glTF extras
+{"sign": ...} because its tilt axis turns the other way (+tilt = rotation.x +).
 
 The printable parts (robot_xiaozhi_v8 STL set) are laid out for printing, not assembled,
 so this model is made of simple shapes with the real outer dimensions (mm):
@@ -31,7 +36,7 @@ from pathlib import Path
 import numpy as np
 
 ROOT = Path(__file__).resolve().parent.parent
-OUT = ROOT / "web_assets" / "xiaozhi_robot.glb"
+OUT = ROOT / "web_assets" / "xiaozhi_robot_simple.glb"
 
 BASE_TOP = 60.0
 TURN_H = 10.0
@@ -217,8 +222,10 @@ class Gltf:
         self.doc["meshes"].append({"name": name, "primitives": primitives})
         return len(self.doc["meshes"]) - 1
 
-    def node(self, name, parent=None, mesh=None, translation=None, rotation=None) -> int:
+    def node(self, name, parent=None, mesh=None, translation=None, rotation=None, extras=None) -> int:
         node = {"name": name}
+        if extras:
+            node["extras"] = extras
         if mesh is not None:
             node["mesh"] = mesh
         if translation is not None:
@@ -270,7 +277,7 @@ def build(path: Path = OUT) -> int:
     ]
     g.node("base", robot, g.mesh("base", base_parts))
 
-    pan = g.node("pan_pivot", robot, translation=(0, 0, BASE_TOP))
+    pan = g.node("pan_pivot", robot, translation=(0, 0, BASE_TOP), extras={"sign": 1})
     turn_parts = [
         (cylinder(70, TURN_H, (0, 0, TURN_H / 2), teeth=24, tooth=2.0), accent),
         (cylinder(30, 6, (0, 0, TURN_H + 3)), dark),
@@ -293,7 +300,7 @@ def build(path: Path = OUT) -> int:
     ]
     g.node("upper", pan, g.mesh("upper", upper_parts))
 
-    tilt = g.node("tilt_pivot", pan, translation=(0, 0, tilt_local_z))
+    tilt = g.node("tilt_pivot", pan, translation=(0, 0, tilt_local_z), extras={"sign": 1})
     front = HEAD_D / 2
     head_parts = [
         (rounded_box((HEAD_W, HEAD_D, HEAD_H), 18), shell),
