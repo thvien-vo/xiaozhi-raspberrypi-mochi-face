@@ -46,6 +46,25 @@ def drag_head(page, dx, dy, steps=12):
     time.sleep(0.3)
 
 
+# Screenshots wait forever while an MJPEG image keeps loading: swap in a still of the
+# current frame first (this also closes the stream, as leaving the tab would)
+FREEZE_CAMERA = """() => {
+  const img = document.getElementById('camera-img');
+  if (!img.naturalWidth) return 0;
+  const c = document.createElement('canvas');
+  c.width = img.naturalWidth; c.height = img.naturalHeight;
+  c.getContext('2d').drawImage(img, 0, 0);
+  img.onerror = null;
+  img.src = c.toDataURL('image/jpeg');
+  return c.width;
+}"""
+
+
+def shoot(page, path, full_page=False):
+    page.evaluate(FREEZE_CAMERA)
+    page.screenshot(path=path, full_page=full_page)
+
+
 def send(page, obj):
     page.evaluate("(o) => window.__panel.ws.send(JSON.stringify(o))", obj)
 
@@ -87,6 +106,7 @@ def main() -> int:
 
         # Front view: the head follows the pointer. Facing the robot, its own left is on
         # the screen's right, so dragging right turns it to its left (pan +)
+        send(page, {"type": "tracking", "enabled": False})
         drag_head(page, min(140, m / 0.4), 0)
         t = target(page)
         check(t["pan"] > 5, f"front view, drag right -> pan positive (robot's left = screen right): {t}")
@@ -96,7 +116,7 @@ def main() -> int:
         if s["servo"].get("connected"):
             check(s["servo"].get("current") is not None and abs(s["servo"]["current"]["pan"] - t["pan"]) < 2, f"robot reports current {s['servo'].get('current')}")
         page.screenshot(path=str(out / "laptop_drag_right.png"))
-        drag_head(page, 0, -min(60, m / 0.4))
+        drag_head(page, 0, -min(60, m / 0.4 / 2))
         t2 = target(page)
         check(t2["tilt"] > t["tilt"] + 5, f"drag up -> tilt up: {t2}")
         page.screenshot(path=str(out / "laptop_drag_up.png"))
@@ -114,23 +134,24 @@ def main() -> int:
         send(page, {"type": "center"})
         time.sleep(1.5)
 
-        # Angles beyond the limit are clamped on the robot
-        send(page, {"type": "set_angles", "pan": 500, "tilt": -500})
-        time.sleep(0.4)
-        s = server_state(page)
-        lim = s["servo"]["limits"]
-        check(s["servo"]["target"] == {"pan": lim["pan"], "tilt": -lim["tilt"]}, f"out-of-range clamped {s['servo']['target']}")
-        send(page, {"type": "center"})
-        time.sleep(0.8)
+        # Angles beyond the limit are clamped on the robot (only where full swings are allowed)
+        if m >= 90:
+            send(page, {"type": "set_angles", "pan": 500, "tilt": -500})
+            time.sleep(0.4)
+            s = server_state(page)
+            lim = s["servo"]["limits"]
+            check(s["servo"]["target"] == {"pan": lim["pan"], "tilt": -lim["tilt"]}, f"out-of-range clamped {s['servo']['target']}")
+            send(page, {"type": "center"})
+            time.sleep(0.8)
 
         for tab in TABS:
             page.click(f'.tabs button[data-tab="{tab}"]')
-            time.sleep(3.0 if tab == "camera" else 0.6)
-            page.screenshot(path=str(out / f"laptop_tab_{tab}.png"))
+            time.sleep(4.0 if tab == "camera" else 0.6)
             if tab == "camera":
                 cam = page.evaluate("document.getElementById('camera-img').naturalWidth")
                 avail = server_state(page)["camera"]["available"]
                 check(cam > 0 or not avail, f"camera stream shows frames (width {cam}, available {avail})")
+            shoot(page, str(out / f"laptop_tab_{tab}.png"))
         page.click('.tabs button[data-tab="control"]')
         ctx.close()
 
@@ -149,8 +170,8 @@ def main() -> int:
         page.screenshot(path=str(out / "phone_full.png"), full_page=True)
         for tab in TABS:
             page.click(f'.tabs button[data-tab="{tab}"]')
-            time.sleep(2.0 if tab == "camera" else 0.5)
-            page.screenshot(path=str(out / f"phone_tab_{tab}.png"), full_page=True)
+            time.sleep(4.0 if tab == "camera" else 0.5)
+            shoot(page, str(out / f"phone_tab_{tab}.png"), full_page=True)
         ctx.close()
         browser.close()
 

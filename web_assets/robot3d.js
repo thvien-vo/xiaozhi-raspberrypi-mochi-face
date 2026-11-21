@@ -78,6 +78,7 @@ export class Robot3D {
     controls.enablePan = false;
     controls.update();
     this.controls = controls;
+    this._dirty = true;
 
     this.raycaster = new THREE.Raycaster();
     this.pointer = new THREE.Vector2();
@@ -122,6 +123,7 @@ export class Robot3D {
     this.ghostTilt.traverse((o) => { if (o.isMesh) this.headMeshes.push(o); });
     this.ready = true;
     this._apply();
+    this._dirty = true;
   }
 
   setView(name, animate = true) {
@@ -137,15 +139,22 @@ export class Robot3D {
       return;
     }
     this._viewAnim = { from: this.camera.position.clone(), to: new THREE.Vector3(...p), t: 0 };
+    this._dirty = true;
   }
 
   setLimits(limits) {
     if (limits) this.limits = { pan: limits.pan ?? 90, tilt: limits.tilt ?? 45 };
   }
 
-  setReal(pan, tilt) { this.realGoal = { pan, tilt }; }
+  setReal(pan, tilt) {
+    if (pan !== this.realGoal.pan || tilt !== this.realGoal.tilt) this._dirty = true;
+    this.realGoal = { pan, tilt };
+  }
 
-  setTarget(pan, tilt) { this.target = { pan, tilt }; }
+  setTarget(pan, tilt) {
+    if (pan !== this.target.pan || tilt !== this.target.tilt) this._dirty = true;
+    this.target = { pan, tilt };
+  }
 
   resize() {
     const w = this.canvas.clientWidth, h = this.canvas.clientHeight;
@@ -155,6 +164,7 @@ export class Robot3D {
     // Keep the whole robot in view on tall phone screens
     this.camera.zoom = w / h < 1.1 ? Math.max(0.6, (w / h) / 1.25) : 1;
     this.camera.updateProjectionMatrix();
+    this._dirty = true;
   }
 
   _apply() {
@@ -173,17 +183,27 @@ export class Robot3D {
     this._last = now;
     // Ease toward the reported angles so 20 Hz updates look smooth
     const k = 1 - Math.exp(-dt * 18);
-    this.real.pan += (this.realGoal.pan - this.real.pan) * k;
-    this.real.tilt += (this.realGoal.tilt - this.real.tilt) * k;
+    const ep = this.realGoal.pan - this.real.pan, et = this.realGoal.tilt - this.real.tilt;
+    if (Math.abs(ep) + Math.abs(et) > 0.02) {
+      this.real.pan += ep * k;
+      this.real.tilt += et * k;
+      this._dirty = true;
+    } else {
+      this.real = { ...this.realGoal };
+    }
     if (this._viewAnim) {
       const a = this._viewAnim;
       a.t = Math.min(1, a.t + dt * 2.5);
       const e = 0.5 - 0.5 * Math.cos(Math.PI * a.t);
       this.camera.position.lerpVectors(a.from, a.to, e);
       if (a.t >= 1) this._viewAnim = null;
+      this._dirty = true;
     }
+    if (this.controls.update()) this._dirty = true;  // True while the view moves (damping)
+    // Draw only when something moved: idle pages cost no GPU/CPU (phones, the Pi's LAN)
+    if (!this._dirty) return;
+    this._dirty = false;
     this._apply();
-    this.controls.update();
     this.renderer.render(this.scene, this.camera);
   }
 
