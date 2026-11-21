@@ -5,7 +5,7 @@
     "AUTO_MODE": true,
     "ALWAYS_LISTEN": true,
     "GREET_ON_START": true,
-    "GREET_TEXT": "Xin chào! Mình đã sẵn sàng.",
+    "GREET_TEXT": "Xin chào",
     "WINDOW_WIDTH": 1024,
     "WINDOW_HEIGHT": 600
   },

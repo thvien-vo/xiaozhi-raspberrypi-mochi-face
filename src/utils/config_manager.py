@@ -122,9 +122,11 @@ class ConfigManager:
             # Implies AUTO_MODE.
             "ALWAYS_LISTEN": False,
             # With ALWAYS_LISTEN: greet out loud once per launch (at most once per
-            # GREET_MIN_INTERVAL_S across restarts), then listen once the greeting ends.
+            # GREET_MIN_INTERVAL_S across restarts), then listen once the greeting ends. GREET_TEXT is sent as
+            # a wake word, which the server answers with its own spoken greeting; it rejects long
+            # text ("Detect is only for wake words"), so keep it to a word or two.
             "GREET_ON_START": False,
-            "GREET_TEXT": "Xin chào! Mình đã sẵn sàng.",
+            "GREET_TEXT": "Xin chào",
             "GREET_MIN_INTERVAL_S": 300,
             "WINDOW_WIDTH": 1024,
             "WINDOW_HEIGHT": 600,

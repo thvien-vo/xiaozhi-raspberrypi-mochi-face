@@ -8,7 +8,7 @@ from src.plugins.always_listen import AlwaysListenPlugin
 from src.utils.config_manager import ConfigManager
 
 ROOT = Path(__file__).resolve().parent.parent
-GREETING = "Xin chào! Mình đã sẵn sàng."
+GREETING = "Xin chào"
 
 
 class World:
@@ -284,8 +284,8 @@ def test_defaults_off_and_pi_preset_on():
     # Wake word stays off, software AEC stays off
     assert preset["WAKE_WORD_OPTIONS"]["USE_WAKE_WORD"] is False
     assert preset["AEC_OPTIONS"]["ENABLED"] is False
-    # Greeting is short enough for the server's detect channel
-    assert len(preset["FACE"]["GREET_TEXT"]) <= 40
+    # The server rejects long text on the detect channel ("only for wake words")
+    assert len(preset["FACE"]["GREET_TEXT"]) <= 16
 
 
 def test_from_config_reads_face_settings():

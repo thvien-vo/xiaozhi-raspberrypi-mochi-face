@@ -42,7 +42,7 @@ DEFAULT_GREET_GIVE_UP_S = 120.0
 # long for the speech to end, before carrying on with normal listening
 GREET_NO_SPEECH_S = 10.0
 GREET_TIMEOUT_S = 60.0
-DEFAULT_GREET_TEXT = "Xin chào! Mình đã sẵn sàng."
+DEFAULT_GREET_TEXT = "Xin chào"
 DEFAULT_GREET_MIN_INTERVAL_S = 300.0
 
 # A transcript this soon after TTS stopped is more likely the robot's own voice than a reply
