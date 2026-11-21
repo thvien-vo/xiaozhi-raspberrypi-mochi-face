@@ -97,6 +97,9 @@ class ConfigManager:
             # none | horizontal | vertical | both; applied once, where frames are read,
             # so the preview, detection and take_photo all see the corrected image
             "flip": "none",
+            # Pixel format requested from V4L2 cameras, e.g. "MJPG" (less USB bandwidth and CPU
+            # than raw YUYV). Empty keeps the driver default.
+            "fourcc": "",
             "frame_width": 640,
             "frame_height": 480,
             "fps": 30,
@@ -118,6 +121,11 @@ class ConfigManager:
             # disconnect (with backoff); a tap interrupts speech instead of ending the chat.
             # Implies AUTO_MODE.
             "ALWAYS_LISTEN": False,
+            # With ALWAYS_LISTEN: greet out loud once per launch (at most once per
+            # GREET_MIN_INTERVAL_S across restarts), then listen once the greeting ends.
+            "GREET_ON_START": False,
+            "GREET_TEXT": "Xin chào! Mình đã sẵn sàng.",
+            "GREET_MIN_INTERVAL_S": 300,
             "WINDOW_WIDTH": 1024,
             "WINDOW_HEIGHT": 600,
             "ESC_TO_EXIT": True,  # Kiosk mode only
@@ -220,6 +228,12 @@ class ConfigManager:
             "input_channels": None,
             "output_channels": None,
             "force_output_sample_rate": None,  # Play at this rate whatever the device reports (e.g. 48000)
+            # True: a configured device name that is not found is an error (never falls back to
+            # another device, such as a webcam microphone)
+            "strict_names": False,
+            # > 0: if the audio device cannot be opened at startup, keep retrying in the
+            # background for this many seconds instead of running without audio
+            "init_retry_s": 0,
             "opus_output_sample_rate": 24000,  # Opus decode sample rate: 24000 (official) or 16000 (third-party)
             "frame_duration": 20,  # Audio frame duration (ms): 20 (low latency) / 40 (balanced) / 60 (low CPU)
         },

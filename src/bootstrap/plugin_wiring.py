@@ -113,7 +113,7 @@ async def setup_plugins(
     if container.config.get_config("FACE.ALWAYS_LISTEN", False):
         from src.plugins.always_listen import AlwaysListenPlugin
 
-        plugins.append(AlwaysListenPlugin())
+        plugins.append(AlwaysListenPlugin.from_config(container.config, audio_plugin))
 
     container.plugins.register(*plugins)
 

@@ -271,6 +271,22 @@ class ConversationSession:
         await self.protocol.send_start_listening(mode)
         await self.state.set_device_state(DeviceState.LISTENING)
 
+    async def begin_greeting(self, mode: ListeningMode, text: str) -> bool:
+        """Have the assistant speak first, without opening the microphone.
+
+        Arms continuous listening, then sends the wake-word "detect" event the way a
+        hardware device does when it hears its wake word. The server answers with TTS;
+        _handle_tts_stop then sends start_listening, so the mic opens only after the
+        greeting has been spoken.
+        """
+        await self._cancel_notification()
+        if not await self.connect_protocol():
+            return False
+        self.state.set_listening_mode(mode)
+        self.state.set_keep_listening(True)
+        await self.protocol.send_wake_word_detected(text)
+        return True
+
     async def stop_listening(self) -> None:
         self.state.set_keep_listening(False)
         await self.protocol.send_stop_listening()

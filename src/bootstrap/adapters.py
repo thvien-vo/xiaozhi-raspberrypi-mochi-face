@@ -62,6 +62,9 @@ class PluginCommandsAdapter:
     async def start_listening(self, mode: ListeningMode) -> None:
         await self._container.session.start_listening(mode)
 
+    async def begin_greeting(self, mode: ListeningMode, text: str) -> bool:
+        return await self._container.session.begin_greeting(mode, text)
+
     async def stop_listening(self) -> None:
         await self._container.session.stop_listening()
 

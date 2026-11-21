@@ -82,6 +82,13 @@ class PluginCommands(Protocol):
         """
         ...
 
+    async def begin_greeting(self, mode: "ListeningMode", text: str) -> bool:
+        """
+        Speak first: arm continuous listening and send a wake-word detect event, without
+        opening the microphone until the spoken reply ends. False if not connected.
+        """
+        ...
+
     async def stop_listening(self) -> None:
         """
         Stop listening.
