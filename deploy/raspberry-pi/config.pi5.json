@@ -4,6 +4,8 @@
     "FULLSCREEN": true,
     "AUTO_MODE": true,
     "ALWAYS_LISTEN": true,
+    "GREET_ON_START": true,
+    "GREET_TEXT": "Xin chào! Mình đã sẵn sàng.",
     "WINDOW_WIDTH": 1024,
     "WINDOW_HEIGHT": 600
   },
@@ -17,7 +19,9 @@
   "AUDIO_DEVICES": {
     "input_device_name": "Jabra",
     "output_device_name": "Jabra",
-    "force_output_sample_rate": 48000
+    "force_output_sample_rate": 48000,
+    "strict_names": true,
+    "init_retry_s": 90
   },
   "CAMERA": {
     "backend": "opencv",
@@ -25,7 +29,8 @@
     "frame_width": 640,
     "frame_height": 480,
     "device": "/dev/v4l/by-id/*-video-index0",
-    "flip": "horizontal"
+    "flip": "horizontal",
+    "fourcc": "MJPG"
   },
   "VISION": {
     "ENABLED": true,
