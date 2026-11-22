@@ -172,6 +172,10 @@ class AudioPlugin(Plugin):
 
         from src.constants.constants import DeviceState
 
+        # Keep music low for the whole reply, not only while speech samples are queued
+        if hasattr(self.codec, "set_music_ducked"):
+            self.codec.set_music_ducked(state == DeviceState.SPEAKING)
+
         if state == DeviceState.LISTENING:
             self._in_silence_period = True
             try:
@@ -201,16 +205,11 @@ class AudioPlugin(Plugin):
             logger.error(f"Failed to handle TTS event: {e}", exc_info=True)
 
     def _music_parallel_enabled(self) -> bool:
-        """Determine parallel playback: when AEC engine is active and config allows, TTS does not pause music.
-
-        Automatically falls back to pausing when AEC is bypassed (missing library or auto-disabled on repeated failures),
-        preventing uncancelled echo from polluting speech recognition.
-        """
+        """Determine parallel playback: music keeps playing, ducked, while the assistant speaks."""
         try:
-            config = self._ctx.get_config()
-            if not bool(config.get_config("AEC_OPTIONS.MUSIC_PARALLEL", True)):
-                return False
-            return bool(self.codec and self.codec.aec_active)
+            from src.mcp.tools.music.config import plays_through_speech
+
+            return plays_through_speech(self._ctx.get_config(), self.codec)
         except Exception:
             return False
 

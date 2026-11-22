@@ -47,7 +47,7 @@ class WebPanelPlugin(Plugin):
     priority = 80  # After ui, vision and servo
     requires = ["ui"]
 
-    def __init__(self, config, servo=None, tracker=None, arbiter=None, player=None, vision=None, mode: str = "gui") -> None:
+    def __init__(self, config, servo=None, tracker=None, arbiter=None, player=None, vision=None, mode: str = "gui", music_player=None) -> None:
         super().__init__()
         self._config = config
         self._servo = servo
@@ -56,6 +56,7 @@ class WebPanelPlugin(Plugin):
         self._player = player
         self._vision = vision
         self._mode = mode
+        self._music_player = music_player
         self._loop: asyncio.AbstractEventLoop | None = None
         self._server = None
         self.backend = None
@@ -73,6 +74,7 @@ class WebPanelPlugin(Plugin):
             player=container.head_player,
             vision=container.vision,
             mode=getattr(container, "_mode", "gui"),
+            music_player=container.music_player,
         )
 
     # ----- Setup -----
@@ -84,6 +86,7 @@ class WebPanelPlugin(Plugin):
         from src.utils.resource_finder import get_app_root, get_user_data_dir
         from src.web_panel.backend import AppHooks, AppState, RobotBackend
         from src.web_panel.camera import vision_camera_feed
+        from src.web_panel.music import MusicControl
         from src.web_panel.server import WebPanelServer
         from src.web_panel.settings import load_web_settings
 
@@ -132,7 +135,10 @@ class WebPanelPlugin(Plugin):
             save_setting=self._save_setting,
             eye_colors=eye_colors if face_available else None,
             face_frames=self._frames,
+            music=MusicControl(self._music_player, lambda: self._loop) if self._music_player is not None else None,
         )
+        if self._music_player is not None:
+            self._music_player.add_listener(self.backend._changed)
         if self._face_model is not None:
             model = self._face_model
             for signal in (model.emotionChanged, model.visualStateChanged, model.activityChanged):

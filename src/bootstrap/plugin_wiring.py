@@ -72,6 +72,16 @@ def bind_servo(container: "ServiceContainer") -> None:
     container.head_arbiter = ControlArbiter(container.head_tracker, settings.manual_hold_sec)
     container.head_player = MotionPlayer(container.servo, container.head_arbiter)
 
+    from src.music.dance import MusicDancer
+
+    if container.music_player is not None:
+        container.music_player.dancer = MusicDancer(
+            container.servo,
+            container.head_arbiter,
+            container.music_player.beat_state,
+            player=container.head_player,
+        )
+
 
 def unbind_shared_services(container: "ServiceContainer") -> None:
     """Release shared service references (called in the final stage of the resource pool)."""
@@ -112,6 +122,7 @@ async def setup_plugins(
     """Bind shared services, register and initialize plugins, attach resource cleanup and direct audio routing."""
     from src.plugins.audio import AudioPlugin
     from src.plugins.mcp import McpPlugin
+    from src.plugins.music import MusicPlugin
     from src.plugins.shortcuts import ShortcutsPlugin
     from src.plugins.ui import UIPlugin
     from src.plugins.vision import VisionPlugin
@@ -142,6 +153,7 @@ async def setup_plugins(
         ui_plugin,
         vision_plugin,
         shortcuts_plugin,
+        MusicPlugin(container.config, container.music_player),
     ]
     if container.servo is not None:
         from src.plugins.servo import ServoPlugin

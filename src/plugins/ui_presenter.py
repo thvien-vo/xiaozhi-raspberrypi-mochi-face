@@ -22,10 +22,10 @@ class UiPresenter:
     }
 
     MUSIC_STATE_TEXT = {
-        "playing": "Playing: {song}",
-        "paused": "Paused: {song}",
-        "stopped": "Stopped: {song}",
-        "completed": "Completed: {song}",
+        "playing": "♪ {song}",
+        "paused": "❚❚ {song}",
+        "stopped": "",
+        "completed": "",
     }
 
     def __init__(self, viewport: Optional["ViewPort"] = None) -> None:
@@ -97,7 +97,7 @@ class UiPresenter:
                 return
 
             template = self.MUSIC_STATE_TEXT.get(data.state)
-            if not template:
+            if template is None:
                 return
             text = template.format(song=data.song)
             self.set_music_line(text)

@@ -12,6 +12,10 @@ venv/
 
 # Music cache
 cache/
+# Songs never belong in the repository
+*.mp3
+*.m4a
+*.flac
 
 
 # FFmpeg binaries injected by CI (not tracked in repository)

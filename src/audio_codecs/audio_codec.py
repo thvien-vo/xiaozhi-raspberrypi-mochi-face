@@ -20,6 +20,8 @@ logger = get_logger()
 # Mixing gain (ducking) for music when TTS is present, and its hold duration (in 20ms chunks)
 _MUSIC_DUCK_GAIN = 0.35
 _DUCK_HOLD_CHUNKS = 10
+# How fast music comes back after ducking (gain per 20ms chunk); going down is immediate
+_MUSIC_RELEASE_STEP = 0.15
 # Music writer watermark backpressure target (seconds): smaller makes pause/barge-in more responsive, larger improves jitter tolerance
 _MUSIC_BACKLOG_TARGET_S = 0.30
 # TTS / notification / music FIFO capacity (seconds), drops oldest when exceeded
@@ -78,6 +80,10 @@ class AudioCodec:
         )
         self._mix_chunk = int(AudioConfig.OUTPUT_SAMPLE_RATE * 0.02)  # 20ms
         self._duck_hold = 0
+        self._music_gain = 1.0  # Music volume
+        self._music_ducked = False  # Held down for the whole time the assistant speaks
+        self._music_level = 1.0  # Gain applied to the last chunk
+        self._last_output_callback = 0.0
         self._notification_had_audio = False
         self._notification_drain_callbacks_remaining = 0
         self._notification_progress_callback: Callable[[int], None] | None = None
@@ -214,6 +220,7 @@ class AudioCodec:
             time_info: Time info
             status: Status flags
         """
+        self._last_output_callback = time.monotonic()
         if status:
             # Rate limit: logging (file I/O) inside callback exacerbates underflow, max 1 log per 2 seconds
             now = time.monotonic()
@@ -292,7 +299,8 @@ class AudioCodec:
         Rules:
         - All three empty -> None (caller enters silence/underflow path)
         - When TTS or notification is present, music ducks by _MUSIC_DUCK_GAIN and holds
-          for several chunks across voice frame gaps (prevents ducking gain flutter)
+          for several chunks across voice frame gaps (prevents ducking gain flutter);
+          set_music_ducked() holds it for a whole reply. It then comes back in a short ramp
         """
         tts = self._tts_fifo.pull(n)
         notification, notification_samples = self._notification_fifo.pull_with_count(n)
@@ -330,11 +338,20 @@ class AudioCodec:
 
         if music is None:
             return voice
+        ducked = voice is not None or self._duck_hold > 0 or self._music_ducked
+        music = self._apply_music_level(music, ducked)
         if voice is None:
-            if self._duck_hold > 0:
-                music *= _MUSIC_DUCK_GAIN
             return music
-        return np.clip(voice + music * _MUSIC_DUCK_GAIN, -1.0, 1.0)
+        return np.clip(voice + music, -1.0, 1.0)
+
+    def _apply_music_level(self, music: np.ndarray, ducked: bool) -> np.ndarray:
+        """Scale a music chunk by volume and ducking (output callback thread)."""
+        before = self._music_level
+        target = self._music_gain * (_MUSIC_DUCK_GAIN if ducked else 1.0)
+        self._music_level = min(target, before + _MUSIC_RELEASE_STEP)
+        if self._music_level > before:
+            return music * np.linspace(before, self._music_level, len(music), dtype=np.float32)
+        return music * np.float32(self._music_level)
 
     def _notify_notification_drained_after_output(self) -> None:
         """Report that the notification queue is truly drained after device output."""
@@ -381,6 +398,38 @@ class AudioCodec:
         except Exception as e:
             logger.warning(f"Failed to create AEC engine, bypassed: {e}", exc_info=True)
             self._aec = None
+
+    # === Music ===
+
+    def set_music_gain(self, gain: float) -> None:
+        """Music volume as a linear factor (0..1)."""
+        self._music_gain = min(1.0, max(0.0, float(gain)))
+
+    def set_music_ducked(self, ducked: bool) -> None:
+        """Hold music low for as long as the assistant speaks (gaps between sentences too)."""
+        self._music_ducked = bool(ducked)
+
+    @property
+    def music_backlog_samples(self) -> int:
+        """Music written but not yet handed to the sound card."""
+        return self._music_fifo.size
+
+    @property
+    def output_running(self) -> bool:
+        """The output stream is open and the sound card keeps asking for audio."""
+        stream = getattr(self.stream_manager, "output_stream", None)
+        return stream is not None and time.monotonic() - self._last_output_callback < 2.0
+
+    @property
+    def output_device_name(self) -> str:
+        if self.device_config is None:
+            return ""
+        try:
+            import sounddevice as sd
+
+            return str(sd.query_devices(self.device_config.output_device_id)["name"])
+        except Exception:
+            return ""
 
     # === Public interface (backward compatible) ===
 

@@ -19,6 +19,22 @@ def _cfg_str(cm, path: str, default: str) -> str:
     return text if text else default
 
 
+def plays_through_speech(config, codec) -> bool:
+    """Whether music keeps playing, turned down, while the assistant speaks.
+
+    The microphone is closed while speaking unless AEC keeps it open (realtime mode), so
+    without AEC music cannot be mistaken for speech. With AEC configured but its engine
+    not working, music pauses instead.
+    """
+    if codec is None or not bool(config.get_config("AEC_OPTIONS.MUSIC_PARALLEL", True)):
+        return False
+    if getattr(codec, "aec_active", False):
+        return True
+    if bool(config.get_config("AEC_OPTIONS.ENABLED", False)):
+        return False
+    return bool(config.get_config("MUSIC.DUCK_WHILE_SPEAKING", True))
+
+
 def load_music_config() -> dict:
     from src.utils.config_manager import get_config
 

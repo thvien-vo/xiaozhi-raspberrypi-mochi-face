@@ -13,19 +13,27 @@ Face mirror: changes the expression and the eye color (palette, emotion mode, ra
 from the page and checks the face on the page follows: the expression button, and the
 color of the eyes in the face canvas (the robot's snapshots, or the page's own drawing).
 The robot's eye color and mode are put back at the end. --face-only skips the head.
+
+Music: uploads a generated test tone, finds it without accents, plays, pauses, seeks,
+changes the volume and deletes it again (the robot hums for a few seconds).
+--music-only runs just this part; --no-music leaves it out.
 """
 
 from __future__ import annotations
 
 import argparse
+import io
 import json
+import math
+import struct
 import sys
 import time
+import wave
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
-TABS = ["control", "motion", "camera", "face", "chat"]
+TABS = ["control", "motion", "camera", "face", "music", "chat"]
 
 
 def wait_ready(page, timeout=20000):
@@ -205,12 +213,123 @@ def face_checks(page, out, check, prefix="laptop"):
     check(server_state(page)["face"]["eye"] == eye0, f"face: eye color restored to {eye0}")
 
 
+def make_tone(seconds=20.0, rate=24000) -> bytes:
+    """A soft 440 Hz tone pulsing at 120 BPM (WAV)."""
+    data = bytearray()
+    for i in range(int(seconds * rate)):
+        t = i / rate
+        data += struct.pack("<h", int(9000 * math.exp(-5 * (t % 0.5)) * math.sin(2 * math.pi * 440 * t)))
+    out = io.BytesIO()
+    with wave.open(out, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(rate)
+        w.writeframes(bytes(data))
+    return out.getvalue()
+
+
+SLIDE = """([id, value]) => {
+  const b = document.getElementById(id);
+  b.value = value; b.dispatchEvent(new Event('input')); b.dispatchEvent(new Event('change'));
+}"""
+
+
+def music_checks(page, out, check, prefix="laptop"):
+    """Upload, search, play, pause, seek, volume, queue and delete from the music tab."""
+    page.click('.tabs button[data-tab="music"]')
+    time.sleep(1.0)
+    m = server_state(page).get("music")
+    if m is None:
+        check(False, "music: available")
+        return
+    volume0 = m["volume"]
+    check(page.is_visible("#mu-audio-warn") == (not m["audio"]["ok"]), f"music: audio notice matches the robot ({m['audio']})")
+    title = f"Bài thử Đồng Hồ {prefix}"
+
+    def music():
+        return server_state(page)["music"]
+
+    def until(fn, timeout=8.0):
+        end = time.time() + timeout
+        while time.time() < end:
+            if fn(music()):
+                return True
+            time.sleep(0.1)
+        return False
+
+    def row():
+        return page.locator("#mu-list li", has_text=title)
+
+    page.set_input_files("#mu-files", [
+        {"name": f"{title}.wav", "mimeType": "audio/wav", "buffer": make_tone()},
+        {"name": "ghi chu.txt", "mimeType": "text/plain", "buffer": b"not music"},
+    ])
+    row().first.wait_for(timeout=15000)
+    check(row().count() == 1, "music: uploaded file is in the library")
+    check(page.locator("#mu-uploads li.bad").count() == 1, "music: a .txt file is refused")
+    page.locator("#mu-uploads li.bad button").first.click()
+    page.fill("#mu-search", "bai thu dong ho")
+    check(row().count() == 1, "music: found without accents")
+    page.fill("#mu-search", "khong co bai nay")
+    check(row().count() == 0, "music: search filters")
+    page.fill("#mu-search", "")
+
+    track_id = row().get_attribute("data-id")
+    row().locator(".mu-main").click()
+    if m["audio"]["ok"]:
+        check(until(lambda s: s["state"] == "playing" and s["track"]["id"] == track_id), "music: playing after a click")
+        check(until(lambda s: s["position"] >= 2), f"music: position advances ({music()['position']} s)")
+        time.sleep(0.4)
+        shown = page.input_value("#mu-seek")
+        check(abs(float(shown) - music()["position"]) <= 2, f"music: progress bar follows (bar {shown}, robot {music()['position']})")
+        page.evaluate("window.scrollTo(0, 0); document.querySelector('.tabpage[data-page=music]').parentElement.scrollTo(0, 0)")
+        shoot(page, str(out / f"{prefix}_music_playing.png"), full_page=prefix == "phone")
+        page.click("#mu-play")
+        check(until(lambda s: s["state"] == "paused"), "music: paused")
+        at = music()["position"]
+        time.sleep(1.5)
+        check(abs(music()["position"] - at) <= 1, "music: position holds while paused")
+        page.evaluate(SLIDE, ["mu-seek", 10])
+        check(until(lambda s: 9 <= s["position"] <= 12), f"music: seek to 10 s ({music()['position']})")
+        page.click("#mu-play")
+        check(until(lambda s: s["state"] == "playing" and s["position"] >= 11), "music: resumed after the seek point")
+    else:
+        time.sleep(1.0)
+        check(music()["state"] == "stopped", "music: nothing plays without a speaker")
+        shoot(page, str(out / f"{prefix}_music_no_audio.png"), full_page=prefix == "phone")
+    page.evaluate(SLIDE, ["mu-volume", 35])
+    check(until(lambda s: s["volume"] == 35), "music: volume 35%")
+    send(page, {"type": "music_volume", "volume": volume0})
+    repeat0 = m["repeat"]
+    page.click("#mu-repeat")
+    check(until(lambda s: s["repeat"] != repeat0), "music: repeat mode changes")
+    send(page, {"type": "music_mode", "repeat": repeat0})
+    bad = page.evaluate("""() => new Promise((res) => {
+      const ws = window.__panel.ws, id = 'bad' + Date.now();
+      const h = (ev) => { if (typeof ev.data === 'string') { const m = JSON.parse(ev.data); if (m.id === id) { ws.removeEventListener('message', h); res(m); } } };
+      ws.addEventListener('message', h);
+      ws.send(JSON.stringify({ type: 'music_play', track_id: '../../etc/passwd', id }));
+    })""")
+    check(bad.get("ok") is False, f"music: bad track id refused ({bad.get('message')})")
+    send(page, {"type": "music_stop"})
+    check(until(lambda s: s["state"] == "stopped"), "music: stopped")
+    delete = row().locator('button[title="Xóa khỏi robot"]')
+    delete.click()
+    delete.click()
+    end = time.time() + 6
+    while time.time() < end and row().count():
+        time.sleep(0.2)
+    check(row().count() == 0, "music: deleted")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("url")
     ap.add_argument("--out", default="web_panel_shots")
     ap.add_argument("--max-deg", type=float, default=30.0)
     ap.add_argument("--face-only", action="store_true", help="Only the face/eye color checks (no head moves)")
+    ap.add_argument("--music-only", action="store_true", help="Only the music checks (no head moves)")
+    ap.add_argument("--no-music", action="store_true", help="Leave out the music checks (they make sound)")
     args = ap.parse_args()
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -235,8 +354,8 @@ def main() -> int:
         wait_ready(page)
         s = server_state(page)
         check(s["type"] == "state", "WebSocket state received")
-        if args.face_only:
-            face_checks(page, out, check)
+        if args.face_only or args.music_only:
+            (face_checks if args.face_only else music_checks)(page, out, check)
             ctx.close()
             browser.close()
             real_errors = [e for e in errors if "camera.mjpg" not in e]
@@ -301,6 +420,8 @@ def main() -> int:
                 check(cam > 0 or not avail, f"camera stream shows frames (width {cam}, available {avail})")
             shoot(page, str(out / f"laptop_tab_{tab}.png"))
         face_checks(page, out, check)
+        if not args.no_music:
+            music_checks(page, out, check)
         page.click('.tabs button[data-tab="control"]')
         ctx.close()
 
@@ -322,6 +443,8 @@ def main() -> int:
             time.sleep(4.0 if tab == "camera" else 0.5)
             shoot(page, str(out / f"phone_tab_{tab}.png"), full_page=True)
         face_checks(page, out, check, prefix="phone")
+        if not args.no_music:
+            music_checks(page, out, check, prefix="phone")
         ctx.close()
         browser.close()
 

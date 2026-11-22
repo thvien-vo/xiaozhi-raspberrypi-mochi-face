@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Run the web panel alone, with a simulated servo board, camera and app.
 
-    python scripts/web_panel_dev.py [--port 8080] [--password secret] [--https] [--real-face]
+    python scripts/web_panel_dev.py [--port 8080] [--password secret] [--https] [--real-face] [--no-audio]
 
 The servo board is a fake serial port that answers like firmware/servo_bridge; the
 camera draws a moving "person" with a YOLO-style box; tracking follows it; the face,
@@ -11,12 +11,18 @@ to a temporary folder unless --data-dir is given. Nothing touches real hardware.
 --real-face opens the robot's real QML face (add QT_QPA_PLATFORM=offscreen to keep it
 hidden) and mirrors it to the page with the same snapshots the app sends; without it the
 page draws the face itself (its fallback). Eye color changes work in both.
+
+Music runs the real MusicPlayer on a silent fake speaker that consumes sound in real time
+(decoding needs ffmpeg, the imageio-ffmpeg package is enough); --no-audio leaves the
+speaker out. The library is the folder music/ in the data folder.
 """
 
 from __future__ import annotations
 
 import argparse
+import asyncio
 import math
+import os
 import sys
 import tempfile
 import threading
@@ -129,6 +135,63 @@ class FakeWorld:
             return self.result
 
 
+class FakeSpeaker:
+    """What MusicPlayer needs of AudioCodec; plays silently in real time."""
+
+    RATE = 24000
+    output_running = True
+    output_device_name = "Loa giả lập: dev"
+
+    def __init__(self) -> None:
+        self.gain = 1.0
+        self._size = 0.0
+        self._at = time.monotonic()
+
+    @property
+    def music_backlog_samples(self) -> int:
+        now = time.monotonic()
+        self._size = max(0.0, self._size - (now - self._at) * self.RATE)
+        self._at = now
+        return int(self._size)
+
+    async def write_pcm_direct(self, pcm) -> None:
+        self._size = self.music_backlog_samples + len(pcm)
+        while self.music_backlog_samples > self.RATE // 4:
+            await asyncio.sleep(0.02)
+
+    async def clear_music_queue(self) -> None:
+        self._size = 0.0
+
+    def set_music_gain(self, gain: float) -> None:
+        self.gain = gain
+
+
+def make_music(data_dir: Path, audio: bool, controller, arbiter, motion_player):
+    """The real music player on its own event loop thread."""
+    os.environ["XIAOZHI_DATA_DIR"] = str(data_dir / "app")
+    os.environ["XIAOZHI_MUSIC_DIR"] = str(data_dir / "music")
+    from src.utils.config_manager import initialize_config
+
+    initialize_config()
+    from src.mcp.tools.music.music_player import MusicPlayer
+    from src.music.dance import MusicDancer
+    from src.web_panel.music import MusicControl
+
+    loop = asyncio.new_event_loop()
+    threading.Thread(target=loop.run_forever, daemon=True).start()
+
+    async def build():
+        player = MusicPlayer()
+        if controller is not None:
+            player.dancer = MusicDancer(controller, arbiter, player.beat_state, player=motion_player)
+        await player._bus.on_audio_codec_changed(FakeSpeaker() if audio else None)
+        player.load_settings()
+        return player
+
+    player = asyncio.run_coroutine_threadsafe(build(), loop).result(10)
+    return MusicControl(player, lambda: loop)
+
+
 class _DefaultsConfig:
     """Stand-in for ConfigManager: every FACE.* value at its default."""
 
@@ -200,6 +263,7 @@ def main() -> int:
     ap.add_argument("--data-dir", default="")
     ap.add_argument("--no-servo", action="store_true", help="Run as if SERVO.ENABLED were false")
     ap.add_argument("--real-face", action="store_true", help="Run the real QML face and stream its snapshots")
+    ap.add_argument("--no-audio", action="store_true", help="Run as if the robot had no speaker")
     args = ap.parse_args()
 
     data_dir = Path(args.data_dir) if args.data_dir else Path(tempfile.mkdtemp(prefix="xz-web-"))
@@ -258,12 +322,14 @@ def main() -> int:
         send_text=fake_reply,
         face_wake=(lambda: face.bridge.wake.emit()) if face is not None else (lambda: print("[dev] face wake")),
     )
+    music = make_music(data_dir, not args.no_audio, controller, arbiter, player)
     backend = RobotBackend(
         controller, tracker, arbiter=arbiter, player=player,
         library=MotionLibrary(data_dir / "motions"), app_state=state, hooks=hooks, camera=camera,
         save_setting=lambda path, value: print(f"[dev] save {path} = {value}"),
-        eye_colors=eye_colors, face_frames=hub,
+        eye_colors=eye_colors, face_frames=hub, music=music,
     )
+    music.player.add_listener(backend._changed)
     web = WebSettings(
         enabled=True, host=args.host, port=args.port, password=args.password,
         camera_stream_fps=8, https_enabled=args.https, https_port=args.https_port,
@@ -291,6 +357,8 @@ def main() -> int:
         pass
     finally:
         server.stop()
+        if music.player.dancer is not None:
+            music.player.dancer.shutdown()
         if tracker:
             tracker.stop()
         if controller:

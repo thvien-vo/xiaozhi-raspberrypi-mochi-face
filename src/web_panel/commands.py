@@ -13,6 +13,8 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
+from src.music.library import MAX_SECONDS, valid_track_id
+from src.music.play_queue import REPEAT_MODES
 from src.servo.motion import GESTURE_LABELS, clean_name
 from src.ui.face_color import normalize_hex, parse_mode
 
@@ -63,6 +65,50 @@ def _text(data: dict, key: str, limit: int) -> str:
     if not value:
         raise CommandError(f"'{key}' trống")
     return value[:limit]
+
+
+def _track_id(data: dict) -> str:
+    value = data.get("track_id")
+    if not valid_track_id(value):
+        raise CommandError("'track_id' không hợp lệ")
+    return value
+
+
+def _uid(data: dict) -> int:
+    value = data.get("uid")
+    if isinstance(value, bool) or not isinstance(value, int) or not 0 < value < 2**31:
+        raise CommandError("'uid' không hợp lệ")
+    return value
+
+
+def _parse_music(kind: str, data: dict) -> Command:
+    if kind in ("music_pause", "music_stop", "music_next", "music_previous", "music_queue_clear"):
+        return Command(kind)
+    if kind == "music_play":
+        # With track_id: play it and queue the library; without: resume or start
+        return Command(kind, {"track_id": _track_id(data) if data.get("track_id") is not None else None})
+    if kind == "music_seek":
+        return Command(kind, {"position": _number(data, "position", 0.0, float(MAX_SECONDS))})
+    if kind == "music_volume":
+        return Command(kind, {"volume": _number(data, "volume", 0.0, 100.0), "save": data.get("save") is not False})
+    if kind == "music_mode":
+        repeat, shuffle = data.get("repeat"), data.get("shuffle")
+        if repeat is not None and repeat not in REPEAT_MODES:
+            raise CommandError("'repeat' phải là " + "/".join(REPEAT_MODES))
+        if shuffle is not None:
+            shuffle = _bool(data, "shuffle")
+        if repeat is None and shuffle is None:
+            raise CommandError("cần 'repeat' hoặc 'shuffle'")
+        return Command(kind, {"repeat": repeat, "shuffle": shuffle})
+    if kind == "music_enqueue":
+        return Command(kind, {"track_id": _track_id(data), "play_next": data.get("play_next") is True})
+    if kind in ("music_dequeue", "music_queue_play"):
+        return Command(kind, {"uid": _uid(data)})
+    if kind == "music_delete":
+        return Command(kind, {"track_id": _track_id(data)})
+    if kind == "music_dance":
+        return Command(kind, {"enabled": _bool(data, "enabled")})
+    raise CommandError(f"lệnh không biết: {kind}")
 
 
 def parse_command(
@@ -142,6 +188,8 @@ def parse_command(
         except ValueError as e:
             raise CommandError(str(e)) from e
         return Command(kind, {"name": name})
+    if kind.startswith("music_"):
+        return _parse_music(kind, data)
     if kind == "send_text":
         return Command(kind, {"text": _text(data, "text", MAX_TEXT_CHARS)})
     raise CommandError(f"lệnh không biết: {kind}")

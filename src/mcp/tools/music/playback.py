@@ -45,6 +45,8 @@ class PlaybackHooks(Protocol):
         position: float | None = None,
     ) -> None: ...
 
+    def playback_finished(self, failed: bool) -> None: ...
+
 
 @dataclass
 class PlaybackDeps:
@@ -75,6 +77,9 @@ class PlaybackEngine:
         self.paused = False
         self.current_position = 0.0
         self.start_play_time = 0.0
+        # Position = base + what the sound card has consumed since (robust to pauses, stalls)
+        self._base_position = 0.0
+        self._written_samples = 0
         self.pause_source: str | None = None
         self._current_source: str | Path | None = None
         self._stream_headers: dict[str, str] | None = None
@@ -87,6 +92,20 @@ class PlaybackEngine:
         if self.audio_codec is None:
             logger.warning("AudioCodec is not set; music playback is unavailable")
         return self.audio_codec
+
+    def position(self) -> float:
+        """Seconds into the song; safe to call from any thread."""
+        if not self.is_playing or self.paused:
+            return self.current_position
+        backlog = getattr(self.audio_codec, "music_backlog_samples", 0)
+        backlog = backlog if isinstance(backlog, int) else 0
+        played = max(0, self._written_samples - backlog) / AudioConfig.OUTPUT_SAMPLE_RATE
+        position = self._base_position + played
+        return min(position, self.total_duration) if self.total_duration > 0 else position
+
+    def _mark_start(self, position: float) -> None:
+        self._base_position = position
+        self._written_samples = 0
 
     async def _clear_music_queue(self) -> int:
         count = 0
@@ -155,10 +174,9 @@ class PlaybackEngine:
                     logger.info(f"Updated pause source: {old} -> {source}")
                 return {"status": "info", "message": "Already paused"}
 
+            self.current_position = self.position()
             self.paused = True
             self.pause_source = source
-            if self.start_play_time > 0:
-                self.current_position = time.time() - self.start_play_time
 
             fmt = self._hooks.format_time
 
@@ -169,6 +187,7 @@ class PlaybackEngine:
                     f"Paused playback (tts, keeping decoder): {self.current_song} "
                     f"at {fmt(self.current_position)}"
                 )
+                await self._hooks.emit_state_change("paused", self.current_song)
                 return {"status": "success", "message": "Paused"}
 
             if self.decoder:
@@ -184,6 +203,7 @@ class PlaybackEngine:
                 f"Paused playback: {self.current_song} at {fmt(self.current_position)}, "
                 f"source: {source}, cleared {cleared} frames from music queue"
             )
+            await self._hooks.emit_state_change("paused", self.current_song)
             return {"status": "success", "message": "Paused"}
         except Exception as e:
             logger.error(f"Failed to pause playback: {e}", exc_info=True)
@@ -263,6 +283,7 @@ class PlaybackEngine:
 
             self.paused = False
             self.pause_source = None
+            self._mark_start(self.current_position)
             self.start_play_time = time.time() - self.current_position
             self.last_lyric_tick = 0.0
             self._playback_task = asyncio.create_task(
@@ -357,12 +378,8 @@ class PlaybackEngine:
             return {"status": "error", "message": f"Seek failed: {str(e)}"}
 
     async def get_position(self):
-        if not self.is_playing or self.paused:
-            return self.current_position
-        current_pos = min(self.total_duration, time.time() - self.start_play_time)
-        if current_pos >= self.total_duration and self.total_duration > 0:
-            await self._handle_playback_finished()
-        return current_pos
+        # Reading the position never ends the song: the decoder's end of stream does
+        return self.position()
 
     async def get_progress(self):
         if self.total_duration <= 0:
@@ -510,6 +527,7 @@ class PlaybackEngine:
             self.paused = False
             self.pause_source = None
             self.current_position = start_position
+            self._mark_start(start_position)
             self.start_play_time = time.time() - start_position
             self.current_lyric_index = -1
             self.last_lyric_tick = 0.0
@@ -546,8 +564,15 @@ class PlaybackEngine:
                     continue
 
                 if audio_data is None:
-                    logger.info("Music playback completed")
-                    await self._handle_playback_finished()
+                    # End of stream without any sound: the file could not be decoded
+                    failed = self._written_samples == 0 and not getattr(
+                        self.decoder, "completed_successfully", True
+                    )
+                    if failed:
+                        logger.error(f"Cannot decode audio: {self.current_song}")
+                    else:
+                        logger.info("Music playback completed")
+                    await self._handle_playback_finished(failed)
                     break
 
                 await self._write_to_audio_codec(audio_data)
@@ -565,11 +590,13 @@ class PlaybackEngine:
                 pcm_data = pcm_data.mean(axis=1, dtype=np.float32)
             if pcm_data.dtype != np.float32:
                 pcm_data = pcm_data.astype(np.float32)
+            # Counted first: the write waits until most of it has been played
+            self._written_samples += len(pcm_data)
             await audio_codec.write_pcm_direct(pcm_data)
         except Exception as e:
             logger.error(f"Failed to write to AudioCodec: {e}", exc_info=True)
 
-    async def _handle_playback_finished(self):
+    async def _handle_playback_finished(self, failed: bool = False):
         if not self.is_playing:
             return
         logger.info(f"Song playback completed: {self.current_song}")
@@ -591,6 +618,9 @@ class PlaybackEngine:
         self.current_position = self.total_duration
         self.current_lyric_index = -1
         await self._hooks.emit_state_change("completed", self.current_song)
+        finished = getattr(self._hooks, "playback_finished", None)
+        if finished is not None:
+            finished(failed)
 
     def cancel_prefetch(self) -> None:
         try:

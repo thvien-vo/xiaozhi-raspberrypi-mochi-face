@@ -1,7 +1,7 @@
 """Who may move the head, canned gestures, and recorded motions.
 
 Priority: the web panel (someone dragging the head) beats voice commands, which beat
-person tracking. A source that moves the head claims it for a hold time; a lower-priority
+dancing to music, which beats person tracking. A source that moves the head claims it for a hold time; a lower-priority
 source is refused until the claim runs out. Tracking takes part through
 HeadTracker.hold(), which every granted claim extends.
 
@@ -26,9 +26,10 @@ from src.logging import get_logger
 logger = get_logger()
 
 SOURCE_TRACKING = "tracking"
+SOURCE_MUSIC = "music"  # Dancing to music (src/music/dance.py)
 SOURCE_VOICE = "voice"
 SOURCE_WEB = "web"
-PRIORITY = {SOURCE_TRACKING: 0, SOURCE_VOICE: 1, SOURCE_WEB: 2}
+PRIORITY = {SOURCE_TRACKING: 0, SOURCE_MUSIC: 1, SOURCE_VOICE: 2, SOURCE_WEB: 3}
 
 PLAYER_TICK_S = 0.05  # 20 Hz, the controller's own send limit
 MAX_MOTION_FRAMES = 4000

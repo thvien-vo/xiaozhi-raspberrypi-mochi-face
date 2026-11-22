@@ -52,6 +52,7 @@ class FaceModel(BaseModel):
     speechActiveChanged = Signal()
     userTextChanged = Signal()
     eyeColorChanged = Signal()
+    musicBpmChanged = Signal()
     # Carries changes made on other threads (web panel) onto the Qt thread
     _eyeColorPosted = Signal(str, str)
 
@@ -77,6 +78,7 @@ class FaceModel(BaseModel):
         self._speech_serial = 0
         self._speech_active = False
         self._user_text = ""
+        self._music_bpm = 0.0
         self._eye_colors = eye_colors or get_eye_colors()
         self._eye_color = self._eye_colors.color
         self._eye_color_mode = self._eye_colors.mode
@@ -129,6 +131,11 @@ class FaceModel(BaseModel):
     def eyeColorMode(self) -> str:
         return self._eye_color_mode
 
+    @Property(float, notify=musicBpmChanged)
+    def musicBpm(self) -> float:
+        """Tempo the face bounces to; 0 when no music plays."""
+        return self._music_bpm
+
     @Property("QVariantMap", constant=True)
     def emotionColors(self) -> dict[str, str]:
         return dict(EMOTION_COLORS)
@@ -175,6 +182,15 @@ class FaceModel(BaseModel):
             self._set_speech_active(True)
         self._sync()
 
+    def set_music_bpm(self, bpm: float) -> None:
+        bpm = max(40.0, min(200.0, float(bpm))) if bpm and bpm > 0 else 0.0
+        if bpm:
+            self._machine.touch()  # Wake up and stay awake while music plays
+            self._sync()
+        if self._music_bpm != bpm:
+            self._music_bpm = bpm
+            self.musicBpmChanged.emit()
+
     def end_speech(self) -> None:
         self._set_speech_active(False)
 
@@ -216,6 +232,8 @@ class FaceModel(BaseModel):
             self.speechActiveChanged.emit()
 
     def _on_tick(self) -> None:
+        if self._music_bpm:
+            self._machine.touch()
         self._machine.tick()
         self._sync()
 

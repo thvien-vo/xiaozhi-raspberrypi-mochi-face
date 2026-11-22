@@ -35,6 +35,8 @@ dependencies = [
     "platformdirs>=4.0.0",
     # Music/Media
     "mutagen>=1.47.0",
+    # ffmpeg binary for machines without one (the Raspberry Pi robot has no root access)
+    "imageio-ffmpeg>=0.6.0",
     # Chinese text processing
     "pypinyin>=0.51.0",
     "lunar_python>=1.3.0",

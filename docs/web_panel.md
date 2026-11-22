@@ -6,6 +6,7 @@ Trang web chạy ngay trong app Xiaozhi (plugin `web_panel`). Từ laptop hoặc
 - xem webcam có khung YOLO;
 - xem mặt robot trực tiếp (trên mô hình 3D và ô 2D), đổi biểu cảm và màu mắt;
 - chạy cử chỉ, ghi và phát lại động tác;
+- tải nhạc lên robot và phát trên loa robot;
 - nhắn tin cho Xiaozhi.
 
 ## Mở trang
@@ -40,6 +41,7 @@ Không cần cài thêm gì. three.js 0.170 (GLTFLoader, OrbitControls) nằm s�
 | Động tác | Cử chỉ: gật đầu, lắc đầu, nhìn quanh, ngạc nhiên, nhảy. Ghi động tác, danh sách phát lại/xóa. |
 | Camera | Webcam MJPEG có khung YOLO. Khung cam là người robot bám theo. |
 | Mặt | Ô "Màn hình robot" (mặt đang hiện trên màn 7"), 21 biểu cảm, màu mắt (bảng màu, tự chọn, cầu vồng, theo cảm xúc), bật/tắt `FACE.AUTO_MODE`, "Đánh thức mặt" |
+| Nhạc | Thư viện nhạc trên robot: tải lên, xóa, tìm, phát, tua, âm lượng, lặp/trộn, hàng đợi, nhảy theo nhạc (xem "Nhạc") |
 | Trò chuyện | Câu người nói (STT) và câu robot trả lời (TTS), ô gửi tin nhắn chữ |
 
 **Chiều kéo:** kéo đầu sang trái thì robot quay sang trái của nó, kéo lên thì ngẩng. Nhìn từ góc nào cũng vậy, giống thanh trượt và joystick; chữ "Trái/Phải" đều tính theo robot.
@@ -48,7 +50,7 @@ Không cần cài thêm gì. three.js 0.170 (GLTFLoader, OrbitControls) nằm s�
 
 ## Ai được điều khiển đầu
 
-Thứ tự ưu tiên: **Web** (người đang kéo) > **lệnh giọng nói** > **bám người YOLO**.
+Thứ tự ưu tiên: **Web** (người đang kéo) > **lệnh giọng nói** > **nhảy theo nhạc** > **bám người YOLO**.
 
 - Mỗi lệnh từ web giữ quyền thêm `SERVO.MANUAL_HOLD_SEC` giây (mặc định 5). Trong thời gian đó, lệnh giọng nói bị từ chối và bám người tạm dừng. Hết thời gian không thao tác thì quyền được nhả.
 - Đóng trang web cũng nhả quyền sau thời gian đó.
@@ -93,6 +95,44 @@ Lệnh giọng nói (MCP `self.face.set_eye_color`, nhận tên màu tiếng Vi�
 - "tắt cầu vồng" / "giữ một màu" (về `fixed`, giữ màu hiện tại)
 - "về màu mắt mặc định" (trắng)
 
+## Nhạc
+
+Robot phát nhạc từ **thư viện trên Pi**: `~/.local/share/py-xiaozhi/music` (mp3, m4a, wav, ogg, flac; có thể có thư mục con). Nhạc ra **loa robot**. Tên bài, ca sĩ, album, ảnh bìa đọc từ tag; không có tag thì lấy từ tên file kiểu `Ca sĩ - Tên bài.mp3`.
+
+Tab **Nhạc**:
+
+- **Tải nhạc lên:** kéo thả file vào trang, hoặc bấm khung "Tải nhạc lên robot" (chọn được nhiều file, dùng được trên điện thoại). Mỗi file tối đa 100 MB, cả thư viện 8 GB, luôn chừa 500 MB trống trên thẻ. File chép thẳng vào thư mục bằng `scp` cũng tự hiện ra.
+- **Phát:** bấm một bài; cả thư viện thành hàng đợi bắt đầu từ bài đó. Có tạm dừng, bài trước (đã nghe quá 4 giây thì về đầu bài), bài sau, tua, dừng hẳn, âm lượng (riêng cho nhạc, không đổi giọng robot), lặp (không/cả danh sách/một bài), trộn bài.
+- **Hàng đợi:** nút + thêm bài, − bỏ bài, bấm vào bài để nhảy tới.
+- **Xóa:** bấm ✕ rồi bấm "Xóa?" để xác nhận.
+- **Nhảy theo nhạc:** đầu robot lắc nhẹ theo nhịp ước lượng từ file (tối đa ±16° ngang, ±7° dọc quanh tư thế đang đứng, luôn trong giới hạn servo). Kéo đầu trên web, lệnh giọng nói hoặc một cử chỉ đang chạy thì nhảy tự nhường. Mặc định tắt; bật/tắt được nhớ lại. Nhảy có tiếng servo.
+- Mặt robot vui và nhún theo nhịp khi có nhạc (`MUSIC.FACE_BOUNCE`).
+- Mọi trang đang mở và lệnh giọng nói dùng chung một trình phát nên luôn khớp nhau.
+- Không có loa thì tab hiện khung đỏ và nhạc không phát (các phần khác vẫn dùng được).
+
+Câu lệnh giọng nói (MCP `music_player.*`):
+
+| Nói | Robot làm |
+|---|---|
+| "bật nhạc đi", "mở bài nào cũng được" | Phát một bài bất kỳ, cả thư viện xếp hàng |
+| "mở bài Nơi này có anh", "phát nhạc của Sơn Tùng" | Tìm gần đúng trong thư viện (không cần dấu, nghe sai chút vẫn được); tên ca sĩ thì phát các bài của ca sĩ đó |
+| "bài tiếp", "bài trước" | Chuyển bài |
+| "tạm dừng nhạc", "phát tiếp", "dừng nhạc" | Dừng/phát |
+| "to lên", "nhỏ xuống", "nhạc to 50%" | Âm lượng nhạc |
+| "lặp bài này", "trộn bài" | Chế độ phát |
+| "nhảy theo nhạc đi", "thôi đừng nhảy nữa" | Bật/tắt nhảy |
+| "có những bài nào?" | Đọc vài bài trong thư viện |
+
+Không có bài thì robot nói thẳng là chưa phát được và gợi ý bài gần giống, không báo "đang phát" nữa.
+
+Khi robot nói, nhạc tự nhỏ lại rồi to dần trở lại (`MUSIC.DUCK_WHILE_SPEAKING`). Robot chỉ nghe được lệnh khi đang ở trạng thái nghe, và micro cũng nghe thấy nhạc: nếu robot khó nghe lệnh thì giảm âm lượng nhạc hoặc đứng gần hơn.
+
+Cấu hình (`config.json`, mục `MUSIC`): `LIBRARY_DIR` (trống = thư mục mặc định), `MAX_UPLOAD_MB`, `MAX_LIBRARY_MB`, `VOLUME`, `REPEAT`, `SHUFFLE`, `DANCE`, `FACE_BOUNCE`, `DUCK_WHILE_SPEAKING`, `ONLINE_ENABLED`. Nguồn nhạc trực tuyến cũ (API không chính thức) **mặc định tắt**: máy chủ của nó hỏng, nhạc có bản quyền bị khóa.
+
+Giải mã cần ffmpeg. Pi không có sẵn nên app dùng bản đi kèm gói `imageio-ffmpeg` (trong `pyproject.toml`), không cần quyền root.
+
+An toàn: tên file tải lên được làm sạch, chỉ nhận đúng đuôi và đúng nội dung âm thanh (chữ ký file + đọc thử bằng mutagen), ghi vào thư mục tạm rồi mới đưa vào thư viện, không ghi đè bài có sẵn. Trang chỉ dùng mã bài (không bao giờ đường dẫn), liên kết tượng trưng bị bỏ qua, nên không đọc/xóa được file ngoài thư mục nhạc. Đường tải lên cần đăng nhập (nếu có mật khẩu) và chỉ nhận từ chính trang này.
+
 ## Ghi và phát lại động tác
 
 1. Bấm **Ghi**.
@@ -128,13 +168,15 @@ QT_QPA_PLATFORM=offscreen python scripts/web_panel_dev.py --port 8080 --real-fac
 python scripts/web_panel_check.py http://127.0.0.1:8080 --out shots/
 python scripts/web_panel_check.py http://Pi5.local:8080 --out shots/ --max-deg 20   # robot thật, góc nhỏ
 python scripts/web_panel_check.py http://Pi5.local:8080 --out shots/ --face-only    # chỉ kiểm tra mặt/màu mắt
+python scripts/web_panel_check.py http://Pi5.local:8080 --out shots/ --music-only   # chỉ kiểm tra nhạc (có tiếng)
+python scripts/web_panel_dev.py --port 8080 --no-audio                              # xem trang khi robot không có loa
 ```
 
 Phần kiểm tra mặt đổi biểu cảm và màu mắt từ trang (bảng màu, màu tự do, giá trị sai, theo cảm xúc, cầu vồng), đo màu mắt trong ô mặt của trang, rồi trả lại màu và chế độ ban đầu của robot.
 
 `web_panel_check.py` cần Playwright: `pip install playwright && python -m playwright install chromium`. Đây là công cụ test, không phải thư viện của app.
 
-Unit test: `pytest tests/test_web_panel.py tests/test_eye_color.py`.
+Unit test: `pytest tests/test_web_panel.py tests/test_eye_color.py tests/test_music_library.py`.
 
 Mô hình `web_assets/xiaozhi_robot.glb` là bản lắp ráp CAD (glTF, đơn vị mm). Cây node:
 

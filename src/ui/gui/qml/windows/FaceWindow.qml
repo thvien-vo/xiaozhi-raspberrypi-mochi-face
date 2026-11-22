@@ -59,6 +59,7 @@ Window {
         eyeColorBase: faceModel.eyeColor
         eyeColorMode: faceModel.eyeColorMode
         emotionColors: faceModel.emotionColors
+        musicBpm: faceModel.musicBpm
     }
 
     SpeechText {

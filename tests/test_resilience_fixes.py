@@ -898,10 +898,10 @@ async def test_ui_plugin_routes_music_to_music_line():
     )
     await plugin.on_incoming_json({"type": "tts", "text": "Hello Xiaozhi"})
 
-    assert any("Playing" in t for t in vp.music)
+    assert any("Test Song" in t for t in vp.music)
     assert "[00:01/03:00] First line" in vp.music
     assert "Hello Xiaozhi" in vp.chat
-    assert not any("Playing" in t or "First line" in t for t in vp.chat)
+    assert not any("Test Song" in t or "First line" in t for t in vp.chat)
 
 
 @pytest.mark.asyncio

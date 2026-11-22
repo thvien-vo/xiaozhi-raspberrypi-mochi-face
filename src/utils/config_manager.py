@@ -322,6 +322,20 @@ class ConfigManager:
             "LYRICS_URL": "",
             "DEFAULT_PLATFORM": "kw",
             "DEFAULT_QUALITY": "320k",
+            # The robot's own music files (web panel "Nhạc" tab; null = {user_data}/music)
+            "LIBRARY_DIR": None,
+            "MAX_UPLOAD_MB": 100,
+            "MAX_LIBRARY_MB": 8192,
+            # Online search (unofficial third-party API) for songs not in the library.
+            # Off: the proxy is dead or returns paid songs, and it may break the service's terms
+            "ONLINE_ENABLED": False,
+            "VOLUME": 70,  # Music only (0-100), relative to the speaker volume
+            "REPEAT": "off",  # off / all / one
+            "SHUFFLE": False,
+            # Music keeps playing, turned down, while the assistant speaks (else it pauses)
+            "DUCK_WHILE_SPEAKING": True,
+            "DANCE": False,  # Head dances to the music (needs SERVO.ENABLED)
+            "FACE_BOUNCE": True,  # The robot face bounces to the music
         },
     }
 

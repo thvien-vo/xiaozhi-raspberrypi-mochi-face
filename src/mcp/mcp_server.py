@@ -127,7 +127,7 @@ class McpServer:
         if music_player is not None:
             from src.mcp.tools.music import register_music_tools
 
-            register_music_tools(self.add_tool, music_player)
+            register_music_tools(self.add_tool, music_player, getattr(music_player, "dancer", None))
 
         from src.mcp.tools.app import register_app_tools
         from src.mcp.tools.volume import register_volume_tools

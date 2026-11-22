@@ -77,6 +77,10 @@ class MusicDecoder:
                 )
                 await check.wait()
             except FileNotFoundError:
+                if not is_http_url(source):
+                    duration = MusicDecoder._tagged_duration(Path(source))
+                    if duration > 0:
+                        return duration
                 logger.warning(
                     "ffprobe is unavailable (bundled libs/ffmpeg not found and ffprobe not in system PATH), "
                     f"cannot get audio duration. Attempted path: {ffprobe}"
@@ -121,6 +125,18 @@ class MusicDecoder:
             logger.warning(f"Failed to parse audio duration: {e}", exc_info=True)
             return 0
 
+    @staticmethod
+    def _tagged_duration(path: Path) -> float:
+        """Duration from the file's own header (the imageio-ffmpeg wheel has no ffprobe)."""
+        try:
+            from mutagen import File
+
+            audio = File(path)
+            return float(getattr(getattr(audio, "info", None), "length", 0) or 0)
+        except Exception as e:
+            logger.debug(f"Cannot read duration of {path.name}: {e}")
+            return 0.0
+
     def __init__(self, sample_rate: int = 24000, channels: int = 1):
         self.sample_rate = sample_rate
         self.channels = channels
@@ -137,7 +153,14 @@ class MusicDecoder:
             return
         try:
             process.terminate()
-            await asyncio.wait_for(process.wait(), timeout=2.0)
+            # wait() only returns once the pipes are drained: an unread stdout buffer
+            # would make every stop run into the timeout
+            await asyncio.wait_for(
+                asyncio.gather(
+                    process.wait(), MusicDecoder._discard(getattr(process, "stdout", None))
+                ),
+                timeout=2.0,
+            )
         except asyncio.TimeoutError:
             try:
                 process.kill()
@@ -149,6 +172,14 @@ class MusicDecoder:
         except Exception as e:
             if str(e).strip():
                 logger.debug(f"Terminating FFmpeg process: {e}")
+
+    @staticmethod
+    async def _discard(stream) -> None:
+        try:
+            while stream is not None and await stream.read(65536):
+                pass
+        except Exception:
+            pass  # Being read elsewhere, or already closed
 
     @staticmethod
     async def _spawn_process(*args, **kwargs) -> asyncio.subprocess.Process:
@@ -247,6 +278,10 @@ class MusicDecoder:
                 )
                 cmd.extend(_ffmpeg_header_args(headers))
 
+            else:
+                # A local file must not make ffmpeg open URLs (playlists, references)
+                cmd.extend(["-protocol_whitelist", "file,pipe"])
+
             if start_position > 0.1:
                 cmd.extend(["-ss", f"{start_position:.3f}"])
 
@@ -254,6 +289,7 @@ class MusicDecoder:
                 [
                     "-i",
                     str(source),
+                    "-vn",  # Embedded cover art
                     "-f",
                     "s16le",
                     "-ar",

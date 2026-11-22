@@ -45,6 +45,7 @@ platformdirs>=4.0.0
 
 # Music/Media
 mutagen>=1.47.0
+imageio-ffmpeg>=0.6.0
 
 # Chinese text processing
 pypinyin>=0.51.0

@@ -135,6 +135,11 @@ def get_music_cache_dir() -> Path:
     return p
 
 
+def get_music_library_dir() -> Path:
+    """The user's own music files (uploads from the web panel): {user_data}/music."""
+    return _env_path("XIAOZHI_MUSIC_DIR") or get_user_data_dir() / "music"
+
+
 def get_keywords_dir() -> Path:
     """Wake word keywords directory: XIAOZHI_KEYWORDS_DIR > override > {data}/keywords."""
     env = _env_path(ENV_KEYWORDS_DIR)
@@ -483,7 +488,8 @@ def get_lib_dir(lib_name: str) -> Path | None:
 def get_ffmpeg_path() -> str:
     """Get ffmpeg executable path.
 
-    Search order: bundled libs/ffmpeg/ -> system PATH
+    Search order: bundled libs/ffmpeg/ -> system PATH -> imageio-ffmpeg wheel (the Pi has
+    no system ffmpeg, and installing one needs root)
     """
     import shutil
 
@@ -492,7 +498,18 @@ def get_ffmpeg_path() -> str:
     bundled = get_app_root() / "libs" / "ffmpeg" / plat_dir / arch / f"ffmpeg{ext}"
     if bundled.exists():
         return str(bundled)
-    return shutil.which("ffmpeg") or "ffmpeg"
+    return shutil.which("ffmpeg") or _wheel_ffmpeg_path() or "ffmpeg"
+
+
+@lru_cache(maxsize=1)
+def _wheel_ffmpeg_path() -> str | None:
+    """ffmpeg binary shipped inside the imageio-ffmpeg wheel, if installed."""
+    try:
+        import imageio_ffmpeg
+
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:  # Not installed, or no binary for this platform
+        return None
 
 
 def get_ffprobe_path() -> str:

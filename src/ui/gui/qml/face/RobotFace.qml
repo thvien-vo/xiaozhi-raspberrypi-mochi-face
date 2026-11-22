@@ -17,12 +17,16 @@ Item {
     property string eyeColorMode: "fixed"
     property var emotionColors: ({})
     property real rainbowHue: 0
+    // Music: bounce at this tempo (0 = no music) with a happy face when otherwise neutral
+    property real musicBpm: 0
+    readonly property bool dancing: musicBpm > 0 && activity === "awake" && visualState !== "thinking"
 
     readonly property real unit: Math.min(width / 1024, height / 432)
     readonly property real eyeWidth: 190 * unit
     readonly property real eyeHeight: 230 * unit
     readonly property real eyeGap: 112 * unit
-    readonly property string presetName: Presets.activeName(emotion, visualState, activity)
+    readonly property string presetName: Presets.activeName(
+        dancing && emotion === "neutral" ? "happy" : emotion, visualState, activity)
     readonly property var pose: Presets.compose(presetName, visualState)
     readonly property bool asleep: activity === "asleep"
     // Same rule as src/ui/face_color.py effective_color()
@@ -53,6 +57,8 @@ Item {
     property real motionX: 0
     property real motionY: 0
     property real motionAngle: 0
+    property real danceY: 0
+    property real danceAngle: 0
     property real motionScale: 1
 
     readonly property real gazeX: (glanceX + pose.gazeX) * eyeWidth
@@ -154,6 +160,25 @@ Item {
         onRunningChanged: if (!running) face.motionY = 0
     }
 
+    // One beat up and down, leaning to the other side on each beat
+    SequentialAnimation {
+        id: danceAnimation
+        readonly property int half: Math.round(30000 / Math.max(40, face.musicBpm > 125 ? face.musicBpm / 2 : face.musicBpm))
+        running: face.dancing
+        loops: Animation.Infinite
+        ParallelAnimation {
+            NumberAnimation { target: face; property: "danceY"; to: -14 * face.unit; duration: danceAnimation.half; easing.type: Easing.OutQuad }
+            NumberAnimation { target: face; property: "danceAngle"; to: 2.5; duration: danceAnimation.half; easing.type: Easing.InOutSine }
+        }
+        NumberAnimation { target: face; property: "danceY"; to: 0; duration: danceAnimation.half; easing.type: Easing.InQuad }
+        ParallelAnimation {
+            NumberAnimation { target: face; property: "danceY"; to: -14 * face.unit; duration: danceAnimation.half; easing.type: Easing.OutQuad }
+            NumberAnimation { target: face; property: "danceAngle"; to: -2.5; duration: danceAnimation.half; easing.type: Easing.InOutSine }
+        }
+        NumberAnimation { target: face; property: "danceY"; to: 0; duration: danceAnimation.half; easing.type: Easing.InQuad }
+        onRunningChanged: if (!running) { face.danceY = 0; face.danceAngle = 0 }
+    }
+
     SequentialAnimation {
         running: face.pose.motion === "wobble"
         loops: Animation.Infinite
@@ -177,7 +202,8 @@ Item {
         anchors.fill: parent
         x: face.motionX
         y: face.motionY
-        rotation: face.motionAngle
+        rotation: face.motionAngle + face.danceAngle
+        transform: Translate { y: face.danceY }
         scale: face.breath * face.motionScale
 
         Eye {

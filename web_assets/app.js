@@ -1,6 +1,7 @@
 // Xiaozhi web panel: WebSocket client, controls and the 3D view.
 import { Robot3D } from "./robot3d.js";
 import { FaceScreen } from "./face.js";
+import { MusicTab } from "./music.js";
 
 const $ = (id) => document.getElementById(id);
 const SEND_INTERVAL_MS = 50;      // Angle commands while dragging: at most 20 per second
@@ -74,7 +75,7 @@ function send(obj, { wantReply = false } = {}) {
   ws.send(JSON.stringify({ ...obj, id }));
   return new Promise((resolve) => {
     state.waiters.set(id, resolve);
-    setTimeout(() => { if (state.waiters.delete(id)) resolve(null); }, 5000);
+    setTimeout(() => { if (state.waiters.delete(id)) resolve(null); }, 20000);
   });
 }
 
@@ -126,6 +127,7 @@ function onState(s) {
   const real = servo.current || servo.acked;
   if (real) robot.setReal(real.pan, real.tilt);
   renderChips(); renderAngles(); renderTracking(); renderMotion(); renderFace(); renderChatState(); renderCameraAvailability();
+  music.onState(s.music);
 }
 
 function renderChips() {
@@ -141,7 +143,7 @@ function renderChips() {
   const app = s.app || {};
   const tone = { listening: "info", speaking: "accent", idle: "muted" }[app.device_state] || "muted";
   set("chip-app", tone, app.device_state_label || app.device_state || "App");
-  const owners = { web: "Web đang điều khiển", voice: "Lệnh giọng nói", tracking: "Bám người" };
+  const owners = { web: "Web đang điều khiển", voice: "Lệnh giọng nói", tracking: "Bám người", music: "Nhảy theo nhạc" };
   let owner = sv.owner ? owners[sv.owner] : null;
   if (!owner && s.tracking?.enabled && !s.tracking.holding) owner = "Bám người";
   if (s.motion?.playing) owner = "Đang chạy động tác";
@@ -433,6 +435,7 @@ function showTab(name) {
   for (const p of document.querySelectorAll(".tabpage")) p.hidden = p.dataset.page !== name;
   try { localStorage.setItem("xz-tab", name); } catch {}
   updateCamera();
+  music.setVisible(name === "music");
   if (name === "chat") $("chat").scrollTop = $("chat").scrollHeight;
 }
 
@@ -518,6 +521,10 @@ function stopTilt() {
   tilt.on = false; tilt.handler = null;
   $("btn-tilt-start").disabled = false; $("btn-tilt-stop").disabled = true;
 }
+
+// ---------- Music ----------
+const music = new MusicTab({ send, command, toast });
+window.__music = music;
 
 // ---------- 3D ----------
 const faceScreen = new FaceScreen($("face-canvas"), { onDraw: () => robot && robot.screenUpdated() });

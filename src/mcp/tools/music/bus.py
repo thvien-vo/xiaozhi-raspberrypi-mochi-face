@@ -43,10 +43,12 @@ class MusicEventBridge:
                     logger.debug(f"Failed to stop decoder before clearing codec: {e}", exc_info=True)
                 self._engine.decoder = None
             self._engine.audio_codec = None
+            self._player.audio_changed(None)
             logger.debug("MusicPlayer AudioCodec cleared")
             return
 
         self._engine.audio_codec = codec
+        self._player.audio_changed(codec)
         logger.info("AudioCodec set on MusicPlayer")
 
     def set_event_bus(self, event_bus, plugin_ctx=None) -> None:

@@ -20,6 +20,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from src.logging import get_logger
+from src.music.library import LibraryError
 from src.servo.motion import (
     GESTURE_LABELS,
     SOURCE_WEB,
@@ -147,6 +148,7 @@ class RobotBackend:
         save_setting: Callable[[str, object], None] | None = None,
         eye_colors=None,
         face_frames=None,
+        music=None,
     ) -> None:
         self.controller = controller
         self.tracker = tracker
@@ -163,6 +165,7 @@ class RobotBackend:
         self._save_setting = save_setting
         self.eye_colors = eye_colors  # src.ui.face_color.EyeColorState
         self.face_frames = face_frames  # src.web_panel.face_stream.FaceFrameHub
+        self.music = music  # src.web_panel.music.MusicControl
         if eye_colors is not None:
             eye_colors.add_listener(lambda _color, _mode: self._changed())
         self._listeners: list[Callable[[], None]] = []
@@ -196,7 +199,10 @@ class RobotBackend:
     # ----- Commands -----
 
     def handle(self, cmd: Command) -> dict:
-        """Execute one command; returns {"ok": bool, "message": str, ...}."""
+        """Execute one command; returns {"ok": bool, "message": str, ...}, or for music a
+        concurrent Future of it."""
+        if cmd.type.startswith("music_"):
+            return self._handle_music(cmd)
         handler = getattr(self, f"_cmd_{cmd.type}", None)
         if handler is None:
             raise CommandError(f"lệnh không hỗ trợ: {cmd.type}")
@@ -206,6 +212,14 @@ class RobotBackend:
     def _need_servo(self) -> None:
         if self.controller is None:
             raise CommandError("servo đang tắt (SERVO.ENABLED=false)")
+
+    def _handle_music(self, cmd: Command):
+        if self.music is None:
+            return {"ok": False, "message": "chức năng nhạc không chạy"}
+        try:
+            return getattr(self.music, cmd.type.removeprefix("music_"))(**cmd.args)
+        except LibraryError as e:
+            return {"ok": False, "message": str(e)}
 
     def _cmd_ping(self) -> dict:
         return {"ok": True, "pong": time.time()}
@@ -407,6 +421,7 @@ class RobotBackend:
             },
             "camera": {"available": bool(self.camera is not None and self.camera.available())},
             "face": self.face_snapshot(),
+            "music": self.music.snapshot() if self.music is not None else None,
         }
 
     def face_snapshot(self) -> dict:

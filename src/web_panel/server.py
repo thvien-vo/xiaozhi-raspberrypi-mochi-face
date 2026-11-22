@@ -8,12 +8,14 @@ second, and only when it changed.
 Routes: /  page, /login, /ws  WebSocket (JSON; binary messages are face snapshots),
 /camera.mjpg  MJPEG stream, /api/state  snapshot as JSON, /face_presets.js  the robot
 face's eye shapes (qml/face/FacePresets.js as an ES module, for the page's fallback
-drawing), /static/*  web_assets (three.js, model, page code).
+drawing), /static/*  web_assets (three.js, model, page code), /api/music/*  the music
+library, queue, covers and uploads.
 """
 
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 import hmac
 import json
 import mimetypes
@@ -28,6 +30,7 @@ from pathlib import Path
 from aiohttp import WSMsgType, web
 
 from src.logging import get_logger
+from src.music.library import LibraryError
 from src.web_panel.backend import RobotBackend
 from src.web_panel.commands import CommandError, RateLimiter, parse_command
 from src.web_panel.settings import WebSettings
@@ -38,6 +41,11 @@ COOKIE = "xz_panel"
 BROADCAST_INTERVAL_S = 0.05  # At most 20 state messages per second
 KEEPALIVE_S = 5.0  # Resend state this often even without changes (lets pages see they are live)
 MJPEG_BOUNDARY = "frame"
+UPLOAD_HEADER = "X-Xiaozhi-Upload"  # Only same-origin scripts can set it without a preflight
+UPLOAD_BLOCK = 512 * 1024
+UPLOAD_STALL_S = 30.0
+MAX_PARALLEL_UPLOADS = 3
+MUSIC_RESULT_TIMEOUT_S = 20.0
 FACE_PRESETS = Path(__file__).resolve().parents[1] / "ui" / "gui" / "qml" / "face" / "FacePresets.js"
 
 
@@ -113,6 +121,8 @@ class WebPanelServer:
         self._sockets: set[web.WebSocketResponse] = set()
         self._changed: asyncio.Event | None = None
         self._presets_js: str | None = None
+        self._uploads = 0
+        self._reply_tasks: set[asyncio.Task] = set()
         self._face_tasks: dict[web.WebSocketResponse, asyncio.Task] = {}
         self.urls: list[str] = []
         self.https_active = False
@@ -210,6 +220,10 @@ class WebPanelServer:
         app.router.add_get("/api/state", self.api_state)
         app.router.add_get("/healthz", self.health)
         app.router.add_get("/face_presets.js", self.face_presets)
+        app.router.add_get("/api/music/library", self.music_library)
+        app.router.add_get("/api/music/queue", self.music_queue)
+        app.router.add_get("/api/music/cover/{track_id}", self.music_cover)
+        app.router.add_post("/api/music/upload", self.music_upload)
         app.router.add_static("/static", self.static_dir, show_index=False, append_version=False)
         return app
 
@@ -264,6 +278,79 @@ class WebPanelServer:
         if not self.authorized(request):
             raise web.HTTPUnauthorized()
         return web.json_response(self.backend.snapshot())
+
+    # ----- Music -----
+
+    def _music(self, request: web.Request):
+        if not self.authorized(request):
+            raise web.HTTPUnauthorized()
+        if self.backend.music is None:
+            raise web.HTTPServiceUnavailable(text="no music")
+        return self.backend.music
+
+    async def music_library(self, request: web.Request) -> web.Response:
+        data = await asyncio.get_running_loop().run_in_executor(None, self._music(request).library_json)
+        return web.json_response(data, headers={"Cache-Control": "no-store"})
+
+    async def music_queue(self, request: web.Request) -> web.Response:
+        data = await asyncio.get_running_loop().run_in_executor(None, self._music(request).queue_json)
+        return web.json_response(data, headers={"Cache-Control": "no-store"})
+
+    async def music_cover(self, request: web.Request) -> web.Response:
+        music = self._music(request)
+        data = await asyncio.get_running_loop().run_in_executor(None, music.cover, request.match_info["track_id"])
+        if data is None:
+            raise web.HTTPNotFound()
+        return web.Response(
+            body=data,
+            content_type="image/jpeg",
+            headers={"Cache-Control": "private, max-age=3600", "X-Content-Type-Options": "nosniff"},
+        )
+
+    async def music_upload(self, request: web.Request) -> web.Response:
+        """One file as the raw request body, its name in ?name=. Checked before it shows up."""
+        music = self._music(request)
+        if not same_origin(request) or UPLOAD_HEADER not in request.headers:
+            raise web.HTTPForbidden(text="cross-origin upload refused")
+
+        def refuse(message: str, status: int = 400) -> web.Response:
+            response = web.json_response({"ok": False, "message": message}, status=status)
+            response.force_close()  # The rest of the body is not wanted
+            return response
+
+        if self._uploads >= MAX_PARALLEL_UPLOADS:
+            return refuse("đang nhận nhiều file cùng lúc, thử lại sau", 429)
+        self._uploads += 1
+        loop = asyncio.get_running_loop()
+        upload = None
+        try:
+            upload = await loop.run_in_executor(None, music.begin_upload, request.query.get("name", ""))
+            if request.content_length is not None and request.content_length > upload.limit:
+                raise LibraryError(upload.too_big)
+            block = bytearray()
+            while True:
+                chunk = await asyncio.wait_for(request.content.readany(), UPLOAD_STALL_S)
+                block += chunk
+                if block and (len(block) >= UPLOAD_BLOCK or not chunk):
+                    await loop.run_in_executor(None, upload.write, bytes(block))
+                    block.clear()
+                if not chunk and request.content.at_eof():
+                    break
+            track = await loop.run_in_executor(None, upload.commit)
+            upload = None
+            self._on_backend_change()
+            return web.json_response({"ok": True, "message": f"Đã thêm '{track.display}'", "track": track.to_json()})
+        except LibraryError as e:
+            return refuse(str(e))
+        except asyncio.TimeoutError:
+            return refuse("tải lên bị ngắt quãng", 408)
+        except OSError as e:
+            logger.warning("Music upload failed: %s", e)
+            return refuse(f"không ghi được file: {e.strerror or e}", 500)
+        finally:
+            self._uploads -= 1
+            if upload is not None:  # Refused, or the page went away
+                upload.abort()
 
     # ----- WebSocket -----
 
@@ -331,6 +418,29 @@ class WebPanelServer:
         except Exception as e:
             logger.error("Web panel command failed", exc_info=True)
             result = {"ok": False, "message": f"lỗi: {e}"}
+        if isinstance(result, concurrent.futures.Future):
+            # Music runs on the app's loop: answer when done, keep reading messages
+            task = asyncio.get_running_loop().create_task(self._reply_later(ws, request_id, result))
+            self._reply_tasks.add(task)
+            task.add_done_callback(self._reply_tasks.discard)
+            return
+        await self._reply(ws, request_id, result)
+
+    async def _reply_later(self, ws: web.WebSocketResponse, request_id, future: concurrent.futures.Future) -> None:
+        try:
+            result = await asyncio.wait_for(asyncio.wrap_future(future), MUSIC_RESULT_TIMEOUT_S)
+        except asyncio.TimeoutError:
+            result = {"ok": False, "message": "robot chưa trả lời, thử lại"}
+        except Exception as e:
+            logger.error("Web panel music command failed", exc_info=True)
+            result = {"ok": False, "message": f"lỗi: {e}"}
+        try:
+            await self._reply(ws, request_id, result)
+        except (ConnectionError, RuntimeError):
+            pass
+
+    @staticmethod
+    async def _reply(ws: web.WebSocketResponse, request_id, result: dict) -> None:
         if request_id is not None or not result.get("ok", True):
             await ws.send_json({"type": "result", "id": request_id, **result})
 

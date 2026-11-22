@@ -54,6 +54,7 @@
       <button role="tab" aria-selected="false" data-tab="motion">Động tác</button>
       <button role="tab" aria-selected="false" data-tab="camera">Camera</button>
       <button role="tab" aria-selected="false" data-tab="face">Mặt</button>
+      <button role="tab" aria-selected="false" data-tab="music">Nhạc</button>
       <button role="tab" aria-selected="false" data-tab="chat">Trò chuyện</button>
     </nav>
 
@@ -189,6 +190,67 @@
         </div>
         <p class="note" id="auto-note">FACE.AUTO_MODE: chạm màn hình một lần để bắt đầu cuộc trò chuyện nghe liên tục.</p>
         <div class="row"><button class="btn" id="btn-wake">Đánh thức mặt</button></div>
+      </div>
+    </div>
+
+    <!-- Nhạc -->
+    <div class="tabpage" data-page="music" hidden>
+      <div class="card" id="mu-missing" hidden><p class="note">Chức năng nhạc không chạy trên robot này.</p></div>
+      <div class="mu-body" id="mu-body" hidden>
+        <div class="card mu-player">
+          <div class="mu-warn" id="mu-audio-warn" role="alert" hidden></div>
+          <div class="mu-now">
+            <div class="mu-cover" id="mu-cover"></div>
+            <div class="mu-info">
+              <span class="pill" id="mu-state">-</span>
+              <b id="mu-title">-</b>
+              <span class="mu-artist" id="mu-artist"></span>
+            </div>
+          </div>
+          <div class="mu-progress">
+            <span id="mu-pos">0:00</span>
+            <input type="range" class="mu-range" id="mu-seek" min="0" max="1" step="1" value="0" aria-label="Vị trí trong bài">
+            <span id="mu-dur">-:--</span>
+          </div>
+          <div class="mu-controls">
+            <button class="mu-btn" id="mu-shuffle" title="Trộn bài" aria-label="Trộn bài"></button>
+            <button class="mu-btn" id="mu-prev" title="Bài trước" aria-label="Bài trước"></button>
+            <button class="mu-btn big" id="mu-play" aria-label="Phát"></button>
+            <button class="mu-btn" id="mu-next" title="Bài sau" aria-label="Bài sau"></button>
+            <button class="mu-btn" id="mu-repeat"></button>
+          </div>
+          <div class="mu-volume">
+            <span class="mu-vol-icon" id="mu-vol-icon"></span>
+            <input type="range" class="mu-range" id="mu-volume" min="0" max="100" step="1" value="70" aria-label="Âm lượng nhạc">
+            <output id="mu-vol-out">70%</output>
+            <button class="mu-btn" id="mu-stop" title="Dừng hẳn" aria-label="Dừng hẳn"></button>
+          </div>
+          <p class="note" id="mu-output"></p>
+          <p class="note mu-error" id="mu-error" hidden></p>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h2>Nhảy theo nhạc</h2><label class="switch"><input type="checkbox" id="mu-dance" aria-label="Nhảy theo nhạc"><span></span></label></div>
+          <p class="note" id="mu-dance-note"></p>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h2>Thư viện</h2><span class="pill" id="mu-count">-</span></div>
+          <div class="mu-drop" id="mu-drop" role="button" tabindex="0">
+            <b>Tải nhạc lên robot</b>
+            <span>Kéo thả file vào đây hoặc bấm để chọn (nhiều file được)</span>
+            <small id="mu-drop-note"></small>
+          </div>
+          <input type="file" id="mu-files" multiple hidden>
+          <ul class="mu-uploads" id="mu-uploads" hidden></ul>
+          <input class="input mu-search" id="mu-search" type="search" placeholder="Tìm bài, ca sĩ (không cần dấu)…" autocomplete="off" maxlength="80">
+          <ul class="list mu-list" id="mu-list"></ul>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h2>Hàng đợi</h2><span class="row"><span class="pill" id="mu-queue-count">0 bài</span><button class="btn small" id="mu-queue-clear" disabled>Xóa hết</button></span></div>
+          <ul class="list mu-list" id="mu-queue"></ul>
+        </div>
       </div>
     </div>
 
