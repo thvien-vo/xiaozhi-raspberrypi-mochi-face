@@ -8,6 +8,11 @@
 Loads the page at laptop and phone sizes, fails on console errors, checks that the 3D
 model loaded, drags the robot's head and checks the angle changed the right way, and
 saves screenshots of every tab. --max-deg bounds every angle it sends (real hardware).
+
+Face mirror: changes the expression and the eye color (palette, emotion mode, rainbow)
+from the page and checks the face on the page follows: the expression button, and the
+color of the eyes in the face canvas (the robot's snapshots, or the page's own drawing).
+The robot's eye color and mode are put back at the end. --face-only skips the head.
 """
 
 from __future__ import annotations
@@ -69,11 +74,122 @@ def send(page, obj):
     page.evaluate("(o) => window.__panel.ws.send(JSON.stringify(o))", obj)
 
 
+# Average color of the bright pixels of the face canvas (the eyes) and their share
+EYE_PIXELS = """() => {
+  const c = document.getElementById('face-canvas');
+  const d = c.getContext('2d').getImageData(0, 0, c.width, Math.round(c.height * 0.72)).data;
+  let r = 0, g = 0, b = 0, n = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    if (Math.max(d[i], d[i + 1], d[i + 2]) > 110) { r += d[i]; g += d[i + 1]; b += d[i + 2]; n++; }
+  }
+  return n ? { r: r / n, g: g / n, b: b / n, share: n / (d.length / 4), source: window.__face.source } : { share: 0, source: window.__face.source };
+}"""
+
+
+def hex_rgb(h):
+    return int(h[1:3], 16), int(h[3:5], 16), int(h[5:7], 16)
+
+
+def color_close(px, hex_color, tol=60):
+    if not px.get("share"):
+        return False
+    r, g, b = hex_rgb(hex_color)
+    return abs(px["r"] - r) < tol and abs(px["g"] - g) < tol and abs(px["b"] - b) < tol
+
+
+def face_checks(page, out, check, prefix="laptop"):
+    """Expression and eye color changes show in the page's face (2D card and 3D screen)."""
+    page.click('.tabs button[data-tab="face"]')
+    s = server_state(page)
+    eye0 = s["face"]["eye"]
+    emotion0 = s["app"]["emotion"]
+    if eye0 is None:
+        check(False, "face: robot face available (GUI)")
+        return
+    stream = s["face"]["stream"]
+    time.sleep(2.5)
+    src = page.evaluate("window.__face.source")
+    check(src == ("robot" if stream else "drawn"), f"face: page shows {'the robot snapshots' if stream else 'its own drawing'} (source {src})")
+    check(page.evaluate("!!(window.__robot.screenPanel && window.__robot.screenPanel.material.map)"), "face: 3D screen uses the face canvas")
+    pill = page.inner_text("#face-source")
+    print("     face source pill:", pill)
+
+    def wait_color(expected, what, timeout=4.0):
+        end = time.time() + timeout
+        px = {}
+        while time.time() < end:
+            px = page.evaluate(EYE_PIXELS)
+            if color_close(px, expected):
+                break
+            time.sleep(0.25)
+        shown = {k: round(v) if isinstance(v, float) and k != "share" else v for k, v in px.items()}
+        check(color_close(px, expected), f"face: {what}: eyes on the page are {expected} ({shown})")
+        return px
+
+    # Expression from the page -> button state and face shape
+    send(page, {"type": "eye_color", "color": "#ffffff", "mode": "fixed"})
+    send(page, {"type": "emotion", "name": "neutral"})
+    time.sleep(1.2)
+    neutral = page.evaluate(EYE_PIXELS)
+    send(page, {"type": "emotion", "name": "angry"})
+    time.sleep(1.5)
+    s = server_state(page)
+    check(s["app"]["emotion"] == "angry", f"face: emotion angry reached the robot ({s['app']['emotion']})")
+    on = page.evaluate("[...document.querySelectorAll('#emotions button.on')].map(b => b.dataset.name)")
+    check(on == ["angry"], f"face: angry button selected ({on})")
+    angry = page.evaluate(EYE_PIXELS)
+    check(angry.get("share", 0) < neutral.get("share", 1) * 0.92, f"face: angry eyes are smaller than neutral (lit share {angry.get('share', 0):.3f} < {neutral.get('share', 0):.3f})")
+    shoot(page, str(out / f"{prefix}_face_angry.png"))
+
+    # Palette color
+    page.click('#swatches button[data-color="#b46bff"]')
+    wait_color("#b46bff", "purple swatch")
+    check(server_state(page)["face"]["eye"]["color"] == "#b46bff", "face: robot eye color is purple")
+    shoot(page, str(out / f"{prefix}_face_purple.png"))
+    # Free color (validated and kept visible by the robot)
+    send(page, {"type": "eye_color", "color": "#00ff88", "mode": "fixed"})
+    wait_color("#00ff88", "free color #00ff88")
+    # Bad values are refused
+    r = page.evaluate("""() => new Promise((res) => {
+      const ws = window.__panel.ws, id = 'bad' + Date.now();
+      const h = (ev) => { if (typeof ev.data === 'string') { const m = JSON.parse(ev.data); if (m.id === id) { ws.removeEventListener('message', h); res(m); } } };
+      ws.addEventListener('message', h);
+      ws.send(JSON.stringify({ type: 'eye_color', color: 'red; drop', id }));
+    })""")
+    check(r.get("ok") is False, f"face: invalid color refused ({r.get('message')})")
+
+    # Emotion mode: sad -> blue, angry -> red
+    page.click('#eye-modes button[data-mode="emotion"]')
+    send(page, {"type": "emotion", "name": "sad"})
+    wait_color("#3d9bff", "emotion mode, sad = blue")
+    send(page, {"type": "emotion", "name": "angry"})
+    wait_color("#ff4d4d", "emotion mode, angry = red")
+    shoot(page, str(out / f"{prefix}_face_emotion_angry.png"))
+
+    # Rainbow: the color keeps changing
+    page.click('#eye-modes button[data-mode="rainbow"]')
+    send(page, {"type": "emotion", "name": "neutral"})
+    time.sleep(1.5)
+    a = page.evaluate(EYE_PIXELS)
+    time.sleep(2.0)
+    b = page.evaluate(EYE_PIXELS)
+    moved = a.get("share") and b.get("share") and abs(a["r"] - b["r"]) + abs(a["g"] - b["g"]) + abs(a["b"] - b["b"]) > 25
+    check(bool(moved), f"face: rainbow changes the color ({[round(a.get(k, 0)) for k in 'rgb']} -> {[round(b.get(k, 0)) for k in 'rgb']})")
+    shoot(page, str(out / f"{prefix}_face_rainbow.png"))
+
+    # Put back what the robot had
+    send(page, {"type": "eye_color", "color": eye0["color"], "mode": eye0["mode"]})
+    send(page, {"type": "emotion", "name": emotion0 if emotion0 in ("neutral",) else "neutral"})
+    time.sleep(1.0)
+    check(server_state(page)["face"]["eye"] == eye0, f"face: eye color restored to {eye0}")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("url")
     ap.add_argument("--out", default="web_panel_shots")
     ap.add_argument("--max-deg", type=float, default=30.0)
+    ap.add_argument("--face-only", action="store_true", help="Only the face/eye color checks (no head moves)")
     args = ap.parse_args()
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -98,6 +214,13 @@ def main() -> int:
         wait_ready(page)
         s = server_state(page)
         check(s["type"] == "state", "WebSocket state received")
+        if args.face_only:
+            face_checks(page, out, check)
+            ctx.close()
+            browser.close()
+            real_errors = [e for e in errors if "camera.mjpg" not in e]
+            check(not real_errors, f"no console errors {json.dumps(real_errors, ensure_ascii=False)[:500]}")
+            return 1 if failures else 0
         names = page.evaluate("[window.__robot.pan.name, window.__robot.tilt.name]")
         check(names == ["pan_pivot", "tilt_pivot"], f"GLB nodes found {names}")
         geo = page.evaluate("window.__robot.layout()")
@@ -156,6 +279,7 @@ def main() -> int:
                 avail = server_state(page)["camera"]["available"]
                 check(cam > 0 or not avail, f"camera stream shows frames (width {cam}, available {avail})")
             shoot(page, str(out / f"laptop_tab_{tab}.png"))
+        face_checks(page, out, check)
         page.click('.tabs button[data-tab="control"]')
         ctx.close()
 
@@ -176,6 +300,7 @@ def main() -> int:
             page.click(f'.tabs button[data-tab="{tab}"]')
             time.sleep(4.0 if tab == "camera" else 0.5)
             shoot(page, str(out / f"phone_tab_{tab}.png"), full_page=True)
+        face_checks(page, out, check, prefix="phone")
         ctx.close()
         browser.close()
 

@@ -23,7 +23,7 @@ class McpPlugin(Plugin):
 
     def __init__(
         self,
-        server: Optional[McpServer] = None,
+        server: McpServer | None = None,
         music_player: Optional["MusicPlayer"] = None,
         vision: Optional["VisionRuntime"] = None,
         servo=None,
@@ -82,6 +82,22 @@ class McpPlugin(Plugin):
                     arbiter=self._head_arbiter,
                     player=self._head_player,
                 )
+
+            from src.mcp.tools.face import register_face_tools
+            from src.ui.face_color import get_eye_colors
+
+            eye_colors = get_eye_colors()
+            if eye_colors.save is None:
+                # Persist on the app loop: changes also come from the web panel's thread
+                import asyncio
+
+                from src.utils.config_manager import get_config
+
+                loop, config = asyncio.get_running_loop(), get_config()
+                eye_colors.save = lambda path, value: loop.call_soon_threadsafe(
+                    config.update_config, path, value
+                )
+            register_face_tools(server.add_tool, eye_colors)
 
             server.add_common_tools(music_player=self._music_player)
         except Exception as e:

@@ -14,6 +14,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from src.servo.motion import GESTURE_LABELS, clean_name
+from src.ui.face_color import normalize_hex, parse_mode
 
 MAX_MESSAGE_BYTES = 4096
 MAX_TEXT_CHARS = 300
@@ -111,6 +112,22 @@ def parse_command(
             raise CommandError(f"biểu cảm không có: {name}")
         return Command(kind, {"name": name})
     if kind == "auto_mode":
+        return Command(kind, {"enabled": _bool(data, "enabled")})
+    if kind == "eye_color":
+        # {"color": "#rrggbb"} and/or {"mode": "fixed"|"rainbow"|"emotion"}; "save": false
+        # for live previews while a color picker is dragged
+        color = mode = None
+        try:
+            if data.get("color") is not None:
+                color = normalize_hex(_text(data, "color", 16))
+            if data.get("mode") is not None:
+                mode = parse_mode(_text(data, "mode", 16))
+        except ValueError as e:
+            raise CommandError(str(e)) from e
+        if color is None and mode is None:
+            raise CommandError("cần 'color' hoặc 'mode'")
+        return Command(kind, {"color": color, "mode": mode, "save": data.get("save") is not False})
+    if kind == "face_stream":
         return Command(kind, {"enabled": _bool(data, "enabled")})
     if kind == "gesture":
         name = _text(data, "name", 32)

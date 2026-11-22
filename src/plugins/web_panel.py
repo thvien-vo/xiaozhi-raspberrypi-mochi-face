@@ -4,6 +4,11 @@ The HTTP/WebSocket server runs on its own thread (src/web_panel/server.py). This
 feeds it the app's state (listening/speaking, recognized and spoken text, the face's
 emotion) and turns the page's requests for the face, the auto mode and text messages
 into calls on the app's own event loop, which is also the Qt thread in GUI mode.
+
+The face on the page mirrors the screen: the expression comes from the FaceModel's own
+signals (so voice, web, auto mode and listening/speaking changes all show), the eye color
+from the shared EyeColorState, and while a page watches, FaceSnapshotService grabs small
+JPEGs of the face item (~10 a second) that the page puts on the 3D model's screen.
 """
 
 from __future__ import annotations
@@ -54,9 +59,12 @@ class WebPanelPlugin(Plugin):
         self._loop: asyncio.AbstractEventLoop | None = None
         self._server = None
         self.backend = None
+        self._face_model = None
+        self._snapshots = None  # FaceSnapshotService, made on first viewer
+        self._frames = None
 
     @classmethod
-    def from_container(cls, container: "ServiceContainer") -> "WebPanelPlugin":
+    def from_container(cls, container: ServiceContainer) -> WebPanelPlugin:
         return cls(
             container.config,
             servo=container.servo,
@@ -69,7 +77,7 @@ class WebPanelPlugin(Plugin):
 
     # ----- Setup -----
 
-    async def setup(self, ctx: "PluginContext", cmd: "PluginCommands") -> None:
+    async def setup(self, ctx: PluginContext, cmd: PluginCommands) -> None:
         await super().setup(ctx, cmd)
         from src.core.event_bus import Events
         from src.servo.motion import MotionLibrary
@@ -85,6 +93,16 @@ class WebPanelPlugin(Plugin):
         ui = self.get_dep("ui")
         viewport = getattr(ui, "viewport", None)
         face_available = self._mode == "gui" and hasattr(viewport, "set_device_state")
+
+        from src.ui.face_color import get_eye_colors
+        from src.web_panel.face_stream import FaceFrameHub
+
+        eye_colors = get_eye_colors(self._config)
+        if eye_colors.save is None:
+            eye_colors.save = self._save_setting
+        self._face_model = getattr(viewport, "face_model", None) if face_available else None
+        if self._face_model is not None and hasattr(viewport, "create_face_snapshot") and settings.face_stream_fps > 0:
+            self._frames = FaceFrameHub(on_active=self._face_snapshots_active, fps=settings.face_stream_fps)
 
         state = AppState(
             emotions=known_emotions(),
@@ -112,7 +130,14 @@ class WebPanelPlugin(Plugin):
             hooks=hooks,
             camera=camera,
             save_setting=self._save_setting,
+            eye_colors=eye_colors if face_available else None,
+            face_frames=self._frames,
         )
+        if self._face_model is not None:
+            model = self._face_model
+            for signal in (model.emotionChanged, model.visualStateChanged, model.activityChanged):
+                signal.connect(self._sync_face)
+            self._sync_face()
         self._server = WebPanelServer(
             self.backend,
             settings,
@@ -146,8 +171,9 @@ class WebPanelPlugin(Plugin):
             return
         value = getattr(state, "value", str(state))
         update = {"device_state": value, "auto_mode": self._auto_mode()}
-        # Same rule as UiPresenter: a reply emotion survives into speaking, others reset
-        if value != "speaking":
+        # Without the GUI face: same rule as UiPresenter (a reply emotion survives into
+        # speaking, others reset). With it, the FaceModel's signals say what is shown.
+        if value != "speaking" and self._face_model is None:
             update["emotion"] = "neutral"
         self.backend.app.update(**update)
 
@@ -160,7 +186,7 @@ class WebPanelPlugin(Plugin):
             self.backend.app.add_chat("user", text)
         elif kind == "tts" and text and message.get("state") == "sentence_start":
             self.backend.app.add_chat("robot", text)
-        elif kind == "llm" and message.get("emotion"):
+        elif kind == "llm" and message.get("emotion") and self._face_model is None:
             emotion = str(message["emotion"]).lower()
             if emotion not in self.backend.app.emotions:
                 emotion = "neutral"
@@ -173,6 +199,32 @@ class WebPanelPlugin(Plugin):
     async def _on_disconnected(self, _data=None) -> None:
         if self.backend is not None:
             self.backend.app.update(protocol_connected=False)
+
+    def _sync_face(self) -> None:
+        """Qt thread: the face changed (any source)."""
+        model = self._face_model
+        if self.backend is None or model is None:
+            return
+        self.backend.app.update(emotion=model.emotion, face_visual=model.visualState, face_activity=model.activity)
+
+    def _face_snapshots_active(self, active: bool) -> None:
+        """Web thread: first page started / last page stopped watching the face."""
+
+        def apply():
+            if self._snapshots is None and active:
+                viewport = getattr(self.get_dep("ui"), "viewport", None)
+                hub = self._frames
+                self._snapshots = viewport.create_face_snapshot(hub.publish, fps=hub.fps)
+                if self._snapshots is None:
+                    logger.warning("Web panel: robot face not found, the page draws the face itself")
+                    hub.available = False
+                    self.backend._changed()
+                    return
+            if self._snapshots is not None:
+                self._snapshots.set_active(active)
+                logger.info("Web panel: face snapshots %s", "on" if active else "off")
+
+        self._call_soon(apply)
 
     # ----- Page -> app (called on the web thread; hop onto the app loop) -----
 

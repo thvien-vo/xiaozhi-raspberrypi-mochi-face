@@ -99,6 +99,25 @@ class GuiViewManager(QObject):
         self._preview = CameraPreviewService(runtime)
         return True
 
+    def create_face_snapshot(self, sink, fps: float = 10.0, width: int = 320):
+        """Snapshots of the robot face for the web panel; None without the robot face."""
+        root = self._host.root_window()
+        if root is None or self._main.face_model.config["style"] != "robot":
+            return None
+        from src.ui.gui.services.face_snapshot import (
+            FaceSnapshotService,
+            find_face_item,
+        )
+
+        lookup = find_face_item(root)
+        if lookup() is None:
+            return None
+        return FaceSnapshotService(lookup, sink, fps=fps, width=width, parent=self)
+
+    @property
+    def face_model(self):
+        return self._main.face_model
+
     def _load_window(self) -> None:
         """Load the configured face; a broken face falls back to the GIF window."""
         face = self._main.face_model

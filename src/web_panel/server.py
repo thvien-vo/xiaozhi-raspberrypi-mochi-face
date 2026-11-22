@@ -5,8 +5,10 @@ of commands can never stall the face animation or the audio. Commands reach the 
 through RobotBackend (thread-safe); state goes out to every browser about 20 times a
 second, and only when it changed.
 
-Routes: /  page, /login, /ws  WebSocket (JSON), /camera.mjpg  MJPEG stream,
-/api/state  snapshot as JSON, /static/*  web_assets (three.js, model, page code).
+Routes: /  page, /login, /ws  WebSocket (JSON; binary messages are face snapshots),
+/camera.mjpg  MJPEG stream, /api/state  snapshot as JSON, /face_presets.js  the robot
+face's eye shapes (qml/face/FacePresets.js as an ES module, for the page's fallback
+drawing), /static/*  web_assets (three.js, model, page code).
 """
 
 from __future__ import annotations
@@ -36,6 +38,13 @@ COOKIE = "xz_panel"
 BROADCAST_INTERVAL_S = 0.05  # At most 20 state messages per second
 KEEPALIVE_S = 5.0  # Resend state this often even without changes (lets pages see they are live)
 MJPEG_BOUNDARY = "frame"
+FACE_PRESETS = Path(__file__).resolve().parents[1] / "ui" / "gui" / "qml" / "face" / "FacePresets.js"
+
+
+def presets_module(source: str) -> str:
+    """FacePresets.js is a QML JavaScript library: drop the pragma, export the API."""
+    lines = [line for line in source.splitlines() if not line.strip().startswith(".pragma")]
+    return "\n".join(lines) + "\nexport { EMOTIONS, activeName, compose };\n"
 
 # Windows maps .js to text/plain in some registries; modules then refuse to load
 mimetypes.add_type("text/javascript", ".js")
@@ -103,6 +112,8 @@ class WebPanelServer:
         self._sessions: set[str] = set()
         self._sockets: set[web.WebSocketResponse] = set()
         self._changed: asyncio.Event | None = None
+        self._presets_js: str | None = None
+        self._face_tasks: dict[web.WebSocketResponse, asyncio.Task] = {}
         self.urls: list[str] = []
         self.https_active = False
         self.start_error: str | None = None
@@ -198,6 +209,7 @@ class WebPanelServer:
         app.router.add_get("/camera.mjpg", self.camera)
         app.router.add_get("/api/state", self.api_state)
         app.router.add_get("/healthz", self.health)
+        app.router.add_get("/face_presets.js", self.face_presets)
         app.router.add_static("/static", self.static_dir, show_index=False, append_version=False)
         return app
 
@@ -238,6 +250,16 @@ class WebPanelServer:
     async def health(self, request: web.Request) -> web.Response:
         return web.json_response({"ok": True})
 
+    async def face_presets(self, request: web.Request) -> web.Response:
+        if not self.authorized(request):
+            raise web.HTTPUnauthorized()
+        if self._presets_js is None:
+            try:
+                self._presets_js = presets_module(FACE_PRESETS.read_text(encoding="utf-8"))
+            except OSError:
+                raise web.HTTPNotFound() from None
+        return web.Response(text=self._presets_js, content_type="text/javascript", headers={"Cache-Control": "no-cache"})
+
     async def api_state(self, request: web.Request) -> web.Response:
         if not self.authorized(request):
             raise web.HTTPUnauthorized()
@@ -252,6 +274,7 @@ class WebPanelServer:
             "https_port": s.https_port if self.https_active else None,
             "camera_fps": s.camera_stream_fps,
             "password": bool(s.password),
+            "face": self.backend.face_constants(),
         }
 
     async def websocket(self, request: web.Request) -> web.StreamResponse:
@@ -279,6 +302,7 @@ class WebPanelServer:
                 await self._handle_message(ws, msg.data, limiter)
         finally:
             self._sockets.discard(ws)
+            self._face_subscribe(ws, False)
             # A closed page must not keep the head claimed
             self.backend.arbiter.release("web")
             logger.info("Web panel: client %s left (%d open)", peer, len(self._sockets))
@@ -298,7 +322,10 @@ class WebPanelServer:
             else:
                 emotions = tuple(self.backend.app.emotions)
                 cmd = parse_command(data, self.backend.pan_limit, self.backend.tilt_limit, emotions)
-                result = self.backend.handle(cmd)
+                if cmd.type == "face_stream":
+                    result = self._face_subscribe(ws, cmd.args["enabled"])
+                else:
+                    result = self.backend.handle(cmd)
         except CommandError as e:
             result = {"ok": False, "message": str(e)}
         except Exception as e:
@@ -345,6 +372,37 @@ class WebPanelServer:
                         self._sockets.discard(ws)
                         break
             await asyncio.sleep(BROADCAST_INTERVAL_S)
+
+    # ----- Face snapshots (binary WebSocket messages) -----
+
+    def _face_subscribe(self, ws: web.WebSocketResponse, enabled: bool) -> dict:
+        hub = self.backend.face_frames
+        task = self._face_tasks.get(ws)
+        if enabled and task is None:
+            if hub is None or not hub.available:
+                return {"ok": False, "message": "không có hình mặt robot (cần chế độ GUI, FACE.STYLE=robot)", "silent": True}
+            hub.add_viewer()
+            self._face_tasks[ws] = asyncio.get_running_loop().create_task(self._face_sender(ws, hub))
+        elif not enabled and task is not None:
+            del self._face_tasks[ws]
+            task.cancel()
+            if hub is not None:
+                hub.remove_viewer()
+        return {"ok": True}
+
+    async def _face_sender(self, ws: web.WebSocketResponse, hub) -> None:
+        """Send each new snapshot; a slow page just skips frames (only the newest goes)."""
+        last = -1
+        interval = 1.0 / hub.fps
+        try:
+            while not ws.closed:
+                jpeg, seq = hub.latest()
+                if jpeg is not None and seq != last:
+                    last = seq
+                    await ws.send_bytes(jpeg)
+                await asyncio.sleep(interval / 2)
+        except (ConnectionError, RuntimeError, asyncio.CancelledError):
+            pass
 
     def _chat_seq_now(self) -> int:
         return self.backend.app.snapshot()["chat_seq"]

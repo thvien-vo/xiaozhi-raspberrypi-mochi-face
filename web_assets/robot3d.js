@@ -29,8 +29,9 @@ const PART_COLORS = [
 ];
 
 export class Robot3D {
-  constructor(canvas, { onDrag, onDragEnd, onLoaded, onError } = {}) {
+  constructor(canvas, { onDrag, onDragEnd, onLoaded, onError, screenCanvas } = {}) {
     this.canvas = canvas;
+    this.screenCanvas = screenCanvas || null;
     this.onDrag = onDrag;
     this.onDragEnd = onDragEnd;
     this.real = { pan: 0, tilt: 0 };   // Angles shown on the solid model (smoothed)
@@ -187,9 +188,10 @@ export class Robot3D {
     this._dirty = true;
   }
 
-  // The CAD model has a screen frame but no screen: put a dark panel with the robot's
-  // two eyes just behind the frame, so the front of the head is obvious. The frame is
-  // thin along its local Y; its front side is the one away from the tilt axis.
+  // The CAD model has a screen frame but no screen: put a panel just behind the frame
+  // showing the robot's face (a canvas from face.js: the robot's own snapshots, or the
+  // page's drawing of the same face). The frame is thin along its local Y; its front side
+  // is the one away from the tilt axis.
   _addScreen(bezel) {
     const g = bezel.geometry;
     if (!g.boundingBox) g.computeBoundingBox();
@@ -200,28 +202,36 @@ export class Robot3D {
     const backY = c.y - dir * s.y / 2;
     const face = new THREE.Group();
     face.name = "screen_face";
-    const panel = new THREE.Mesh(
-      new THREE.PlaneGeometry(s.x * 0.97, s.z * 0.97),
-      new THREE.MeshStandardMaterial({ color: 0x050608, roughness: 0.25, metalness: 0.1 }),
-    );
+    const material = this.screenCanvas
+      ? new THREE.MeshBasicMaterial({ map: this._screenTexture() })
+      : new THREE.MeshStandardMaterial({ color: 0x050608, roughness: 0.25, metalness: 0.1 });
+    const panel = new THREE.Mesh(new THREE.PlaneGeometry(s.x * 0.97, s.z * 0.97), material);
+    panel.name = "screen_panel";
+    // Facing +Y the plane would show the image upside down and mirrored: turn it over
+    if (dir > 0) panel.rotation.z = Math.PI;
     face.add(panel);
-    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    const eyeShape = new THREE.Shape();
-    const ew = s.x * 0.17, eh = s.z * 0.42, r = ew * 0.3;
-    eyeShape.moveTo(-ew / 2 + r, -eh / 2);
-    eyeShape.lineTo(ew / 2 - r, -eh / 2); eyeShape.quadraticCurveTo(ew / 2, -eh / 2, ew / 2, -eh / 2 + r);
-    eyeShape.lineTo(ew / 2, eh / 2 - r); eyeShape.quadraticCurveTo(ew / 2, eh / 2, ew / 2 - r, eh / 2);
-    eyeShape.lineTo(-ew / 2 + r, eh / 2); eyeShape.quadraticCurveTo(-ew / 2, eh / 2, -ew / 2, eh / 2 - r);
-    eyeShape.lineTo(-ew / 2, -eh / 2 + r); eyeShape.quadraticCurveTo(-ew / 2, -eh / 2, -ew / 2 + r, -eh / 2);
-    for (const x of [-s.x * 0.2, s.x * 0.2]) {
-      const eye = new THREE.Mesh(new THREE.ShapeGeometry(eyeShape, 6), eyeMat);
-      eye.position.set(x, s.z * 0.06, 0.6);
-      face.add(eye);
-    }
     // Plane normal is +Z; turn it to point along dir * Y (the frame's front)
     face.rotation.x = dir < 0 ? Math.PI / 2 : -Math.PI / 2;
     face.position.set(c.x, backY + dir * 0.4, c.z);
     bezel.parent.add(face);
+    this.screenPanel = panel;
+  }
+
+  _screenTexture() {
+    if (!this.screenTexture) {
+      const t = new THREE.CanvasTexture(this.screenCanvas);
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.anisotropy = 4;
+      this.screenTexture = t;
+    }
+    return this.screenTexture;
+  }
+
+  // The face canvas was redrawn: upload it and draw the scene once
+  screenUpdated() {
+    if (!this.screenTexture) return;
+    this.screenTexture.needsUpdate = true;
+    this._dirty = true;
   }
 
   // Head box and base top in world space (for checks)

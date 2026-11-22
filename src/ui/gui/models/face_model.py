@@ -2,8 +2,9 @@
 
 from typing import Any
 
-from PySide6.QtCore import Property, QTimer, Signal, Slot
+from PySide6.QtCore import Property, Qt, QTimer, Signal, Slot
 
+from src.ui.face_color import EMOTION_COLORS, EyeColorState, get_eye_colors
 from src.ui.gui.models.base_model import BaseModel
 from src.ui.gui.services.face_state import FaceStateMachine
 from src.utils.config_manager import ConfigManager, get_config
@@ -50,12 +51,16 @@ class FaceModel(BaseModel):
     speechChanged = Signal()
     speechActiveChanged = Signal()
     userTextChanged = Signal()
+    eyeColorChanged = Signal()
+    # Carries changes made on other threads (web panel) onto the Qt thread
+    _eyeColorPosted = Signal(str, str)
 
     def __init__(
         self,
         face_config: dict[str, Any] | None = None,
         state_machine: FaceStateMachine | None = None,
         parent=None,
+        eye_colors: EyeColorState | None = None,
     ):
         super().__init__(parent)
         self._config = face_config or load_face_config()
@@ -72,6 +77,11 @@ class FaceModel(BaseModel):
         self._speech_serial = 0
         self._speech_active = False
         self._user_text = ""
+        self._eye_colors = eye_colors or get_eye_colors()
+        self._eye_color = self._eye_colors.color
+        self._eye_color_mode = self._eye_colors.mode
+        self._eyeColorPosted.connect(self._apply_eye_color, Qt.ConnectionType.QueuedConnection)
+        self._eye_colors.add_listener(self._eyeColorPosted.emit)
 
         self._timer = QTimer(self)
         self._timer.setInterval(1000)
@@ -110,6 +120,22 @@ class FaceModel(BaseModel):
     @Property(str, notify=userTextChanged)
     def userText(self) -> str:
         return self._user_text
+
+    @Property(str, notify=eyeColorChanged)
+    def eyeColor(self) -> str:
+        return self._eye_color
+
+    @Property(str, notify=eyeColorChanged)
+    def eyeColorMode(self) -> str:
+        return self._eye_color_mode
+
+    @Property("QVariantMap", constant=True)
+    def emotionColors(self) -> dict[str, str]:
+        return dict(EMOTION_COLORS)
+
+    @property
+    def eye_colors(self) -> EyeColorState:
+        return self._eye_colors
 
     # ========== Lifecycle ==========
 
@@ -172,6 +198,12 @@ class FaceModel(BaseModel):
         self.activityChanged.emit()
 
     # ========== Internal ==========
+
+    @Slot(str, str)
+    def _apply_eye_color(self, color: str, mode: str) -> None:
+        if (color, mode) != (self._eye_color, self._eye_color_mode):
+            self._eye_color, self._eye_color_mode = color, mode
+            self.eyeColorChanged.emit()
 
     def _set_user_text(self, text: str) -> None:
         if self._user_text != text:

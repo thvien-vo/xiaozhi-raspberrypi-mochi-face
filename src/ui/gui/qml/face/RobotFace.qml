@@ -12,6 +12,11 @@ Item {
     property int blinkMinMs: 2000
     property int blinkMaxMs: 6000
     property real doubleBlinkChance: 0.2
+    // Eye color: base color, mode (fixed / rainbow / emotion) and the emotion mode's map
+    property string eyeColorBase: "#ffffff"
+    property string eyeColorMode: "fixed"
+    property var emotionColors: ({})
+    property real rainbowHue: 0
 
     readonly property real unit: Math.min(width / 1024, height / 432)
     readonly property real eyeWidth: 190 * unit
@@ -20,6 +25,26 @@ Item {
     readonly property string presetName: Presets.activeName(emotion, visualState, activity)
     readonly property var pose: Presets.compose(presetName, visualState)
     readonly property bool asleep: activity === "asleep"
+    // Same rule as src/ui/face_color.py effective_color()
+    readonly property color targetEyeColor: eyeColorMode === "rainbow"
+        ? Qt.hsva(rainbowHue, 0.7, 1, 1)
+        : (eyeColorMode === "emotion" && emotionColors[presetName] !== undefined
+           ? emotionColors[presetName] : eyeColorBase)
+    property color eyeColor: targetEyeColor
+    Behavior on eyeColor {
+        enabled: face.eyeColorMode !== "rainbow"
+        ColorAnimation { duration: 260 }
+    }
+
+    // Rainbow: hue from the wall clock (one turn per 12 s) so the web panel's fallback
+    // drawing shows the same color; 20 steps a second are smooth enough for a slow turn
+    Timer {
+        running: face.eyeColorMode === "rainbow"
+        repeat: true
+        interval: 50
+        triggeredOnStart: true
+        onTriggered: face.rainbowHue = (Date.now() / 12000) % 1
+    }
 
     property real blink: 1
     property real glanceX: 0
@@ -157,6 +182,7 @@ Item {
 
         Eye {
             side: -1
+            color: face.eyeColor
             baseWidth: face.eyeWidth
             baseHeight: face.eyeHeight
             shape: face.pose.left
@@ -167,6 +193,7 @@ Item {
 
         Eye {
             side: 1
+            color: face.eyeColor
             baseWidth: face.eyeWidth
             baseHeight: face.eyeHeight
             shape: face.pose.right
@@ -179,6 +206,7 @@ Item {
     FaceOverlays {
         anchors.fill: parent
         overlay: face.pose.overlay
+        eyeColor: face.eyeColor
         unit: face.unit
         eyeWidth: face.eyeWidth
         eyeHeight: face.eyeHeight

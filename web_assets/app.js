@@ -1,5 +1,6 @@
 // Xiaozhi web panel: WebSocket client, controls and the 3D view.
 import { Robot3D } from "./robot3d.js";
+import { FaceScreen } from "./face.js";
 
 const $ = (id) => document.getElementById(id);
 const SEND_INTERVAL_MS = 50;      // Angle commands while dragging: at most 20 per second
@@ -21,6 +22,12 @@ const state = {
   target: { pan: 0, tilt: 0 }, localUntil: 0,
   pending: null, lastSend: 0, sendTimer: null, msgId: 0, waiters: new Map(),
   chatIds: new Set(),
+  faceSubscribed: false,
+};
+const EYE_MODE_NOTES = {
+  fixed: "Bấm một màu hoặc tự chọn: màn robot và mặt ở đây đổi ngay, màu được lưu (FACE.EYE_COLOR).",
+  rainbow: "Cầu vồng: màu mắt đổi dần liên tục. Bấm Cố định hoặc một màu để tắt.",
+  emotion: "Theo cảm xúc: vui vàng, buồn xanh dương, giận đỏ, yêu hồng, suy nghĩ tím… Bình thường dùng màu cố định.",
 };
 
 // ---------- Toasts ----------
@@ -39,7 +46,8 @@ function connect() {
   const proto = location.protocol === "https:" ? "wss:" : "ws:";
   const ws = new WebSocket(`${proto}//${location.host}/ws`);
   state.ws = ws;
-  ws.onopen = () => { state.connected = true; retryMs = 500; renderChips(); };
+  ws.binaryType = "blob";
+  ws.onopen = () => { state.connected = true; state.faceSubscribed = false; retryMs = 500; renderChips(); };
   ws.onclose = (ev) => {
     state.connected = false; renderChips();
     if (ev.code === 1008 || ev.code === 4401) { location.href = "/login"; return; }
@@ -48,10 +56,14 @@ function connect() {
   };
   ws.onerror = () => {};
   ws.onmessage = (ev) => {
+    if (typeof ev.data !== "string") {  // A snapshot of the robot's face (JPEG)
+      createImageBitmap(ev.data).then((b) => faceScreen.setFrame(b)).catch(() => {});
+      return;
+    }
     let msg;
     try { msg = JSON.parse(ev.data); } catch { return; }
     if (msg.type === "state") onState(msg);
-    else if (msg.type === "hello") { state.hello = msg; renderTiltMode(); }
+    else if (msg.type === "hello") { state.hello = msg; faceScreen.setConstants(msg.face); renderTiltMode(); renderEyeColor(); }
     else if (msg.type === "chat") onChat(msg.messages || []);
     else if (msg.type === "result") onResult(msg);
   };
@@ -72,7 +84,7 @@ function send(obj, { wantReply = false } = {}) {
 function onResult(msg) {
   const waiter = msg.id != null && state.waiters.get(msg.id);
   if (waiter) { state.waiters.delete(msg.id); waiter(msg); }
-  if (!msg.ok && !msg.rate_limited) toast(msg.message || "Lỗi", true);
+  if (!msg.ok && !msg.rate_limited && !msg.silent) toast(msg.message || "Lỗi", true);
   else if (waiter && msg.message) toast(msg.message);
 }
 
@@ -244,9 +256,25 @@ function renderMotion() {
 }
 
 // ---------- Face ----------
+// Ask for the robot's face snapshots while this page is visible (costs the robot
+// nothing otherwise); the 3D screen and the face card show them
+function updateFaceStream() {
+  const want = state.connected && !document.hidden && !!state.snapshot?.face?.stream;
+  if (want === state.faceSubscribed) return;
+  state.faceSubscribed = want;
+  send({ type: "face_stream", enabled: want });
+}
+
 function renderFace() {
   const app = state.snapshot?.app;
   if (!app) return;
+  faceScreen.setState(
+    { emotion: app.emotion, visual: app.face_visual || "idle", activity: app.face_activity || "awake" },
+    state.snapshot.face?.eye,
+  );
+  updateFaceStream();
+  renderFaceSource();
+  renderEyeColor();
   const box = $("emotions");
   const names = app.emotions?.length ? app.emotions : Object.keys(EMOTIONS);
   if (box.dataset.names !== names.join()) {
@@ -263,7 +291,10 @@ function renderFace() {
     }
   }
   for (const b of box.children) { b.classList.toggle("on", b.dataset.name === app.emotion); b.disabled = !app.face_available; }
-  $("face-current").textContent = (EMOTIONS[app.emotion]?.[1]) || app.emotion;
+  const shown = app.expression && app.expression !== app.emotion ? app.expression : null;
+  const extra = shown === "asleep" ? "đang ngủ" : shown === "sleepy" ? "buồn ngủ" : shown === "thinking" ? "đang nghĩ"
+    : app.face_visual === "listening" ? "đang nghe" : app.face_visual === "speaking" ? "đang nói" : "";
+  $("face-current").textContent = ((EMOTIONS[app.emotion]?.[1]) || app.emotion) + (extra ? ` · ${extra}` : "");
   $("face-note").textContent = app.face_available
     ? "Biểu cảm giữ đến khi robot chuyển trạng thái (nghe, nói), giống khi server gửi biểu cảm."
     : "Mặt robot không chạy (app không ở chế độ GUI).";
@@ -274,6 +305,52 @@ function renderFace() {
     ? "FACE.ALWAYS_LISTEN đang bật nên robot luôn ở chế độ tự động (nghe liên tục)."
     : "FACE.AUTO_MODE: chạm màn hình một lần để bắt đầu cuộc trò chuyện nghe liên tục; tắt thì chạm để nói (bấm-giữ).";
   $("btn-wake").disabled = !app.face_available;
+}
+
+function renderFaceSource() {
+  const live = faceScreen.live;
+  const pill = $("face-source");
+  pill.textContent = live ? "● Trực tiếp" : state.snapshot?.face?.stream ? "Đang chờ hình…" : "Vẽ lại";
+  pill.classList.toggle("live", live);
+  $("face-screen-note").textContent = live
+    ? "Hình chụp từ mặt robot (~10 hình/giây), giống hệt màn hình 7 inch. Mô hình 3D dùng cùng hình này."
+    : state.snapshot?.face?.stream
+      ? "Đang chờ hình từ robot…"
+      : "Robot không gửi hình mặt (không chạy GUI hoặc WEB.FACE_STREAM_FPS = 0): trang vẽ lại mặt theo biểu cảm và màu mắt hiện tại.";
+}
+
+// ---------- Eye color ----------
+let pickerTimer = 0;
+function renderEyeColor() {
+  const box = $("swatches");
+  const palette = state.hello?.face?.palette || [];
+  if (palette.length && box.dataset.ready !== "1") {
+    box.dataset.ready = "1";
+    for (const p of palette) {
+      const b = document.createElement("button");
+      b.className = "swatch"; b.dataset.color = p.color; b.title = `${p.label} (${p.color})`;
+      b.style.setProperty("--c", p.color);
+      b.textContent = p.label;
+      b.onclick = () => command({ type: "eye_color", color: p.color, mode: "fixed" });
+      box.insertBefore(b, box.lastElementChild);
+    }
+  }
+  const eye = state.snapshot?.face?.eye;
+  const ok = !!eye;
+  for (const b of box.querySelectorAll("button.swatch")) {
+    b.disabled = !ok;
+    b.classList.toggle("on", ok && eye.mode === "fixed" && b.dataset.color === eye.color);
+  }
+  $("eye-picker").disabled = !ok;
+  for (const b of $("eye-modes").children) { b.disabled = !ok; b.classList.toggle("on", ok && b.dataset.mode === eye.mode); }
+  const pill = $("eye-current");
+  if (!ok) { pill.querySelector("b").textContent = "-"; $("eye-note").textContent = "Mặt robot không chạy (app không ở chế độ GUI)."; return; }
+  pill.classList.toggle("rainbow", eye.mode === "rainbow");
+  pill.style.setProperty("--eye", eye.mode === "emotion" ? faceScreen.currentColor(state.snapshot.app?.expression) : eye.color);
+  pill.querySelector("b").textContent = eye.mode === "rainbow" ? "Cầu vồng" : eye.mode === "emotion" ? "Theo cảm xúc" : eye.label;
+  const picker = $("eye-picker");
+  if (document.activeElement !== picker && !pickerTimer) picker.value = eye.color;
+  $("eye-note").textContent = EYE_MODE_NOTES[eye.mode] || "";
 }
 
 // ---------- Chat ----------
@@ -429,7 +506,9 @@ function stopTilt() {
 }
 
 // ---------- 3D ----------
+const faceScreen = new FaceScreen($("face-canvas"), { onDraw: () => robot && robot.screenUpdated() });
 const robot = new Robot3D($("scene"), {
+  screenCanvas: $("face-canvas"),
   onDrag: (pan, tl) => { setTarget(pan, tl); $("stage-hint").classList.add("fade"); },
   onDragEnd: (pan, tl) => setTarget(pan, tl),
   onLoaded: () => { $("stage-loading").remove(); },
@@ -437,6 +516,7 @@ const robot = new Robot3D($("scene"), {
 });
 window.__robot = robot;  // For automated checks
 window.__panel = state;
+window.__face = faceScreen;
 
 // ---------- Wiring ----------
 function bind() {
@@ -464,9 +544,9 @@ function bind() {
   }
   $("btn-track-save").onclick = () => command(params(true));
 
-  for (const b of document.querySelectorAll(".seg button")) {
+  for (const b of document.querySelectorAll("#stick-modes button")) {
     b.onclick = () => {
-      for (const o of document.querySelectorAll(".seg button")) o.classList.toggle("on", o === b);
+      for (const o of document.querySelectorAll("#stick-modes button")) o.classList.toggle("on", o === b);
       const tiltMode = b.dataset.mode === "tilt";
       $("stick-wrap").hidden = tiltMode; $("tiltmode").hidden = !tiltMode;
       if (!tiltMode) stopTilt();
@@ -488,6 +568,17 @@ function bind() {
   $("sw-cam").onchange = updateCamera;
   $("sw-auto").onchange = (e) => command({ type: "auto_mode", enabled: e.target.checked });
   $("btn-wake").onclick = () => command({ type: "face_wake" });
+  for (const b of $("eye-modes").children) b.onclick = () => command({ type: "eye_color", mode: b.dataset.mode });
+  // Live preview while dragging in the color picker, saved once on release
+  $("eye-picker").oninput = (e) => {
+    const color = e.target.value;
+    clearTimeout(pickerTimer);
+    pickerTimer = setTimeout(() => { pickerTimer = 0; send({ type: "eye_color", color, mode: "fixed", save: false }); }, 80);
+  };
+  $("eye-picker").onchange = (e) => {
+    clearTimeout(pickerTimer); pickerTimer = 0;
+    command({ type: "eye_color", color: e.target.value, mode: "fixed" });
+  };
 
   $("chat-form").onsubmit = async (e) => {
     e.preventDefault();
@@ -498,7 +589,11 @@ function bind() {
     if (r?.ok) input.value = "";
   };
 
-  document.addEventListener("visibilitychange", () => { if (document.hidden) stopCamera(); else updateCamera(); });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) stopCamera(); else updateCamera();
+    updateFaceStream();
+  });
+  setInterval(renderFaceSource, 1000);
   initStick();
   renderTiltMode();
   setTimeout(() => $("stage-hint").classList.add("fade"), 8000);

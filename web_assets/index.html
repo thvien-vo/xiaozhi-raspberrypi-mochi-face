@@ -76,7 +76,7 @@
 
       <div class="card">
         <div class="card-head"><h2>Cần điều khiển</h2>
-          <div class="seg" role="group" aria-label="Chế độ">
+          <div class="seg" id="stick-modes" role="group" aria-label="Chế độ">
             <button class="on" data-mode="stick">Joystick</button>
             <button data-mode="tilt" id="btn-tilt-mode">Nghiêng máy</button>
           </div>
@@ -162,9 +162,26 @@
     <!-- Mặt -->
     <div class="tabpage" data-page="face" hidden>
       <div class="card">
+        <div class="card-head"><h2>Màn hình robot</h2><span class="pill" id="face-source">-</span></div>
+        <div class="face-screen"><canvas id="face-canvas" role="img" aria-label="Mặt đang hiện trên màn hình robot"></canvas></div>
+        <p class="note" id="face-screen-note"></p>
+      </div>
+      <div class="card">
         <div class="card-head"><h2>Biểu cảm</h2><span class="pill" id="face-current">neutral</span></div>
         <div class="emotions" id="emotions"></div>
         <p class="note" id="face-note">Biểu cảm giữ đến khi robot chuyển trạng thái (nghe, nói), giống khi server gửi biểu cảm.</p>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>Màu mắt</h2><span class="pill eye-pill" id="eye-current"><i></i><b>-</b></span></div>
+        <div class="swatches" id="swatches" role="group" aria-label="Màu có sẵn">
+          <label class="swatch custom" title="Tự chọn màu"><input type="color" id="eye-picker" value="#ffffff" aria-label="Chọn màu tự do"><span>Tự chọn</span></label>
+        </div>
+        <div class="seg eye-modes" id="eye-modes" role="group" aria-label="Chế độ màu mắt">
+          <button data-mode="fixed">Cố định</button>
+          <button data-mode="rainbow">🌈 Cầu vồng</button>
+          <button data-mode="emotion">🎭 Theo cảm xúc</button>
+        </div>
+        <p class="note" id="eye-note"></p>
       </div>
       <div class="card">
         <div class="card-head"><h2>Chế độ trò chuyện tự động</h2>

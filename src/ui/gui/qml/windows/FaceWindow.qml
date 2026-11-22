@@ -45,6 +45,7 @@ Window {
 
     RobotFace {
         id: robotFace
+        objectName: "robotFace"  // Found by FaceSnapshotService (web panel mirror)
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
@@ -55,6 +56,9 @@ Window {
         blinkMinMs: root.faceConfig.blinkMinMs
         blinkMaxMs: root.faceConfig.blinkMaxMs
         doubleBlinkChance: root.faceConfig.doubleBlinkChance
+        eyeColorBase: faceModel.eyeColor
+        eyeColorMode: faceModel.eyeColorMode
+        emotionColors: faceModel.emotionColors
     }
 
     SpeechText {

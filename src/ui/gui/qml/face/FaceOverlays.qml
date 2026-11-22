@@ -6,6 +6,7 @@ Item {
     id: overlays
 
     property string overlay: ""
+    property color eyeColor: "white"    // The sleeping "z"s take the eye color
     property real unit: 1
     property real eyeWidth: 190
     property real eyeHeight: 230
@@ -133,7 +134,7 @@ Item {
                     id: letter
                     required property int index
                     text: "z"
-                    color: "white"
+                    color: overlays.eyeColor
                     opacity: 0
                     y: overlays.eyeY - overlays.eyeHeight * 0.1
                     font.pixelSize: (34 + index * 16) * overlays.unit

@@ -29,6 +29,13 @@ from src.servo.motion import (
     MotionRecorder,
     start_gesture,
 )
+from src.ui.face_color import (
+    EMOTION_COLORS,
+    RAINBOW_PERIOD_S,
+    RAINBOW_SATURATION,
+    active_expression,
+    palette_snapshot,
+)
 from src.web_panel.commands import Command, CommandError
 
 logger = get_logger()
@@ -60,6 +67,9 @@ class AppState:
 
     device_state: str = "idle"
     emotion: str = "neutral"
+    # What the face itself shows (from the GUI FaceModel when there is one)
+    face_visual: str = "idle"
+    face_activity: str = "awake"
     emotions: tuple[str, ...] = ()
     auto_mode: bool | None = None
     always_listen: bool = False
@@ -110,6 +120,9 @@ class AppState:
                 "device_state": self.device_state,
                 "device_state_label": DEVICE_STATE_LABELS.get(self.device_state, self.device_state),
                 "emotion": self.emotion,
+                "expression": active_expression(self.emotion, self.face_visual, self.face_activity),
+                "face_visual": self.face_visual,
+                "face_activity": self.face_activity,
                 "emotions": list(self.emotions),
                 "auto_mode": self.auto_mode,
                 "always_listen": self.always_listen,
@@ -132,6 +145,8 @@ class RobotBackend:
         hooks: AppHooks | None = None,
         camera=None,
         save_setting: Callable[[str, object], None] | None = None,
+        eye_colors=None,
+        face_frames=None,
     ) -> None:
         self.controller = controller
         self.tracker = tracker
@@ -146,6 +161,10 @@ class RobotBackend:
         self.hooks = hooks or AppHooks()
         self.camera = camera
         self._save_setting = save_setting
+        self.eye_colors = eye_colors  # src.ui.face_color.EyeColorState
+        self.face_frames = face_frames  # src.web_panel.face_stream.FaceFrameHub
+        if eye_colors is not None:
+            eye_colors.add_listener(lambda _color, _mode: self._changed())
         self._listeners: list[Callable[[], None]] = []
         self._motions_cache: list[dict] | None = None
         if self.player is not None:
@@ -297,6 +316,19 @@ class RobotBackend:
         self.app.update(emotion=name)
         return {"ok": True}
 
+    def _cmd_eye_color(self, color: str | None, mode: str | None, save: bool) -> dict:
+        if self.eye_colors is None:
+            return {"ok": False, "message": "mặt robot không chạy (cần chế độ GUI)"}
+        try:
+            self.eye_colors.set(color=color, mode=mode, persist=save)
+        except ValueError as e:
+            raise CommandError(str(e)) from e
+        return {"ok": True}
+
+    def _cmd_face_stream(self, enabled: bool) -> dict:
+        # Per-page subscription: the server handles it before reaching here
+        return {"ok": True}
+
     def _cmd_auto_mode(self, enabled: bool) -> dict:
         if self.app.always_listen:
             return {"ok": False, "message": "FACE.ALWAYS_LISTEN đang bật: luôn ở chế độ tự động"}
@@ -374,4 +406,20 @@ class RobotBackend:
                 "gestures": [{"name": k, "label": v} for k, v in GESTURE_LABELS.items()],
             },
             "camera": {"available": bool(self.camera is not None and self.camera.available())},
+            "face": self.face_snapshot(),
+        }
+
+    def face_snapshot(self) -> dict:
+        eye = self.eye_colors.snapshot() if self.eye_colors is not None else None
+        frames = self.face_frames
+        return {"eye": eye, "stream": bool(frames is not None and frames.available)}
+
+    @staticmethod
+    def face_constants() -> dict:
+        """Sent once per page (hello): the color choices and the emotion mode's colors."""
+        return {
+            "palette": palette_snapshot(),
+            "emotion_colors": EMOTION_COLORS,
+            "rainbow_period_s": RAINBOW_PERIOD_S,
+            "rainbow_saturation": RAINBOW_SATURATION,
         }

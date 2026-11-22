@@ -252,6 +252,25 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; ma
 .emotions button .ico { font-size: 24px; line-height: 1.1; }
 .emotions button.on { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
 .emotions button:disabled { opacity: .45; cursor: not-allowed; }
+.face-screen { background: #000; border-radius: 12px; padding: 10px; border: 6px solid #111318; box-shadow: inset 0 0 0 1px #2a2f38; }
+.face-screen canvas { display: block; width: 100%; aspect-ratio: 1024 / 600; border-radius: 4px; }
+.pill.live { background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good); }
+.eye-pill { display: inline-flex; align-items: center; gap: 6px; }
+.eye-pill i { width: 12px; height: 12px; border-radius: 50%; background: var(--eye, #fff); box-shadow: 0 0 0 1px var(--border); }
+.eye-pill.rainbow i { background: conic-gradient(#ff5e5e, #ffd93d, #3dff7a, #33e0ff, #3d9bff, #b46bff, #ff6fb5, #ff5e5e); }
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; margin-bottom: 10px; }
+.swatch {
+  border: 1px solid var(--border); background: var(--surface-2); border-radius: 10px; padding: 7px 4px 6px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11.5px; color: var(--muted); position: relative;
+}
+.swatch::before { content: ""; width: 26px; height: 26px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 2px #000, 0 0 0 3px var(--border); }
+.swatch.on { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+.swatch:disabled { opacity: .45; cursor: not-allowed; }
+.swatch.custom::before { background: conic-gradient(#ff5e5e, #ffd93d, #3dff7a, #33e0ff, #3d9bff, #b46bff, #ff6fb5, #ff5e5e); }
+.swatch.custom input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
+.eye-modes { display: flex; width: 100%; }
+.eye-modes button { flex: 1; white-space: nowrap; padding: 6px 4px; }
+@media (max-width: 420px) { .eye-modes button { font-size: 12.5px; } }
 
 /* Chat */
 .chat-card { min-height: 420px; }

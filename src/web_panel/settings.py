@@ -12,6 +12,8 @@ class WebSettings:
     port: int = 8080
     password: str = ""
     camera_stream_fps: float = 8.0
+    # Snapshots of the robot face sent to pages that show it (0 = page draws it itself)
+    face_stream_fps: float = 10.0
     https_enabled: bool = False
     https_port: int = 8443
     # Highest number of commands per second one browser may send
@@ -47,6 +49,7 @@ def load_web_settings(config=None) -> WebSettings:
         port=value("PORT", int, 1, 65535),
         password=str(value("PASSWORD", lambda v: "" if v is None else str(v))),
         camera_stream_fps=value("CAMERA_STREAM_FPS", float, 0.5, 30.0),
+        face_stream_fps=value("FACE_STREAM_FPS", float, 0.0, 20.0),
         https_enabled=value("HTTPS_ENABLED", _as_bool),
         https_port=value("HTTPS_PORT", int, 1, 65535),
     )

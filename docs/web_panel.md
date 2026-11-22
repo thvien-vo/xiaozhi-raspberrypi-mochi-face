@@ -4,7 +4,7 @@ Trang web chạy ngay trong app Xiaozhi (plugin `web_panel`). Từ laptop hoặc
 
 - xoay đầu robot trên mô hình 3D;
 - xem webcam có khung YOLO;
-- đổi biểu cảm mặt;
+- xem mặt robot trực tiếp (trên mô hình 3D và ô 2D), đổi biểu cảm và màu mắt;
 - chạy cử chỉ, ghi và phát lại động tác;
 - nhắn tin cho Xiaozhi.
 
@@ -19,6 +19,7 @@ Trang web chạy ngay trong app Xiaozhi (plugin `web_panel`). Từ laptop hoặc
      "PORT": 8080,
      "PASSWORD": "",
      "CAMERA_STREAM_FPS": 8,
+     "FACE_STREAM_FPS": 10,
      "HTTPS_ENABLED": false,
      "HTTPS_PORT": 8443
    }
@@ -38,7 +39,7 @@ Không cần cài thêm gì. three.js 0.170 (GLTFLoader, OrbitControls) nằm s�
 | Điều khiển | Thanh trượt xoay/gật, joystick, chế độ nghiêng điện thoại, bật/tắt bám người, chỉnh KP và vùng chết khi đang chạy ("Lưu vào cấu hình" ghi vào `SERVO.*`) |
 | Động tác | Cử chỉ: gật đầu, lắc đầu, nhìn quanh, ngạc nhiên, nhảy. Ghi động tác, danh sách phát lại/xóa. |
 | Camera | Webcam MJPEG có khung YOLO. Khung cam là người robot bám theo. |
-| Mặt | 21 biểu cảm mà mặt robot vẽ được, bật/tắt `FACE.AUTO_MODE`, "Đánh thức mặt" |
+| Mặt | Ô "Màn hình robot" (mặt đang hiện trên màn 7"), 21 biểu cảm, màu mắt (bảng màu, tự chọn, cầu vồng, theo cảm xúc), bật/tắt `FACE.AUTO_MODE`, "Đánh thức mặt" |
 | Trò chuyện | Câu người nói (STT) và câu robot trả lời (TTS), ô gửi tin nhắn chữ |
 
 **Chiều kéo:** kéo đầu sang trái thì robot quay sang trái của nó, kéo lên thì ngẩng. Nhìn từ góc nào cũng vậy, giống thanh trượt và joystick; chữ "Trái/Phải" đều tính theo robot.
@@ -54,6 +55,43 @@ Thứ tự ưu tiên: **Web** (người đang kéo) > **lệnh giọng nói** > 
 - Cử chỉ và động tác chạy trên Pi, nên đóng trình duyệt chúng vẫn chạy tiếp. Kéo đầu trên web sẽ dừng động tác đang chạy.
 
 Lệnh giọng nói mới (MCP `self.head.gesture`): "gật đầu đi", "lắc đầu đi", "nhìn quanh xem", "giả vờ ngạc nhiên", "nhảy đi". Chúng chạy đúng các cử chỉ trên trang web.
+
+## Mặt robot trên trang web
+
+Màn hình của mô hình 3D và ô "Màn hình robot" ở tab Mặt hiện **đúng hình mặt mà app đang vẽ** trên màn 7":
+
+- Khi có trang đang mở (và tab trình duyệt đang hiện), app chụp riêng phần mặt (`RobotFace` trong QML) bằng `QQuickItem.grabToImage` ở cỡ nhỏ 320×135, nén JPEG (~2–5 KB) và gửi qua WebSocket dưới dạng tin nhị phân, khoảng `WEB.FACE_STREAM_FPS` hình/giây (mặc định 10). Không ai xem thì không chụp. Mặt trên màn robot vẫn vẽ như cũ, việc chụp là một lần vẽ thêm ở cỡ nhỏ.
+- Vì là hình chụp, mọi thay đổi đều hiện ra: biểu cảm chọn từ web, từ server/giọng nói, mặt tự đổi khi nghe/nghĩ/nói/buồn ngủ/ngủ, chớp mắt, màu mắt, cầu vồng.
+- Nhãn "● Trực tiếp" nghĩa là đang nhận hình từ robot. Nếu không có hình (app không chạy GUI, `FACE.STYLE` không phải `robot`, hoặc `WEB.FACE_STREAM_FPS = 0`), trang tự **vẽ lại** mặt bằng chính các preset mắt của robot (`/face_presets.js` là `qml/face/FacePresets.js`), theo biểu cảm, trạng thái và màu mắt hiện tại; nhãn là "Vẽ lại".
+- Nút biểu cảm đang chọn lấy từ chính `FaceModel` của app, nên cũng đổi khi biểu cảm đổi từ nguồn khác. Nhãn cạnh "Biểu cảm" ghi thêm "đang nghe", "đang nói", "đang nghĩ", "buồn ngủ", "đang ngủ".
+
+## Màu mắt
+
+Đổi ở tab **Mặt → Màu mắt**, bằng giọng nói, hoặc trong config. Màn robot và mặt trên web đổi ngay; lựa chọn được lưu vào config nên khởi động lại vẫn giữ.
+
+```json
+"FACE": {
+  "EYE_COLOR": "#ffffff",
+  "EYE_COLOR_MODE": "fixed"
+}
+```
+
+- `EYE_COLOR`: mã hex `#rrggbb` (mặc định trắng, như trước). Màu quá tối được làm sáng lên vừa đủ để mắt vẫn rõ trên nền đen (độ chói tối thiểu ~0,125, tương phản khoảng 3,5:1). Giá trị sai trong config thì dùng mặc định.
+- `EYE_COLOR_MODE`:
+  - `fixed`: một màu.
+  - `rainbow` (cầu vồng): màu đổi dần liên tục, một vòng 12 giây.
+  - `emotion` (theo cảm xúc): mỗi biểu cảm một màu. Vui/cười = vàng, buồn/khóc = xanh dương, giận = đỏ, yêu thương/hôn = hồng, ngượng = hồng nhạt, ngạc nhiên/sốc/thèm = cam, suy nghĩ/bối rối = tím, ngầu/tự tin = xanh ngọc, nháy mắt/tinh nghịch = xanh lá, buồn ngủ/ngủ = xanh nhạt. Bình thường dùng màu `EYE_COLOR`.
+- Màu áp dụng cho thân mắt, mắt trái tim (với mắt trắng mặc định thì tim vẫn màu hồng như cũ), mắt xoắn ốc (bối rối) và chữ "z" khi ngủ. Nước mắt, má hồng giữ màu riêng. Mặt robot không có hiệu ứng phát sáng/viền nên không có gì khác để tô.
+- Trên web: 9 màu có sẵn (trắng, xanh dương, xanh ngọc, xanh lá, tím, hồng, cam, đỏ, vàng), ô **Tự chọn** (bảng chọn màu; đang kéo thì xem trước, thả ra mới lưu), và ba nút **Cố định / Cầu vồng / Theo cảm xúc**. Bấm một màu cũng tắt cầu vồng/cảm xúc.
+- Pi kiểm tra mọi giá trị: chỉ nhận hex hợp lệ và tên chế độ `fixed`, `rainbow`, `emotion`; giá trị khác bị từ chối với thông báo lỗi.
+
+Lệnh giọng nói (MCP `self.face.set_eye_color`, nhận tên màu tiếng Việt):
+
+- "đổi màu mắt sang màu tím", "cho mắt màu xanh lá", "mắt màu đỏ đi"
+- "bật mắt cầu vồng"
+- "mắt đổi màu theo cảm xúc"
+- "tắt cầu vồng" / "giữ một màu" (về `fixed`, giữ màu hiện tại)
+- "về màu mắt mặc định" (trắng)
 
 ## Ghi và phát lại động tác
 
@@ -86,13 +124,17 @@ Muốn tạo lại chứng chỉ (ví dụ sau khi đổi IP), xóa thư mục `
 
 ```bash
 python scripts/web_panel_dev.py --port 8080      # servo, camera, app đều giả lập
+QT_QPA_PLATFORM=offscreen python scripts/web_panel_dev.py --port 8080 --real-face   # thêm mặt QML thật + chụp hình như trên Pi
 python scripts/web_panel_check.py http://127.0.0.1:8080 --out shots/
 python scripts/web_panel_check.py http://Pi5.local:8080 --out shots/ --max-deg 20   # robot thật, góc nhỏ
+python scripts/web_panel_check.py http://Pi5.local:8080 --out shots/ --face-only    # chỉ kiểm tra mặt/màu mắt
 ```
+
+Phần kiểm tra mặt đổi biểu cảm và màu mắt từ trang (bảng màu, màu tự do, giá trị sai, theo cảm xúc, cầu vồng), đo màu mắt trong ô mặt của trang, rồi trả lại màu và chế độ ban đầu của robot.
 
 `web_panel_check.py` cần Playwright: `pip install playwright && python -m playwright install chromium`. Đây là công cụ test, không phải thư viện của app.
 
-Unit test: `pytest tests/test_web_panel.py`.
+Unit test: `pytest tests/test_web_panel.py tests/test_eye_color.py`.
 
 Mô hình `web_assets/xiaozhi_robot.glb` là bản lắp ráp CAD (glTF, đơn vị mm). Cây node:
 
@@ -106,7 +148,7 @@ Quy ước của mô hình:
 - `tilt_pivot.rotation.x = -tilt`: tilt dương là ngẩng lên.
 - Hai pivot nằm đúng trục thật.
 
-Trang tự đặt mô hình đứng trên sàn và tô màu theo tên node (file CAD không có vật liệu). Hướng mặt robot được tính từ node `bezel`, và trang vẽ thêm màn hình đen có hai mắt sau khung đó.
+Trang tự đặt mô hình đứng trên sàn và tô màu theo tên node (file CAD không có vật liệu). Hướng mặt robot được tính từ node `bezel`, và trang đặt một tấm màn hình sau khung đó, dán hình mặt robot (xem "Mặt robot trên trang web").
 
 `scripts/build_robot_glb.py` vẫn còn nhưng không dùng mặc định. Nó sinh mô hình khối đơn giản ra `web_assets/xiaozhi_robot_simple.glb`, chỉ để dự phòng. Mô hình đó ghi chiều quay riêng của nó bằng glTF extras `{"sign": 1}` trên hai pivot.
 
@@ -115,6 +157,7 @@ Trang tự đặt mô hình đứng trên sàn và tô màu theo tên node (file
 - **Góc "thật" là ước lượng.** Firmware `servo_bridge` chỉ trả `OK <pan> <tilt>`, tức là góc đích nó đã nhận, không đọc được vị trí servo. Trang hiện góc board đã xác nhận, mô phỏng thêm tốc độ ramp của firmware (150°/s ở servo). Servo bị kẹt hoặc mất nguồn thì trang không biết.
 - **Biểu cảm chọn từ web giữ đến lần đổi trạng thái kế tiếp** (nghe/nói), giống biểu cảm server gửi. Với `FACE.ALWAYS_LISTEN` thì trạng thái đổi theo từng lượt nói.
 - `FACE.AUTO_MODE` ở đây là chế độ trò chuyện tự động (chạm một lần để nghe liên tục), không phải chế độ tự đổi biểu cảm. Khi `FACE.ALWAYS_LISTEN` bật, robot luôn ở chế độ tự động, nên công tắc bị khóa.
-- Mặt robot không có tham số màu mắt hay tham số đổi được lúc chạy, nên trang không có các mục đó.
+- Ô mặt trên web chỉ có phần mắt (vùng `RobotFace`, 72% trên của màn); chữ phụ đề và ảnh camera nhỏ ở góc màn robot không được gửi.
+- Hình mặt trên web trễ khoảng 0,1–0,2 s và mờ hơn màn thật (320 px, JPEG).
 - **Tin nhắn chữ** được gửi như câu người dùng nói (`listen detect`). Server trả lời bằng chữ và giọng; phần giọng cần loa.
 - Mỗi trình duyệt gửi tối đa 40 lệnh mỗi giây. Lệnh góc khi kéo được gửi tối đa 20 lần mỗi giây.

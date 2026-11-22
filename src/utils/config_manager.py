@@ -130,6 +130,10 @@ class ConfigManager:
             "GREET_MIN_INTERVAL_S": 300,
             "WINDOW_WIDTH": 1024,
             "WINDOW_HEIGHT": 600,
+            # Eye color "#rrggbb" (too dark colors are lightened to stay visible on black)
+            # and mode: fixed, rainbow (hue turns slowly) or emotion (one color per expression)
+            "EYE_COLOR": "#ffffff",
+            "EYE_COLOR_MODE": "fixed",
             "ESC_TO_EXIT": True,  # Kiosk mode only
             # Show the recognized user speech in a dimmer style above the assistant text
             "SHOW_USER_TEXT": True,
@@ -216,6 +220,9 @@ class ConfigManager:
             "PASSWORD": "",
             # Frames per second of the MJPEG camera stream (encoded only while someone watches)
             "CAMERA_STREAM_FPS": 8,
+            # Snapshots per second of the robot face mirrored on the page's 3D model (taken
+            # only while a page shows it); 0 = the page draws the face from its expression
+            "FACE_STREAM_FPS": 10,
             # Also serve HTTPS with a self-signed certificate (made with openssl in the
             # app data dir on first start); phones need it for the tilt-to-steer mode
             "HTTPS_ENABLED": False,

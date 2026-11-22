@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 """Run the web panel alone, with a simulated servo board, camera and app.
 
-    python scripts/web_panel_dev.py [--port 8080] [--password secret] [--https]
+    python scripts/web_panel_dev.py [--port 8080] [--password secret] [--https] [--real-face]
 
 The servo board is a fake serial port that answers like firmware/servo_bridge; the
 camera draws a moving "person" with a YOLO-style box; tracking follows it; the face,
 listening state and chat are simulated (a sent text gets an echo reply). Recordings go
 to a temporary folder unless --data-dir is given. Nothing touches real hardware.
+
+--real-face opens the robot's real QML face (add QT_QPA_PLATFORM=offscreen to keep it
+hidden) and mirrors it to the page with the same snapshots the app sends; without it the
+page draws the face itself (its fallback). Eye color changes work in both.
 """
 
 from __future__ import annotations
@@ -29,10 +33,12 @@ from src.servo.motion import ControlArbiter, MotionLibrary, MotionPlayer  # noqa
 from src.servo.servo_controller import ServoController  # noqa: E402
 from src.servo.settings import ServoSettings  # noqa: E402
 from src.servo.tracker import HeadTracker  # noqa: E402
+from src.ui.face_color import EyeColorState  # noqa: E402
 from src.vision.detection_service import DetectionResult  # noqa: E402
 from src.vision.detector import Detection  # noqa: E402
 from src.web_panel.backend import AppHooks, AppState, RobotBackend  # noqa: E402
 from src.web_panel.camera import CameraFeed  # noqa: E402
+from src.web_panel.face_stream import FaceFrameHub  # noqa: E402
 from src.web_panel.server import WebPanelServer  # noqa: E402
 from src.web_panel.settings import WebSettings  # noqa: E402
 
@@ -123,6 +129,67 @@ class FakeWorld:
             return self.result
 
 
+class _DefaultsConfig:
+    """Stand-in for ConfigManager: every FACE.* value at its default."""
+
+    def get_config(self, path, default=None):
+        from src.utils.config_manager import ConfigManager
+
+        value = ConfigManager.DEFAULT_CONFIG
+        for key in path.split("."):
+            if not isinstance(value, dict) or key not in value:
+                return default
+            value = value[key]
+        return value
+
+
+class RealFace:
+    """The robot's QML face in this process (Qt on the main thread)."""
+
+    def __init__(self, state: AppState, eye_colors: EyeColorState, hub: FaceFrameHub) -> None:
+        from PySide6.QtCore import QObject, QTimer, Signal
+        from PySide6.QtWidgets import QApplication
+
+        from src.ui.gui.models import FaceModel, MainModel, load_face_config
+        from src.ui.gui.qml_host import QmlAppHost
+        from src.ui.gui.services.face_snapshot import (
+            FaceSnapshotService,
+            find_face_item,
+        )
+
+        self.app = QApplication.instance() or QApplication(sys.argv)
+        config = load_face_config(_DefaultsConfig())
+        self.model = FaceModel(config, eye_colors=eye_colors)
+        self.host = QmlAppHost()
+        self.host.create_engine()
+        self.host.inject_context({"eventBridge": None, "mainModel": MainModel(), "faceModel": self.model, "cameraPreview": None})
+        self.host.load_main("face_main.qml")
+        self.host.show_root()
+        self.model.start()
+
+        class Bridge(QObject):  # Signals from the web thread arrive queued on the Qt thread
+            emotion = Signal(str)
+            device = Signal(str)
+            wake = Signal()
+
+        self.bridge = Bridge()
+        self.bridge.emotion.connect(self.model.set_emotion)
+        self.bridge.device.connect(self.model.set_device_state)
+        self.bridge.wake.connect(self.model.interact)
+
+        def sync():
+            state.update(emotion=self.model.emotion, face_visual=self.model.visualState, face_activity=self.model.activity)
+
+        for signal in (self.model.emotionChanged, self.model.visualStateChanged, self.model.activityChanged):
+            signal.connect(sync)
+        sync()
+        self.snapshots = FaceSnapshotService(find_face_item(self.host.root_window()), hub.publish, fps=hub.fps)
+        # The hub's on/off arrives on the web thread: poll it here instead
+        self.poll = QTimer()
+        self.poll.timeout.connect(lambda: self.snapshots.set_active(hub.viewers > 0))
+        self.poll.start(200)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--host", default="127.0.0.1")
@@ -132,6 +199,7 @@ def main() -> int:
     ap.add_argument("--https-port", type=int, default=8443)
     ap.add_argument("--data-dir", default="")
     ap.add_argument("--no-servo", action="store_true", help="Run as if SERVO.ENABLED were false")
+    ap.add_argument("--real-face", action="store_true", help="Run the real QML face and stream its snapshots")
     args = ap.parse_args()
 
     data_dir = Path(args.data_dir) if args.data_dir else Path(tempfile.mkdtemp(prefix="xz-web-"))
@@ -151,27 +219,50 @@ def main() -> int:
         tracker.start()
 
     state = AppState(emotions=EMOTIONS, auto_mode=False, face_available=True, text_supported=True, protocol_connected=True)
+    eye_colors = EyeColorState(save=lambda path, value: print(f"[dev] save {path} = {value}", flush=True))
+    hub = FaceFrameHub(on_active=lambda on: print(f"[dev] face snapshots {'on' if on else 'off'}", flush=True)) if args.real_face else None
+    face = RealFace(state, eye_colors, hub) if args.real_face else None
+
+    def set_emotion(name: str) -> None:
+        if face is not None:
+            face.bridge.emotion.emit(name)
+        else:
+            print(f"[dev] face emotion -> {name}", flush=True)
+
+    def set_device(value: str) -> None:
+        if face is not None:
+            face.bridge.device.emit(value)
 
     def fake_reply(text: str) -> None:
         def run():
             state.update(device_state="listening")
+            set_device("listening")
             time.sleep(0.6)
-            state.update(device_state="speaking", emotion="happy")
+            state.update(device_state="speaking")
+            set_device("speaking")
+            set_emotion("happy")
+            if face is None:
+                state.update(emotion="happy")
             state.add_chat("robot", f"(giả lập) Mình nghe bạn nói: {text}")
             time.sleep(1.5)
-            state.update(device_state="idle", emotion="neutral")
+            state.update(device_state="idle")
+            set_device("idle")
+            set_emotion("neutral")
+            if face is None:
+                state.update(emotion="neutral")
         threading.Thread(target=run, daemon=True).start()
 
     hooks = AppHooks(
-        set_emotion=lambda name: print(f"[dev] face emotion -> {name}"),
+        set_emotion=set_emotion,
         set_auto_mode=lambda on: state.update(auto_mode=on),
         send_text=fake_reply,
-        face_wake=lambda: print("[dev] face wake"),
+        face_wake=(lambda: face.bridge.wake.emit()) if face is not None else (lambda: print("[dev] face wake")),
     )
     backend = RobotBackend(
         controller, tracker, arbiter=arbiter, player=player,
         library=MotionLibrary(data_dir / "motions"), app_state=state, hooks=hooks, camera=camera,
         save_setting=lambda path, value: print(f"[dev] save {path} = {value}"),
+        eye_colors=eye_colors, face_frames=hub,
     )
     web = WebSettings(
         enabled=True, host=args.host, port=args.port, password=args.password,
@@ -183,8 +274,19 @@ def main() -> int:
         return 1
     print(f"Web panel (dev, fake servo): http://{args.host}:{args.port}/  data: {data_dir}", flush=True)
     try:
-        while True:
-            time.sleep(1)
+        if face is not None:
+            import signal
+
+            signal.signal(signal.SIGINT, lambda *_: face.app.quit())
+            from PySide6.QtCore import QTimer
+
+            keep = QTimer()  # Lets Python see Ctrl+C while Qt runs
+            keep.timeout.connect(lambda: None)
+            keep.start(300)
+            face.app.exec()
+        else:
+            while True:
+                time.sleep(1)
     except KeyboardInterrupt:
         pass
     finally:

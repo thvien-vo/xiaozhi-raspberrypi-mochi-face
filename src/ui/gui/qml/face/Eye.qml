@@ -12,6 +12,9 @@ Item {
     property var shape: ({})            // Resolved preset from FacePresets.compose()
     property real blink: 1              // 1 = open, near 0 = closed
     property int morphMs: 280
+    property color color: "white"       // Eye color (RobotFace.eyeColor)
+    // Heart eyes stay pink with the default white eyes, otherwise take the eye color
+    readonly property color heartColor: Qt.colorEqual(color, "white") ? "#ff4d6d" : color
 
     property real animW: shape.w
     property real animH: shape.h
@@ -51,7 +54,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: "white"
+        color: eye.color
         antialiasing: true
         opacity: eye.animBody
         visible: opacity > 0.01
@@ -90,11 +93,13 @@ Item {
         active: eye.animHeart > 0.01
         opacity: eye.animHeart
         sourceComponent: Canvas {
+            property color fill: eye.heartColor
+            onFillChanged: requestPaint()
             onPaint: {
                 var ctx = getContext("2d")
                 var w = width, h = height
                 ctx.reset()
-                ctx.fillStyle = "#ff4d6d"
+                ctx.fillStyle = fill
                 ctx.beginPath()
                 ctx.moveTo(w * 0.5, h * 0.9)
                 ctx.bezierCurveTo(w * 0.02, h * 0.58, w * 0.02, h * 0.12, w * 0.3, h * 0.12)
@@ -113,11 +118,13 @@ Item {
         active: eye.animSpiral > 0.01
         opacity: eye.animSpiral
         sourceComponent: Canvas {
+            property color stroke: eye.color
+            onStrokeChanged: requestPaint()
             onPaint: {
                 var ctx = getContext("2d")
                 var center = width / 2
                 ctx.reset()
-                ctx.strokeStyle = "white"
+                ctx.strokeStyle = stroke
                 ctx.lineWidth = width * 0.075
                 ctx.lineCap = "round"
                 ctx.beginPath()
