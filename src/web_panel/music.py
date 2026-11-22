@@ -61,7 +61,7 @@ class MusicControl:
             result = make()
             if asyncio.iscoroutine(result):
                 result = await result
-            return {"ok": result.get("status") == "success", "message": result.get("message", "")}
+            return {"ok": result.get("status") != "error", "message": result.get("message", "")}
 
         return asyncio.run_coroutine_threadsafe(run(), loop)
 
