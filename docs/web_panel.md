@@ -125,11 +125,11 @@ Câu lệnh giọng nói (MCP `music_player.*`):
 
 Không có bài thì robot nói thẳng là chưa phát được và gợi ý bài gần giống, không báo "đang phát" nữa.
 
-Khi robot nói, nhạc tự nhỏ lại rồi to dần trở lại (`MUSIC.DUCK_WHILE_SPEAKING`). Robot chỉ nghe được lệnh khi đang ở trạng thái nghe, và micro cũng nghe thấy nhạc: nếu robot khó nghe lệnh thì giảm âm lượng nhạc hoặc đứng gần hơn.
+Khi robot nói, nhạc tự nhỏ lại rồi to dần trở lại (`MUSIC.DUCK_WHILE_SPEAKING`). Robot chỉ nghe được lệnh khi đang ở trạng thái nghe, và micro cũng nghe thấy nhạc: nếu robot khó nghe lệnh thì giảm âm lượng nhạc hoặc đứng gần hơn. Với `FACE.ALWAYS_LISTEN`, lời hát có thể bị nhận nhầm thành câu nói và robot trả lời chen vào (nhạc vẫn phát, chỉ nhỏ lại). Server STT đôi khi còn tự "nghe" ra câu dù đang yên lặng.
 
 Cấu hình (`config.json`, mục `MUSIC`): `LIBRARY_DIR` (trống = thư mục mặc định), `MAX_UPLOAD_MB`, `MAX_LIBRARY_MB`, `VOLUME`, `REPEAT`, `SHUFFLE`, `DANCE`, `FACE_BOUNCE`, `DUCK_WHILE_SPEAKING`, `ONLINE_ENABLED`. Nguồn nhạc trực tuyến cũ (API không chính thức) **mặc định tắt**: máy chủ của nó hỏng, nhạc có bản quyền bị khóa.
 
-Giải mã cần ffmpeg. Pi không có sẵn nên app dùng bản đi kèm gói `imageio-ffmpeg` (trong `pyproject.toml`), không cần quyền root.
+Giải mã cần ffmpeg. Pi không có sẵn nên app dùng bản đi kèm gói `imageio-ffmpeg` (trong `pyproject.toml`), không cần quyền root. Cài trên Pi (tải khoảng 58 MB): `~/.local/bin/uv sync --frozen --inexact --no-dev --extra gui --extra vision`.
 
 An toàn: tên file tải lên được làm sạch, chỉ nhận đúng đuôi và đúng nội dung âm thanh (chữ ký file + đọc thử bằng mutagen), ghi vào thư mục tạm rồi mới đưa vào thư viện, không ghi đè bài có sẵn. Trang chỉ dùng mã bài (không bao giờ đường dẫn), liên kết tượng trưng bị bỏ qua, nên không đọc/xóa được file ngoài thư mục nhạc. Đường tải lên cần đăng nhập (nếu có mật khẩu) và chỉ nhận từ chính trang này.
 
