@@ -50,6 +50,9 @@ export class Robot3D {
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // Shadows are redrawn only when the robot moves (_apply), not for each face frame
+    renderer.shadowMap.autoUpdate = false;
+    renderer.shadowMap.needsUpdate = true;
     this.renderer = renderer;
 
     const scene = new THREE.Scene();
@@ -303,6 +306,8 @@ export class Robot3D {
     this.ghostTilt.rotation.x = this.tiltSign * this.target.tilt * DEG;
     const apart = Math.abs(this.target.pan - this.real.pan) + Math.abs(this.target.tilt - this.real.tilt);
     this.ghostPan.visible = apart > 0.8;
+    const pose = `${this.pan.rotation.z} ${this.tilt.rotation.x}`;
+    if (pose !== this._shadowPose) { this._shadowPose = pose; this.renderer.shadowMap.needsUpdate = true; }
   }
 
   _frame() {

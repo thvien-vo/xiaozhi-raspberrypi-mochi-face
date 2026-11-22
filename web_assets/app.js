@@ -56,10 +56,7 @@ function connect() {
   };
   ws.onerror = () => {};
   ws.onmessage = (ev) => {
-    if (typeof ev.data !== "string") {  // A snapshot of the robot's face (JPEG)
-      createImageBitmap(ev.data).then((b) => faceScreen.setFrame(b)).catch(() => {});
-      return;
-    }
+    if (typeof ev.data !== "string") { onFaceFrame(ev.data); return; }  // Face snapshot (JPEG)
     let msg;
     try { msg = JSON.parse(ev.data); } catch { return; }
     if (msg.type === "state") onState(msg);
@@ -256,6 +253,23 @@ function renderMotion() {
 }
 
 // ---------- Face ----------
+// Decode one snapshot at a time; if more arrive meanwhile only the newest is shown, so a
+// slow device never falls behind the robot
+let faceBlob = null, faceBusy = false;
+function onFaceFrame(blob) {
+  faceBlob = blob;
+  if (!faceBusy) decodeFaceFrames();
+}
+async function decodeFaceFrames() {
+  faceBusy = true;
+  while (faceBlob) {
+    const blob = faceBlob;
+    faceBlob = null;
+    try { faceScreen.setFrame(await createImageBitmap(blob)); } catch {}
+  }
+  faceBusy = false;
+}
+
 // Ask for the robot's face snapshots while this page is visible (costs the robot
 // nothing otherwise); the 3D screen and the face card show them
 function updateFaceStream() {
