@@ -58,7 +58,7 @@ COLOR_NAMES = {
 }
 MODE_NAMES = {
     "cau vong": MODE_RAINBOW, "rainbow": MODE_RAINBOW, "bay mau": MODE_RAINBOW,
-    "doi mau": MODE_RAINBOW, "nhieu mau": MODE_RAINBOW,
+    "nhieu mau": MODE_RAINBOW, "doi mau lien tuc": MODE_RAINBOW,
     "theo cam xuc": MODE_EMOTION, "cam xuc": MODE_EMOTION, "emotion": MODE_EMOTION,
     "theo bieu cam": MODE_EMOTION, "bieu cam": MODE_EMOTION,
     "co dinh": MODE_FIXED, "fixed": MODE_FIXED, "mot mau": MODE_FIXED,
@@ -189,7 +189,20 @@ def parse_request(value: str) -> tuple[str | None, str]:
         return None, MODE_FIXED  # "tắt cầu vồng", "bỏ màu theo cảm xúc": keep the color
     if plain in ("mac dinh", "binh thuong", "nhu cu", "ban dau"):
         return DEFAULT_COLOR, MODE_FIXED
-    return parse_color(value), MODE_FIXED
+    try:
+        return parse_color(value), MODE_FIXED
+    except ValueError:
+        pass
+    # A whole sentence ("bật mắt cầu vồng", "đổi màu mắt sang màu tím"): look for a mode,
+    # then a color name, as whole words, longest names first
+    padded = f" {plain} "
+    for names, as_result in ((MODE_NAMES, lambda v: (None, v)), (COLOR_NAMES, lambda v: (PALETTE_HEX[v], MODE_FIXED))):
+        for name in sorted(names, key=len, reverse=True):
+            if f" {name} " in padded:
+                return as_result(names[name])
+    if "mac dinh" in plain:
+        return DEFAULT_COLOR, MODE_FIXED
+    raise ValueError(f"không biết màu: {value!r}")
 
 
 def color_label(color: str) -> str:

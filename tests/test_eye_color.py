@@ -110,6 +110,11 @@ def test_rainbow_turns_through_the_hues():
         ("theo cảm xúc", (None, "emotion")), ("màu theo cảm xúc", (None, "emotion")),
         ("cố định", (None, "fixed")), ("mặc định", ("#ffffff", "fixed")),
         ("tắt cầu vồng", (None, "fixed")), ("bỏ màu theo cảm xúc", (None, "fixed")),
+        ("bật mắt cầu vồng", (None, "rainbow")), ("cho mắt đổi màu theo cảm xúc", (None, "emotion")),
+        ("đổi màu mắt sang màu tím", (fc.PALETTE_HEX["purple"], "fixed")),
+        ("mắt màu xanh lá cây đi", (fc.PALETTE_HEX["green"], "fixed")),
+        ("cho mắt màu cam", (fc.PALETTE_HEX["orange"], "fixed")),
+        ("về màu mắt mặc định", ("#ffffff", "fixed")),
         ("tím", (fc.PALETTE_HEX["purple"], "fixed")), ("#33aaff", ("#33aaff", "fixed")),
     ],
 )
