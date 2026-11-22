@@ -126,18 +126,39 @@ def face_checks(page, out, check, prefix="laptop"):
         check(color_close(px, expected), f"face: {what}: eyes on the page are {expected} ({shown})")
         return px
 
-    # Expression from the page -> button state and face shape
+    # Expression from the page -> button state and face shape. A real robot may be in a
+    # conversation: wait until it is not speaking (a reply's emotion would replace ours),
+    # and take the largest of a few samples (one may fall on a blink)
+    def quiet(timeout=20.0):
+        end = time.time() + timeout
+        while time.time() < end and server_state(page)["app"]["device_state"] == "speaking":
+            time.sleep(0.5)
+
+    def lit():
+        best = {}
+        for _ in range(4):
+            px = page.evaluate(EYE_PIXELS)
+            if px.get("share", 0) > best.get("share", -1):
+                best = px
+            time.sleep(0.15)
+        return best
+
     send(page, {"type": "eye_color", "color": "#ffffff", "mode": "fixed"})
-    send(page, {"type": "emotion", "name": "neutral"})
-    time.sleep(1.2)
-    neutral = page.evaluate(EYE_PIXELS)
-    send(page, {"type": "emotion", "name": "angry"})
-    time.sleep(1.5)
-    s = server_state(page)
+    for _attempt in range(3):
+        quiet()
+        send(page, {"type": "emotion", "name": "neutral"})
+        time.sleep(1.2)
+        neutral = lit()
+        send(page, {"type": "emotion", "name": "angry"})
+        time.sleep(1.5)
+        s = server_state(page)
+        if s["app"]["emotion"] == "angry":
+            break
+        print("     the robot changed its face by itself (conversation), retrying:", s["app"]["emotion"])
     check(s["app"]["emotion"] == "angry", f"face: emotion angry reached the robot ({s['app']['emotion']})")
     on = page.evaluate("[...document.querySelectorAll('#emotions button.on')].map(b => b.dataset.name)")
     check(on == ["angry"], f"face: angry button selected ({on})")
-    angry = page.evaluate(EYE_PIXELS)
+    angry = lit()
     check(angry.get("share", 0) < neutral.get("share", 1) * 0.92, f"face: angry eyes are smaller than neutral (lit share {angry.get('share', 0):.3f} < {neutral.get('share', 0):.3f})")
     shoot(page, str(out / f"{prefix}_face_angry.png"))
 
