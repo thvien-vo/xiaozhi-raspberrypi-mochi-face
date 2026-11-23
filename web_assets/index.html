@@ -28,6 +28,18 @@
     <span class="chip" id="chip-app" data-tone="muted"><i></i><b>App</b></span>
     <span class="chip" id="chip-owner" data-tone="muted" hidden><i></i><b></b></span>
   </div>
+  <div class="vol" id="vol" hidden data-muted="false" data-speaker="ok">
+    <button class="vol-btn" id="vol-mute" aria-pressed="false" aria-label="Tắt tiếng" title="Tắt tiếng"></button>
+    <button class="vol-btn txt" id="vol-down" aria-label="Giảm âm lượng 5%" title="Giảm 5%">−</button>
+    <input type="range" class="mu-range vol-range" id="vol-master" min="0" max="100" step="1" value="100" aria-label="Âm lượng tổng">
+    <button class="vol-btn txt" id="vol-up" aria-label="Tăng âm lượng 5%" title="Tăng 5%">+</button>
+    <output id="vol-out" for="vol-master">100%</output>
+    <span class="vol-warn" id="vol-warn" hidden>Chưa có loa</span>
+    <button class="vol-btn txt more" id="vol-more" aria-expanded="false" aria-controls="vol-panel" title="Âm thanh: từng kênh">Âm thanh ▾</button>
+  </div>
+  <div class="vol-panel" id="vol-panel" hidden data-muted="false">
+    <p class="note" id="vol-note"></p>
+  </div>
 </header>
 
 <main class="layout">

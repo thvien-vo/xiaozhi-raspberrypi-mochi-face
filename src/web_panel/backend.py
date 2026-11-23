@@ -149,6 +149,7 @@ class RobotBackend:
         eye_colors=None,
         face_frames=None,
         music=None,
+        levels=None,
     ) -> None:
         self.controller = controller
         self.tracker = tracker
@@ -166,6 +167,9 @@ class RobotBackend:
         self.eye_colors = eye_colors  # src.ui.face_color.EyeColorState
         self.face_frames = face_frames  # src.web_panel.face_stream.FaceFrameHub
         self.music = music  # src.web_panel.music.MusicControl
+        self.levels = levels  # src.audio_codecs.levels.AudioLevels
+        if levels is not None:
+            levels.add_listener(self._changed)
         if eye_colors is not None:
             eye_colors.add_listener(lambda _color, _mode: self._changed())
         self._listeners: list[Callable[[], None]] = []
@@ -220,6 +224,24 @@ class RobotBackend:
             return getattr(self.music, cmd.type.removeprefix("music_"))(**cmd.args)
         except LibraryError as e:
             return {"ok": False, "message": str(e)}
+
+    def _cmd_volume(self, channel: str, volume: float, save: bool) -> dict:
+        if self.levels is None:
+            return {"ok": False, "message": "không chỉnh được âm lượng"}
+        self.levels.set(channel, volume, persist=save)
+        return {"ok": True}
+
+    def _cmd_volume_step(self, channel: str, delta: float) -> dict:
+        if self.levels is None:
+            return {"ok": False, "message": "không chỉnh được âm lượng"}
+        self.levels.change(channel, delta)
+        return {"ok": True}
+
+    def _cmd_mute(self, muted: bool | None) -> dict:
+        if self.levels is None:
+            return {"ok": False, "message": "không chỉnh được âm lượng"}
+        now = self.levels.toggle_muted() if muted is None else self.levels.set_muted(muted)
+        return {"ok": True, "message": "Đã tắt tiếng" if now else "Đã bật tiếng"}
 
     def _cmd_ping(self) -> dict:
         return {"ok": True, "pong": time.time()}
@@ -422,6 +444,7 @@ class RobotBackend:
             "camera": {"available": bool(self.camera is not None and self.camera.available())},
             "face": self.face_snapshot(),
             "music": self.music.snapshot() if self.music is not None else None,
+            "volume": self.levels.snapshot() if self.levels is not None else None,
         }
 
     def face_snapshot(self) -> dict:

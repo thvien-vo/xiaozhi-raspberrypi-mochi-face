@@ -133,9 +133,10 @@ def register_music_tools(
         McpTool(
             "music_player.set_volume",
             (
-                "Chỉnh âm lượng của NHẠC (0-100). Khi đang phát nhạc mà nghe 'to lên', 'nhỏ xuống', 'mở to', 'vặn nhỏ': "
-                "gọi với change=15 hoặc change=-15. 'nhạc to 50%': volume=50. Giọng nói của robot thì dùng "
-                "self.audio_speaker.set_volume."
+                "Chỉnh âm lượng của riêng NHẠC (0-100), CHỈ khi người dùng nói rõ về nhạc / bài hát: 'nhạc to lên', "
+                "'nhạc nhỏ xuống', 'mở nhạc to hơn' (change=15 hoặc change=-15), 'nhạc 50%' (volume=50). "
+                "'To lên', 'nhỏ xuống', 'âm lượng 50%', 'tắt tiếng' nói chung (kể cả khi đang phát nhạc) "
+                "thì dùng self.audio_speaker.set_volume (âm lượng tổng)."
             ),
             PropertyList(
                 [

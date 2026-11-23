@@ -81,6 +81,7 @@ class WebPanelPlugin(Plugin):
 
     async def setup(self, ctx: PluginContext, cmd: PluginCommands) -> None:
         await super().setup(ctx, cmd)
+        from src.audio_codecs.levels import get_audio_levels
         from src.core.event_bus import Events
         from src.servo.motion import MotionLibrary
         from src.utils.resource_finder import get_app_root, get_user_data_dir
@@ -136,6 +137,7 @@ class WebPanelPlugin(Plugin):
             eye_colors=eye_colors if face_available else None,
             face_frames=self._frames,
             music=MusicControl(self._music_player, lambda: self._loop) if self._music_player is not None else None,
+            levels=get_audio_levels(self._config),
         )
         if self._music_player is not None:
             self._music_player.add_listener(self.backend._changed)

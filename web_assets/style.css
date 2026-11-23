@@ -350,6 +350,41 @@ input[type="range"].mu-range { appearance: none; -webkit-appearance: none; flex:
 .toast.bad { background: var(--bad); color: #fff; }
 @keyframes toast-in { from { opacity: 0; transform: translateY(6px); } }
 
+/* ----- Volume (top bar and the Âm thanh panel) ----- */
+.vol { display: flex; align-items: center; gap: 6px; flex: 0 1 340px; min-width: 0; }
+.vol[hidden], .vol-panel[hidden] { display: none; }
+.vol-range { flex: 1; min-width: 60px; }
+.vol output { min-width: 40px; text-align: right; font-size: 12.5px; font-variant-numeric: tabular-nums; color: var(--muted); }
+.vol-btn {
+  display: inline-grid; place-items: center; width: 34px; height: 34px; padding: 0; flex: none;
+  border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  font: inherit; cursor: pointer;
+}
+.vol-btn svg { width: 20px; height: 20px; }
+.vol-btn.txt { font-size: 18px; line-height: 1; }
+.vol-btn.more { width: auto; padding: 0 10px; font-size: 12.5px; white-space: nowrap; }
+.vol-btn:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+.vol-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.vol-btn[aria-pressed="true"] { background: var(--bad); border-color: var(--bad); color: #fff; }
+.vol[data-muted="true"] .vol-range, .vol[data-muted="true"] output { opacity: .45; }
+.vol-warn { font-size: 11.5px; color: var(--warn); white-space: nowrap; }
+.vol-panel { flex: 1 0 100%; display: grid; gap: 6px; padding: 8px 4px 4px; border-top: 1px solid var(--border); max-height: 55vh; overflow-y: auto; }
+.vol-panel[data-muted="true"] .mu-range, .vol-panel[data-muted="true"] output { opacity: .45; }
+.vol-row { display: grid; grid-template-columns: minmax(110px, 190px) 1fr 44px; align-items: center; gap: 10px; }
+.vol-row.dim { opacity: .5; }
+.vol-row-head { display: flex; flex-direction: column; font-size: 13.5px; font-weight: 550; }
+.vol-row-head small { font-weight: 400; color: var(--muted); font-size: 11.5px; }
+.vol-row output { text-align: right; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+#vol-note { margin: 2px 0 0; }
+#vol-note[data-tone="warn"] { color: var(--warn); }
+@media (max-width: 900px) {
+  .vol { order: 3; flex: 1 0 100%; }
+  .vol-panel { order: 4; }
+  .vol-row { grid-template-columns: 1fr 44px; }
+  .vol-row-head { grid-column: 1 / -1; flex-direction: row; gap: 8px; align-items: baseline; }
+  .vol-row .mu-range { grid-column: 1; }
+}
+
 /* ----- Phone / narrow ----- */
 @media (max-width: 900px) {
   .layout { grid-template-columns: 1fr; padding: 10px; gap: 10px; }

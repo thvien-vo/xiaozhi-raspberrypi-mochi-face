@@ -68,6 +68,10 @@ class AudioPlugin(Plugin):
         await codec.initialize()
         codec.set_encoded_callback(self._on_encoded_audio)
         self.codec = codec
+        # Master / voice / music levels (web panel, voice commands) act on this codec's mixer
+        from src.audio_codecs.levels import get_audio_levels
+
+        get_audio_levels(ctx.get_config()).attach(codec)
 
         from src.core.event_bus import Events
 
@@ -264,6 +268,9 @@ class AudioPlugin(Plugin):
                 except Exception as e:
                     logger.debug(f"Failed to publish codec clear event: {e}", exc_info=True)
                 gc.collect()
+                from src.audio_codecs.levels import get_audio_levels
+
+                get_audio_levels().attach(None)
                 await codec.close()
 
             pool.register("audio.codec", _cleanup)

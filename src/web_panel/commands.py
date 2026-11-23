@@ -13,6 +13,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
+from src.audio_codecs.levels import clean_channel
 from src.music.library import MAX_SECONDS, valid_track_id
 from src.music.play_queue import REPEAT_MODES
 from src.servo.motion import GESTURE_LABELS, clean_name
@@ -111,6 +112,20 @@ def _parse_music(kind: str, data: dict) -> Command:
     raise CommandError(f"lệnh không biết: {kind}")
 
 
+def _parse_volume(kind: str, data: dict) -> Command:
+    try:
+        channel = clean_channel(data.get("channel", "master"))
+    except ValueError as e:
+        raise CommandError(str(e)) from e
+    if kind == "volume":
+        return Command(kind, {"channel": channel, "volume": _number(data, "volume", 0.0, 100.0), "save": data.get("save") is not False})
+    if kind == "volume_step":
+        return Command(kind, {"channel": channel, "delta": _number(data, "delta", -100.0, 100.0)})
+    # "mute": muted true/false, or absent to toggle
+    muted = None if data.get("muted") is None else _bool(data, "muted")
+    return Command(kind, {"muted": muted})
+
+
 def parse_command(
     raw: str | bytes,
     pan_limit: float,
@@ -190,6 +205,8 @@ def parse_command(
         return Command(kind, {"name": name})
     if kind.startswith("music_"):
         return _parse_music(kind, data)
+    if kind in ("volume", "volume_step", "mute"):
+        return _parse_volume(kind, data)
     if kind == "send_text":
         return Command(kind, {"text": _text(data, "text", MAX_TEXT_CHARS)})
     raise CommandError(f"lệnh không biết: {kind}")

@@ -35,6 +35,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+from src.audio_codecs.levels import get_audio_levels  # noqa: E402
 from src.servo.motion import ControlArbiter, MotionLibrary, MotionPlayer  # noqa: E402
 from src.servo.servo_controller import ServoController  # noqa: E402
 from src.servo.settings import ServoSettings  # noqa: E402
@@ -164,6 +165,11 @@ class FakeSpeaker:
 
     def set_music_gain(self, gain: float) -> None:
         self.gain = gain
+
+    def set_output_gains(self, voice: float = 1.0, music: float = 1.0, effects: float = 1.0) -> None:
+        self.gains = {"voice": voice, "music": music, "effects": effects}
+        self.gain = music
+        print(f"[dev] speaker gains {self.gains}", flush=True)
 
 
 def make_music(data_dir: Path, audio: bool, controller, arbiter, motion_player):
@@ -328,6 +334,7 @@ def main() -> int:
         library=MotionLibrary(data_dir / "motions"), app_state=state, hooks=hooks, camera=camera,
         save_setting=lambda path, value: print(f"[dev] save {path} = {value}"),
         eye_colors=eye_colors, face_frames=hub, music=music,
+        levels=get_audio_levels(),
     )
     music.player.add_listener(backend._changed)
     web = WebSettings(

@@ -2,6 +2,7 @@
 import { Robot3D } from "./robot3d.js";
 import { FaceScreen } from "./face.js";
 import { MusicTab } from "./music.js";
+import { VolumePanel } from "./volume.js";
 
 const $ = (id) => document.getElementById(id);
 const SEND_INTERVAL_MS = 50;      // Angle commands while dragging: at most 20 per second
@@ -128,6 +129,7 @@ function onState(s) {
   if (real) robot.setReal(real.pan, real.tilt);
   renderChips(); renderAngles(); renderTracking(); renderMotion(); renderFace(); renderChatState(); renderCameraAvailability();
   music.onState(s.music);
+  volume.onState(s.volume);
 }
 
 function renderChips() {
@@ -524,6 +526,7 @@ function stopTilt() {
 
 // ---------- Music ----------
 const music = new MusicTab({ send, command, toast });
+const volume = new VolumePanel({ send });
 window.__music = music;
 
 // ---------- 3D ----------

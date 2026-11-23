@@ -353,6 +353,10 @@ def make_player(library, monkeypatch):
             saved[key] = value
             return True
 
+        def update_configs(self, updates):
+            saved.update(updates)
+            return True
+
     monkeypatch.setattr("src.utils.config_manager.get_config", lambda: Config())
     monkeypatch.setattr(module, "analyze_file", lambda path: {"bpm": 120.0, "offset": 0.0, "confidence": 0.9})
     monkeypatch.setattr(module, "BEAT_DELAY_S", 0)
@@ -478,14 +482,16 @@ def test_volume_is_applied_clamped_and_saved(make_player):
     async def run():
         p = await make_player()
         codec = p._engine.audio_codec
-        assert codec.gain == pytest.approx(0.49)
+        assert codec.gain == pytest.approx(0.49)  # Old MUSIC.VOLUME (70) is the starting level
         p.set_volume(50)
-        assert codec.gain == pytest.approx(0.25) and p.saved["MUSIC.VOLUME"] == 50
+        assert codec.gain == pytest.approx(0.25)
+        p.levels.flush()
+        assert p.saved["AUDIO_VOLUME.MUSIC"] == 50
         assert p.change_volume(-80)["volume"] == 0 and codec.gain == 0
         assert p.set_volume(400)["volume"] == 100
         other = Codec()
         await p._bus.on_audio_codec_changed(other)
-        assert other.gain == 1.0
+        assert other.gain == 1.0  # Level 100 now, on the new speaker too
 
     asyncio.run(run())
 
@@ -723,7 +729,7 @@ def test_big_upload_over_http_stops_early(library, make_player):
 def test_music_gets_quiet_while_the_robot_speaks_and_comes_back():
     from src.audio_codecs import audio_codec as module
 
-    codec = SimpleNamespace(_music_gain=1.0, _music_ducked=False, _music_level=1.0)
+    codec = SimpleNamespace(_music_gain=1.0, _music_ducked=False, _music_level=1.0, _music_volume_level=1.0)
     apply = module.AudioCodec._apply_music_level
     one = np.ones(480, dtype=np.float32)
     quiet = apply(codec, one, True)

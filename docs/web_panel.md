@@ -41,6 +41,7 @@ Không cần cài thêm gì. three.js 0.170 (GLTFLoader, OrbitControls) nằm s�
 | Động tác | Cử chỉ: gật đầu, lắc đầu, nhìn quanh, ngạc nhiên, nhảy. Ghi động tác, danh sách phát lại/xóa. |
 | Camera | Webcam MJPEG có khung YOLO. Khung cam là người robot bám theo. |
 | Mặt | Ô "Màn hình robot" (mặt đang hiện trên màn 7"), 21 biểu cảm, màu mắt (bảng màu, tự chọn, cầu vồng, theo cảm xúc), bật/tắt `FACE.AUTO_MODE`, "Đánh thức mặt" |
+| (thanh trên cùng) | Âm lượng tổng, nút tắt tiếng, +/- và mục "Âm thanh" (xem "Âm lượng"); hiện ở mọi tab |
 | Nhạc | Thư viện nhạc trên robot: tải lên, xóa, tìm, phát, tua, âm lượng, lặp/trộn, hàng đợi, nhảy theo nhạc (xem "Nhạc") |
 | Trò chuyện | Câu người nói (STT) và câu robot trả lời (TTS), ô gửi tin nhắn chữ |
 
@@ -102,7 +103,7 @@ Robot phát nhạc từ **thư viện trên Pi**: `~/.local/share/py-xiaozhi/mus
 Tab **Nhạc**:
 
 - **Tải nhạc lên:** kéo thả file vào trang, hoặc bấm khung "Tải nhạc lên robot" (chọn được nhiều file, dùng được trên điện thoại). Mỗi file tối đa 100 MB, cả thư viện 8 GB, luôn chừa 500 MB trống trên thẻ. File chép thẳng vào thư mục bằng `scp` cũng tự hiện ra.
-- **Phát:** bấm một bài; cả thư viện thành hàng đợi bắt đầu từ bài đó. Có tạm dừng, bài trước (đã nghe quá 4 giây thì về đầu bài), bài sau, tua, dừng hẳn, âm lượng (riêng cho nhạc, không đổi giọng robot), lặp (không/cả danh sách/một bài), trộn bài.
+- **Phát:** bấm một bài; cả thư viện thành hàng đợi bắt đầu từ bài đó. Có tạm dừng, bài trước (đã nghe quá 4 giây thì về đầu bài), bài sau, tua, dừng hẳn, âm lượng (kênh Nhạc, cùng một thanh với mục "Âm thanh" ở thanh trên), lặp (không/cả danh sách/một bài), trộn bài.
 - **Hàng đợi:** nút + thêm bài, − bỏ bài, bấm vào bài để nhảy tới.
 - **Xóa:** bấm ✕ rồi bấm "Xóa?" để xác nhận.
 - **Nhảy theo nhạc:** đầu robot lắc nhẹ theo nhịp ước lượng từ file (tối đa ±16° ngang, ±7° dọc quanh tư thế đang đứng, luôn trong giới hạn servo). Kéo đầu trên web, lệnh giọng nói hoặc một cử chỉ đang chạy thì nhảy tự nhường. Mặc định tắt; bật/tắt được nhớ lại. Nhảy có tiếng servo.
@@ -127,11 +128,24 @@ Không có bài thì robot nói thẳng là chưa phát được và gợi ý b�
 
 Khi robot nói, nhạc tự nhỏ lại rồi to dần trở lại (`MUSIC.DUCK_WHILE_SPEAKING`). Robot chỉ nghe được lệnh khi đang ở trạng thái nghe, và micro cũng nghe thấy nhạc: nếu robot khó nghe lệnh thì giảm âm lượng nhạc hoặc đứng gần hơn. Với `FACE.ALWAYS_LISTEN`, lời hát có thể bị nhận nhầm thành câu nói và robot trả lời chen vào (nhạc vẫn phát, chỉ nhỏ lại). Server STT đôi khi còn tự "nghe" ra câu dù đang yên lặng.
 
-Cấu hình (`config.json`, mục `MUSIC`): `LIBRARY_DIR` (trống = thư mục mặc định), `MAX_UPLOAD_MB`, `MAX_LIBRARY_MB`, `VOLUME`, `REPEAT`, `SHUFFLE`, `DANCE`, `FACE_BOUNCE`, `DUCK_WHILE_SPEAKING`, `ONLINE_ENABLED`. Nguồn nhạc trực tuyến cũ (API không chính thức) **mặc định tắt**: máy chủ của nó hỏng, nhạc có bản quyền bị khóa.
+Cấu hình (`config.json`, mục `MUSIC`): `LIBRARY_DIR` (trống = thư mục mặc định), `MAX_UPLOAD_MB`, `MAX_LIBRARY_MB`, `VOLUME`, `REPEAT`, `SHUFFLE`, `DANCE`, `FACE_BOUNCE`, `DUCK_WHILE_SPEAKING`, `ONLINE_ENABLED`. (`VOLUME` chỉ còn là mức nhạc cũ: dùng khi `AUDIO_VOLUME.MUSIC` còn `null`.) Nguồn nhạc trực tuyến cũ (API không chính thức) **mặc định tắt**: máy chủ của nó hỏng, nhạc có bản quyền bị khóa.
 
 Giải mã cần ffmpeg. Pi không có sẵn nên app dùng bản đi kèm gói `imageio-ffmpeg` (trong `pyproject.toml`), không cần quyền root. Cài trên Pi (tải khoảng 58 MB): `~/.local/bin/uv sync --frozen --inexact --no-dev --extra gui --extra vision`.
 
 An toàn: tên file tải lên được làm sạch, chỉ nhận đúng đuôi và đúng nội dung âm thanh (chữ ký file + đọc thử bằng mutagen), ghi vào thư mục tạm rồi mới đưa vào thư viện, không ghi đè bài có sẵn. Trang chỉ dùng mã bài (không bao giờ đường dẫn), liên kết tượng trưng bị bỏ qua, nên không đọc/xóa được file ngoài thư mục nhạc. Đường tải lên cần đăng nhập (nếu có mật khẩu) và chỉ nhận từ chính trang này.
+
+## Âm lượng
+
+Bốn kênh, mỗi kênh 0-100%: **Tổng** (mọi âm ra loa), **Giọng robot** (tiếng robot nói và thông báo), **Nhạc**, **Hiệu ứng** (đã có sẵn trong code và config nhưng chưa âm thanh nào dùng nên hiện mờ). Âm lượng thật của mỗi nguồn = Tổng × kênh riêng (đường cong bình phương cho dễ nghe, nên 50% × 50% = 25% thanh trượt, tức 1/16 công suất). **Tắt tiếng** giữ nguyên các mức; bật lại là về đúng mức cũ. Kéo Tổng lên trong lúc đang tắt tiếng thì tự bật tiếng.
+
+**Cách chỉnh: gain phần mềm trong bộ trộn của app** (`AudioCodec`, `src/audio_codecs/levels.py`), không đụng mixer phần cứng. Lý do: Pi chạy ALSA trực tiếp, không có PulseAudio/PipeWire (chỉ có `amixer`); mixer của card Jabra phụ thuộc số card, bị `jabra-audio.sh` đặt lại 75% mỗi lần khởi động và không tách được từng nguồn; gain phần mềm đổi ngay trong 20 ms, tách được giọng/nhạc, và cắm lại Jabra không làm mất mức vì mức nằm trong app. Mixer phần cứng của Jabra vẫn là 75% (`JABRA_SPK_PCT`) và đóng vai trò "trần" cố định.
+
+- **Thanh trên cùng (mọi tab, dùng được trên điện thoại):** nút loa = tắt/bật tiếng, nút −/+ (bước 5%), thanh Tổng, và nút "Âm thanh ▾" mở bốn thanh riêng. Kéo thanh thì trang gửi tối đa ~12 lệnh/giây rồi một lệnh lưu khi thả; robot áp dụng ngay.
+- **Đồng bộ:** mọi trình duyệt đang mở, thanh trong tab Nhạc, lệnh giọng nói và web luôn cùng một con số (robot là nơi giữ số, web chỉ hiển thị).
+- **Không có loa** (Jabra chưa cắm hoặc luồng phát không chạy): thanh hiện chữ "Chưa có loa"; vẫn kéo và lưu được, mức áp dụng khi có loa.
+- **Lệnh giọng nói:** "to lên" / "nhỏ xuống" / "âm lượng 50%" / "tắt tiếng" / "bật tiếng" chỉnh âm lượng Tổng (tool `self.audio_speaker.set_volume` với `change`, `volume`, `mute`, `channel`). "Robot nói nhỏ lại" chỉnh kênh Giọng robot. Chỉ khi nói rõ về nhạc ("nhạc to lên") mới dùng tool nhạc `music_player.set_volume`.
+- **Lưu:** mục `AUDIO_VOLUME` trong `config.json` (`MASTER`, `VOICE`, `MUSIC`, `EFFECTS`, `MUTED`), ghi sau lần chỉnh cuối khoảng nửa giây; khởi động lại vẫn giữ.
+- **Lệnh WebSocket:** `{"type":"volume","channel":"master|voice|music|effects","volume":0-100,"save":true}`, `{"type":"volume_step","channel":"master","delta":5}`, `{"type":"mute","muted":true}` (bỏ `muted` để đảo). Kênh lạ bị từ chối, số ngoài 0-100 bị cắt về giới hạn.
 
 ## Ghi và phát lại động tác
 

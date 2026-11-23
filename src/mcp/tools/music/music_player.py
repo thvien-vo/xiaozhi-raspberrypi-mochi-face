@@ -76,7 +76,6 @@ class MusicPlayer:
         # The robot's own library and queue
         self.queue = PlayQueue()
         self.track_id: str | None = None  # Library track being played (None: online song)
-        self.volume = 70
         self.last_error = ""
         self._files: MusicLibrary | None = None
         self._files_lock = threading.Lock()
@@ -380,14 +379,12 @@ class MusicPlayer:
             from src.utils.config_manager import get_config
 
             config = get_config()
-            self.volume = max(0, min(100, int(config.get_config("MUSIC.VOLUME", 70))))
             mode = str(config.get_config("MUSIC.REPEAT", "off"))
             self.queue.set_repeat(mode if mode in REPEAT_MODES else "off")
             self.queue.set_shuffle(bool(config.get_config("MUSIC.SHUFFLE", False)))
             self._settings_loaded = True
         except Exception as e:
             logger.debug(f"Music settings not loaded: {e}")
-        self.apply_volume()
 
     def _save(self, key: str, value) -> None:
         try:
@@ -427,7 +424,7 @@ class MusicPlayer:
         self._device_name = str(getattr(codec, "output_device_name", "") or "") if codec is not None else ""
         if codec is not None:
             self.load_settings()
-            self.apply_volume()
+            self.levels.attach(codec)
         self._notify()
 
     def audio_status(self) -> dict:
@@ -438,10 +435,16 @@ class MusicPlayer:
             return {"ok": False, "device": self._device_name, "message": NO_SOUND}
         return {"ok": True, "device": self._device_name, "message": ""}
 
-    def apply_volume(self) -> None:
-        setter = getattr(self._engine.audio_codec, "set_music_gain", None)
-        if setter is not None:
-            setter((self.volume / 100.0) ** 2)  # Roughly how loudness is heard
+    @property
+    def levels(self):
+        """Shared master / voice / music / effects levels; the music slider is its music channel."""
+        from src.audio_codecs.levels import get_audio_levels
+
+        return get_audio_levels()
+
+    @property
+    def volume(self) -> int:
+        return self.levels.get("music")
 
     async def play_track(self, track_id: str, queue_ids: list[str] | None = None) -> dict:
         """Play one track; the queue becomes queue_ids (default: the whole library)."""
@@ -553,12 +556,9 @@ class MusicPlayer:
 
     def set_volume(self, volume: float, save: bool = True) -> dict:
         self.load_settings()
-        self.volume = int(max(0, min(100, round(volume))))
-        self.apply_volume()
-        if save:
-            self._save("VOLUME", self.volume)
+        level = self.levels.set("music", volume, persist=save)
         self._notify()
-        return _ok(f"Âm lượng nhạc: {self.volume}%", volume=self.volume)
+        return _ok(f"Âm lượng nhạc: {level}%", volume=level)
 
     def change_volume(self, delta: float) -> dict:
         self.load_settings()

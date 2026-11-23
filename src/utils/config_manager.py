@@ -314,6 +314,15 @@ class ConfigManager:
                 "PIL": "WARNING",
             },
         },
+        # Speaker volume, 0-100 each (software gain in the mixer); real level = MASTER x channel.
+        # Written by the web panel and the voice tools. MUSIC null: take MUSIC.VOLUME.
+        "AUDIO_VOLUME": {
+            "MASTER": 100,
+            "VOICE": 100,  # The robot's speech and notifications
+            "MUSIC": None,
+            "EFFECTS": 100,  # Sound effects (none play yet)
+            "MUTED": False,
+        },
         # Music API (empty string = use built-in default URL at runtime)
         "MUSIC": {
             "SEARCH_URL": "",
@@ -329,7 +338,7 @@ class ConfigManager:
             # Online search (unofficial third-party API) for songs not in the library.
             # Off: the proxy is dead or returns paid songs, and it may break the service's terms
             "ONLINE_ENABLED": False,
-            "VOLUME": 70,  # Music only (0-100), relative to the speaker volume
+            "VOLUME": 70,  # Old music level; only read while AUDIO_VOLUME.MUSIC is null
             "REPEAT": "off",  # off / all / one
             "SHUFFLE": False,
             # Music keeps playing, turned down, while the assistant speaks (else it pauses)

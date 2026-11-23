@@ -82,7 +82,11 @@ class AudioCodec:
         self._duck_hold = 0
         self._music_gain = 1.0  # Music volume
         self._music_ducked = False  # Held down for the whole time the assistant speaks
-        self._music_level = 1.0  # Gain applied to the last chunk
+        self._music_level = 1.0  # Ducking gain applied to the last chunk
+        self._music_volume_level = 1.0  # Volume gain applied to the last chunk
+        self._voice_gain = 1.0  # Voice (TTS + notifications) master x channel, from AudioLevels
+        self._voice_level = 1.0  # Gain applied to the last voice chunk
+        self._effects_gain = 1.0  # For sound effects (nothing plays on it yet)
         self._last_output_callback = 0.0
         self._notification_had_audio = False
         self._notification_drain_callbacks_remaining = 0
@@ -336,22 +340,41 @@ class AudioCodec:
             else:
                 voice = np.clip(voice + notification, -1.0, 1.0)
 
+        # Ducking follows whether voice is present, however loud the voice is set
+        ducked = voice is not None or self._duck_hold > 0 or self._music_ducked
+        voice = self._apply_voice_level(voice)
         if music is None:
             return voice
-        ducked = voice is not None or self._duck_hold > 0 or self._music_ducked
         music = self._apply_music_level(music, ducked)
         if voice is None:
             return music
         return np.clip(voice + music, -1.0, 1.0)
 
+    def _apply_voice_level(self, voice: np.ndarray | None) -> np.ndarray | None:
+        """Scale a voice chunk by master x voice volume, ramping when it changed."""
+        before, target = self._voice_level, self._voice_gain
+        self._voice_level = target
+        if voice is None or (before == 1.0 and target == 1.0):
+            return voice
+        if before != target:
+            return voice * np.linspace(before, target, len(voice), dtype=np.float32)
+        return voice * np.float32(target)
+
     def _apply_music_level(self, music: np.ndarray, ducked: bool) -> np.ndarray:
-        """Scale a music chunk by volume and ducking (output callback thread)."""
+        """Scale a music chunk by ducking (down at once, up in a ramp), then by the volume."""
         before = self._music_level
-        target = self._music_gain * (_MUSIC_DUCK_GAIN if ducked else 1.0)
+        target = _MUSIC_DUCK_GAIN if ducked else 1.0
         self._music_level = min(target, before + _MUSIC_RELEASE_STEP)
         if self._music_level > before:
-            return music * np.linspace(before, self._music_level, len(music), dtype=np.float32)
-        return music * np.float32(self._music_level)
+            music = music * np.linspace(before, self._music_level, len(music), dtype=np.float32)
+        else:
+            music = music * np.float32(self._music_level)
+        # Volume (master x music from AudioLevels): ramped inside the chunk so a change does not click
+        volume_before, volume = self._music_volume_level, self._music_gain
+        self._music_volume_level = volume
+        if volume_before != volume:
+            return music * np.linspace(volume_before, volume, len(music), dtype=np.float32)
+        return music if volume == 1.0 else music * np.float32(volume)
 
     def _notify_notification_drained_after_output(self) -> None:
         """Report that the notification queue is truly drained after device output."""
@@ -404,6 +427,17 @@ class AudioCodec:
     def set_music_gain(self, gain: float) -> None:
         """Music volume as a linear factor (0..1)."""
         self._music_gain = min(1.0, max(0.0, float(gain)))
+
+    def set_output_gains(self, voice: float = 1.0, music: float = 1.0, effects: float = 1.0) -> None:
+        """Linear gains (0..1, master already included) from AudioLevels; thread-safe."""
+        self._voice_gain = min(1.0, max(0.0, float(voice)))
+        self._music_gain = min(1.0, max(0.0, float(music)))
+        self._effects_gain = min(1.0, max(0.0, float(effects)))
+
+    @property
+    def effects_gain(self) -> float:
+        """Multiply sound effects by this before they are mixed in."""
+        return self._effects_gain
 
     def set_music_ducked(self, ducked: bool) -> None:
         """Hold music low for as long as the assistant speaks (gaps between sentences too)."""
