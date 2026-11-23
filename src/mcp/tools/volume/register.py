@@ -60,19 +60,22 @@ def register_volume_tools(
         volume = int(args.get("volume", -1))
         change = int(args.get("change", 0))
         logger.info(f"[VolumeTools] channel={channel} volume={volume} change={change} mute={mute!r}")
+        unmuted = False
         if mute in ("on", "true", "yes", "1"):
             levels.set_muted(True)
             return "Đã tắt tiếng"
         if mute in ("off", "false", "no", "0"):
             levels.set_muted(False)
-            return status_line(channel).replace("Âm lượng", "Đã bật tiếng. Âm lượng", 1)
-        if mute:
+            unmuted = True
+        elif mute:
             return "mute phải là on hoặc off"
+        # "bật tiếng" may come together with a level ("bật tiếng và nhỏ lại"): do both
         if volume >= 0:
             levels.set(channel, volume)
         elif change != 0:
             levels.change(channel, change)
-        return status_line(channel)
+        text = status_line(channel)
+        return f"Đã bật tiếng. {text}" if unmuted else text
 
     async def get_volume(args: dict[str, Any]) -> int:
         return levels.get("master")

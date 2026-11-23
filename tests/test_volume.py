@@ -324,8 +324,11 @@ def test_voice_tool_mute_unmute_and_channels():
     _call(tools, "self.audio_speaker.set_volume", mute="on")
     assert levels.muted and levels.get("master") == 70
     assert "70" in _call(tools, "self.audio_speaker.set_volume", mute="off") and not levels.muted
+    _call(tools, "self.audio_speaker.set_volume", mute="on")
+    reply = _call(tools, "self.audio_speaker.set_volume", mute="off", change=-10)  # What the server really sent
+    assert not levels.muted and levels.get("master") == 60 and "60" in reply
     _call(tools, "self.audio_speaker.set_volume", volume=30, channel="voice")
-    assert levels.get("voice") == 30 and levels.get("master") == 70
+    assert levels.get("voice") == 30 and levels.get("master") == 60
     assert "không có" in _call(tools, "self.audio_speaker.set_volume", volume=30, channel="bass")
     assert "mute phải" in _call(tools, "self.audio_speaker.set_volume", mute="maybe")
 
