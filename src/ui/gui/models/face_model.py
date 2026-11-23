@@ -200,9 +200,10 @@ class FaceModel(BaseModel):
         if resting:
             self._set_speech_active(False)
             self._set_user_text("")
-            if self._speech_text:
-                self._speech_text = ""
-                self.speechChanged.emit()
+            # A new serial makes the QML mouth drop the sentence it is still showing
+            self._speech_text = ""
+            self._speech_serial += 1
+            self.speechChanged.emit()
             if self._emotion != "neutral":
                 self._emotion = "neutral"
                 self.emotionChanged.emit()

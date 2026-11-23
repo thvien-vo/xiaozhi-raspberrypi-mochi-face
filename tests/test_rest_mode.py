@@ -506,3 +506,37 @@ async def test_go_to_rest_tool_defers_the_rest():
 
     await rest.set_resting(True)
     assert json.loads(go_to_rest(rest))["message"] == "Robot đang nghỉ rồi."
+
+
+# ----- Qt face model -----
+
+
+def test_face_model_sleeps_and_drops_the_sentence_it_was_showing():
+    import os
+
+    os.environ.setdefault("QT_QUICK_BACKEND", "software")
+    pytest.importorskip("PySide6")
+    from PySide6.QtWidgets import QApplication
+
+    app = QApplication.instance() or QApplication(["tests", "-platform", "offscreen"])
+    assert app is not None
+    from src.ui.gui.models import FaceModel, load_face_config
+
+    class Defaults:
+        def get_config(self, path, default=None):
+            return default
+
+    model = FaceModel(load_face_config(Defaults()))
+    model.set_speech_text("tts", "Xin chào, bạn cần giúp gì không?")
+    model.set_emotion("happy")
+    serial = model.speechSerial
+    model.set_resting(True)
+    assert model.activity == "asleep"
+    assert model.speechText == "" and model.speechSerial == serial + 1  # QML restarts empty
+    assert model.emotion == "neutral" and not model.speechActive
+    model.interact()
+    model.set_speech_text("stt", "alo")
+    model.set_music_bpm(120)
+    assert model.activity == "asleep"
+    model.set_resting(False)
+    assert model.activity == "awake"
