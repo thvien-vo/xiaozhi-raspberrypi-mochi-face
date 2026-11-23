@@ -50,6 +50,11 @@ IGNORED = [
     "lala school.",
     "La la scool!",
     "LA LA SCHOOL",
+    "lala skool",
+    "cho kênh Diền Mì Gõ để không bỏ lỡ những video hấp dẫn.",  # Heard from injected TTS
+    "Diền mì gõ",
+    "cám ơn các bạn đã theo giỏi",
+    "subscribers",
     "Hãy subscribe cho kênh Ghiền Mì Gõ để không bỏ lỡ những video hấp dẫn",
     "ghien mi go",
     "Ghiền mì gõ.",
@@ -89,6 +94,12 @@ ANSWERED = [
     "hôm nay trời đẹp quá",
     "kể chuyện cho tôi nghe",
     "quay đầu sang trái",
+    "chiên mì gói",  # Close to "Ghiền Mì Gõ" in letters, but only one word in common
+    "mì gõ ngon không",
+    "mở kênh youtube",
+    "cảm ơn đã theo dõi",
+    "hẹn gặp lại",
+    "La la scul",
 ]
 
 

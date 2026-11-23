@@ -11,9 +11,11 @@ Rule (fuzzy, accent- and case-insensitive):
    split into words.
 2. Each pattern is looked for as a run of words whose letters (spaces ignored, so "lala" and
    "la la" are the same) are within a small edit distance of the pattern's letters
-   (patterns of 5+ letters allow about one typo per 7 letters, at most 3: "subcribe",
-   "la la scool").
-   Patterns of 4 letters or less must match exactly.
+   (patterns of 5+ letters allow about one typo per 4 letters, at most 3: "subcribe",
+   "la la scool", "Diền Mì Gõ").
+   Patterns of 4 letters or less must match exactly, and a fuzzy match of a pattern of
+   several words needs at least half of its words spelled exactly ("chiên mì gói" is not
+   "Ghiền Mì Gõ", "Diền Mì Gõ" is).
 3. The text is ignored when at least one pattern matched and every word left over is a
    filler word (hãy, cho, kênh, các, bạn, nhé, ...), or when the whole text has fewer than
    MIN_CHARS letters. Texts of more than 30 words are never ignored. Anything else is a real
@@ -137,7 +139,7 @@ def _edit_distance(a: str, b: str, limit: int) -> int:
 def allowed_typos(letters: int) -> int:
     if letters <= 4:
         return 0
-    return min(MAX_TYPOS, max(1, letters // 7))
+    return min(MAX_TYPOS, max(1, letters // 4))
 
 
 @dataclass(frozen=True)
@@ -174,14 +176,38 @@ class FilterResult:
 
 def _may_contain(pattern: _Pattern, words: list[str], letters: str) -> bool:
     """Cheap pre-check: one of the pattern's longer words appears (or nearly) in the text."""
-    anchors = [w for w in pattern.words if len(w) >= 3] or list(pattern.words)
-    for anchor in anchors:
+    for anchor in pattern.words:
         if anchor in letters:
             return True
-        for word in words:
-            if _edit_distance(word, anchor, 1) <= 1:
-                return True
+        if len(anchor) >= 3:
+            for word in words:
+                if _edit_distance(word, anchor, 1) <= 1:
+                    return True
     return False
+
+
+def _enough_words(pattern: _Pattern, window_words: list[str]) -> bool:
+    """A fuzzy match of a multi-word pattern needs half its words spelled exactly."""
+    k = len(pattern.words)
+    if k < 2:
+        return True
+    pool = list(pattern.words)
+    common = 0
+    for word in window_words:
+        if word in pool:
+            pool.remove(word)
+            common += 1
+            continue
+        # Words run together ("lala" for "la la") count as all of them
+        for i in range(k):
+            for j in range(i + 2, k + 1):
+                if "".join(pattern.words[i:j]) == word:
+                    common += j - i
+                    break
+            else:
+                continue
+            break
+    return common * 2 >= k
 
 
 def check_text(text: str, patterns, min_chars: int = DEFAULT_MIN_CHARS) -> FilterResult:
@@ -214,7 +240,9 @@ def check_text(text: str, patterns, min_chars: int = DEFAULT_MIN_CHARS) -> Filte
                         continue
                     joined = "".join(words[j] for j in window)
                     dist = _edit_distance(joined, pattern.letters, pattern.typos)
-                    if dist <= pattern.typos:
+                    if dist <= pattern.typos and (
+                        dist == 0 or _enough_words(pattern, [words[j] for j in window])
+                    ):
                         key = (dist, abs(size - k), i)
                         if best is None or key < best[0]:
                             best = (key, window)
