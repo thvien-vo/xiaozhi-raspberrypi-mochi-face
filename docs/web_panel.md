@@ -44,7 +44,7 @@ Không cần cài thêm gì. three.js 0.170 (GLTFLoader, OrbitControls) nằm s�
 | Mặt | Ô "Màn hình robot" (mặt đang hiện trên màn 7"), 21 biểu cảm, màu mắt (bảng màu, tự chọn, cầu vồng, theo cảm xúc), bật/tắt `FACE.AUTO_MODE`, "Đánh thức mặt" |
 | (thanh trên cùng) | Âm lượng tổng, nút tắt tiếng, +/- và mục "Âm thanh" (xem "Âm lượng"); hiện ở mọi tab |
 | Nhạc | Thư viện nhạc trên robot: tải lên, xóa, tìm, phát, tua, âm lượng, lặp/trộn, hàng đợi, nhảy theo nhạc (xem "Nhạc") |
-| Trò chuyện | Câu người nói (STT) và câu robot trả lời (TTS), ô gửi tin nhắn chữ |
+| Trò chuyện | Câu người nói (STT) và câu robot trả lời (TTS), ô gửi tin nhắn chữ; lọc câu ảo giác (câu bị bỏ qua hiện xám) và VAD micro (xem "Lọc câu ảo giác…") |
 
 **Chiều kéo:** kéo đầu sang trái thì robot quay sang trái của nó, kéo lên thì ngẩng. Nhìn từ góc nào cũng vậy, giống thanh trượt và joystick; chữ "Trái/Phải" đều tính theo robot.
 
@@ -168,6 +168,101 @@ Công tắc lớn **Đang thức / Đang nghỉ** nằm ở thanh trên cùng (m
 
 **Lệnh WebSocket:** `{"type":"rest","enabled":true|false}`; `enabled` phải là `true`/`false` (kiểm tra lại ở phía Pi). Trạng thái nằm trong `state.rest` = `{resting, since, source, pending}`.
 
+## Lọc câu ảo giác và chỉ gửi micro khi có tiếng nói
+
+Server nhận dạng giọng (STT) đôi khi "nghe ra" câu kết video YouTube từ tiếng ồn, im lặng hay nhạc: "Hãy subscribe cho kênh Ghiền Mì Gõ để không bỏ lỡ những video hấp dẫn", "La La School", "Cảm ơn các bạn đã theo dõi và hẹn gặp lại". Có hai lớp chặn, cả hai nằm ở tab **Trò chuyện**.
+
+### 1. Lọc câu ảo giác (`STT_FILTER`)
+
+**Quy tắc** (`src/audio_processing/stt_filter.py`):
+
+1. Câu và mẫu được chuẩn hóa: chữ thường, bỏ dấu (đ → d), bỏ dấu câu, tách từ. Khoảng trắng không tính khi so chữ, nên "lala" = "la la".
+2. Mỗi mẫu được tìm như một đoạn từ liên tiếp, cho phép sai chính tả: mẫu ≤ 4 chữ cái phải khớp đúng; mẫu dài hơn được sai khoảng 1 chữ trên 4 chữ cái, tối đa 3 ("subcribe", "la la scool", "Diền Mì Gõ"). Với mẫu nhiều từ, đoạn khớp mờ phải có ít nhất một nửa số từ đúng hẳn ("chiên mì gói" không bị coi là "Ghiền Mì Gõ").
+3. Câu **bị bỏ qua** khi có ít nhất một mẫu khớp **và** mọi từ còn lại chỉ là từ đệm (hãy, cho, kênh, của, mình, các, bạn, nhé, và, để, những, video, tiếp theo, youtube, …), hoặc khi cả câu có ít hơn `MIN_CHARS` chữ cái (mặc định 2).
+4. Còn lại là yêu cầu thật và robot trả lời bình thường: "mở nhạc La La School" còn "mở nhạc", "tìm kênh youtube học tiếng anh" còn "tìm học tiếng anh". Câu dài hơn 30 từ không bao giờ bị bỏ qua. Câu người dùng gõ trên web (và lời chào) cũng không bao giờ bị lọc.
+
+**Mẫu mặc định** (37 mẫu, `DEFAULT_PATTERNS`): La La School; Ghiền Mì Gõ; Hãy subscribe cho kênh (Ghiền Mì Gõ); subscribe / subcribe; subscribe kênh YouTube; kênh YouTube; đăng ký/đăng kí kênh; đừng quên đăng ký kênh; nhấn nút đăng ký; bấm/nhấn chuông thông báo; theo dõi kênh; ủng hộ kênh; ủng hộ mình; like và share; like share và subscribe; chia sẻ video; để không bỏ lỡ những video hấp dẫn / mới nhất; cảm ơn các bạn đã theo dõi (và hẹn gặp lại); cảm ơn các bạn đã xem (video); cảm ơn các bạn đã lắng nghe; hẹn gặp lại các bạn (trong (những) video tiếp theo); chúc các bạn xem video vui vẻ; Vietsub; phụ đề bởi; Thanks/Thank you for watching; Subtitles by the Amara.org community; hai câu tiếng Trung hay gặp của Whisper.
+
+**Khi một câu bị bỏ qua** (`src/core/stt_gate.py`, `ConversationSession.drop_hallucinated_turn`):
+
+- Câu không hiện như lời người nói; khung chat hiện câu đó màu xám với nhãn **đã bỏ qua** (di chuột để xem mẫu khớp). `app.log` ghi `STT filter: ignored '<câu>' (matched: <mẫu>)`.
+- Robot gửi `abort`, xóa hàng đợi giọng. Mặt giữ nguyên trạng thái nghe, không có câu trả lời, không phát âm thanh, không chạy tool (lệnh `tools/call` của lượt đó được trả lỗi "Cancelled" để server không chờ).
+- **Đo trên server chính thức:** `abort` không hủy câu trả lời. Server trả `tts stop` ngay rồi vẫn gửi `llm`, các câu `tts sentence_start` và toàn bộ âm thanh. Vì vậy cổng chặn **mọi** `tts`/`llm`/`tools/call`/khung âm thanh cho tới khi có câu STT thật tiếp theo, tin nhắn gõ tay, hoặc 30 s. Micro đóng trong lúc server còn gửi câu trả lời, và mở lại (gửi `listen start`) khi luồng đó đã im 2 s (tối đa 15 s).
+- **Vẫn tốn hạn mức:** khi câu STT về tới robot thì server đã chạy STT và LLM cho lượt đó. Lọc chỉ giúp robot im lặng. Chỉ VAD (phần dưới) mới bớt lượt gửi lên server.
+
+**Trên web:** công tắc bật/tắt; số câu đã bỏ qua; mục "Câu đã bỏ qua gần đây" (20 câu mới nhất, nút **Làm mẫu** để thêm câu đó vào danh sách); mục "Mẫu" hiện các mẫu dạng thẻ (bấm × để xóa), ô thêm mẫu, số chữ cái tối thiểu, nút **Khôi phục mẫu mặc định**. Mọi thay đổi được lưu vào `config.json`.
+
+**Config:**
+
+```json
+"STT_FILTER": {"ENABLED": true, "PATTERNS": ["La La School", "..."], "MIN_CHARS": 2}
+```
+
+**Lệnh WebSocket** (Pi kiểm tra lại mọi giá trị):
+
+| Lệnh | Ý nghĩa |
+|---|---|
+| `{"type":"stt_filter","enabled":true,"min_chars":2}` | Bật/tắt, đổi số chữ cái tối thiểu (0–20); trường nào cũng tùy chọn |
+| `{"type":"stt_pattern_add","pattern":"..."}` | Thêm mẫu (tối đa 120 ký tự, phải có chữ, tối đa 200 mẫu, trùng thì bỏ qua) |
+| `{"type":"stt_pattern_remove","pattern":"..."}` | Xóa mẫu |
+| `{"type":"stt_patterns_reset"}` | Về danh sách mặc định |
+| `{"type":"stt_recent_clear"}` | Xóa danh sách câu đã bỏ qua gần đây |
+
+Trạng thái: `state.stt_filter` = `{enabled, patterns, min_chars, ignored_total, recent, defaults, gate}`.
+
+### 2. Chỉ gửi micro khi có tiếng nói (`VAD`)
+
+Trước đây, khi đang nghe, mọi khung micro 20 ms đều được gửi lên server. Giờ `src/audio_processing/vad_gate.py` đứng giữa bộ mã hóa Opus và đường gửi (`AudioCodec.set_input_gate`):
+
+- **Bộ phát hiện:** Silero VAD (`models/vad/silero_vad.onnx`, giấy phép MIT) chạy qua `sherpa-onnx` có sẵn, cửa sổ 32 ms, tốn khoảng 0,3 ms mỗi khung trên Pi 5. Không nạp được mô hình thì dùng ngưỡng năng lượng (cao hơn mức ồn nền 12 dB).
+- Một khung là "tiếng nói" khi Silero ≥ `THRESHOLD` **và** mức âm ≥ `ENERGY_DB`.
+- Chỉ mở khi tiếng nói kéo dài liền ≥ `MIN_SPEECH_MS` (cho phép hở tối đa 60 ms). Khi mở, gửi kèm `PREROLL_MS` âm thanh ngay trước đó để không mất chữ đầu. Đóng sau `HANGOVER_MS` không có tiếng nói.
+- Không gửi khi robot đang nói (như cũ: chỉ gửi ở trạng thái nghe), và không gửi khi đang bỏ một lượt ảo giác.
+
+| Tham số | Mặc định | Giới hạn | Ý nghĩa |
+|---|---|---|---|
+| `ENABLED` | `true` | | Tắt thì gửi liên tục như trước |
+| `THRESHOLD` | 0.5 | 0.1–0.95 | Độ nhạy Silero (cao = khó mở hơn) |
+| `MIN_SPEECH_MS` | 300 | 60–2000 | Thời lượng nói tối thiểu để mở |
+| `PREROLL_MS` | 300 | 0–1000 | Âm thanh gửi kèm trước lúc mở |
+| `HANGOVER_MS` | 900 | 200–3000 | Im bao lâu thì đóng |
+| `ENERGY_DB` | -50 | -80 – -10 | Mức âm tối thiểu (dBFS) |
+
+**Trên web:** công tắc, chấm trạng thái trực tiếp (đang gửi / đang chờ tiếng nói), mức ồn nền, mức tiếng nói gần nhất, tỷ lệ thời gian đã gửi, các thanh trượt. Kéo thanh thì áp dụng ngay, thả tay mới lưu config.
+
+**Lệnh WebSocket:** `{"type":"vad","enabled":true,"threshold":0.5,"min_speech_ms":300,"preroll_ms":300,"hangover_ms":900,"energy_db":-50,"save":true}`. Mọi trường đều tùy chọn; `save:false` chỉ áp dụng, không ghi config. Trạng thái: `state.vad`.
+
+### Thử nghiệm trên robot thật (không cần người nói)
+
+`XIAOZHI_MIC_INJECT_FILE=/đường/dẫn.wav` (16 kHz, mono, 16-bit) thay micro bằng file đó (phát lặp, `src/audio_codecs/mic_inject.py`). File được đọc lại khi đổi, nên có thể đổi file bằng `mv` mà không khởi động lại. Không có file thì dùng micro thật. Đây chỉ là công cụ test; app ghi cảnh báo khi biến này được đặt.
+
+```bash
+systemctl --user set-environment XIAOZHI_MIC_INJECT_FILE=/tmp/xz-inject.wav && systemctl --user restart xiaozhi
+cp speech.wav /tmp/x.wav && mv /tmp/x.wav /tmp/xz-inject.wav     # đổi âm thanh đầu vào
+systemctl --user unset-environment XIAOZHI_MIC_INJECT_FILE && systemctl --user restart xiaozhi   # trả lại micro
+```
+
+### Kết quả đo (Pi 5, server chính thức, 2026-11-23)
+
+Mỗi lần đo 2 phút; "nhạc" là nhạc tổng hợp bằng numpy/ffmpeg (không có bản quyền). Phòng đặt robot có tiếng người/video thật ở xa, nên "im lặng" ở phòng thật không hoàn toàn im.
+
+| Điều kiện | Lượt STT | Bị lọc bỏ | Robot trả lời câu ảo giác |
+|---|---|---|---|
+| Phòng thật, im lặng, **trước** | 7 | 0 | 7 (gồm "Cảm ơn các bạn đã theo dõi và hẹn gặp lại" ×2, "Hãy subscribe cho kênh Ghiền Mì Gõ…") |
+| Phòng thật, nhạc qua loa, **trước** | 2 | 0 | 2 ("Hãy subscribe cho kênh La La School…") |
+| Phòng thật, im lặng, **sau** | 5 | 5 | 0 |
+| Phòng thật, nhạc qua loa, **sau** | 4 | 3 | 0 (1 câu người thật trong phòng được trả lời đúng) |
+| Bơm ồn nền -55 dBFS, VAD+lọc tắt / bật | 0 / 0 | – | 0 / 0 |
+| Bơm nhạc tổng hợp, VAD+lọc tắt / bật | 0 / 0 | – | 0 / 0 |
+| Bơm câu tổng hợp "Kể cho tôi nghe một câu chuyện cười ngắn", VAD tắt / bật | 1 / 1 | 0 | nhận đủ câu cả hai lần |
+| Bơm câu tổng hợp "Hãy subscribe cho kênh Ghiền Mì Gõ…", "Cảm ơn các bạn đã theo dõi và hẹn gặp lại…" | 1 + 1 | 2 | 0: không phát âm thanh, mặt không chuyển sang nói, không chạy tool |
+
+Trong cả hai điều kiện có lời "Có vẻ bạn đã im lặng một lúc rồi… tạm biệt" của server sau khoảng 1 phút không có câu nào. Đó là câu server tự gửi (không có STT), không phải ảo giác.
+
+VAD giảm phần thời gian gửi micro (ồn nền: không mở lần nào; phòng thật: chỉ gửi khi có tiếng người). Nhưng phòng này thường xuyên có tiếng người thật, nên VAD không giảm được số lượt STT ở đây; lớp lọc là thứ làm robot im lặng.
+
+Unit test: `pytest tests/test_stt_filter.py`.
+
 ## Ghi và phát lại động tác
 
 1. Bấm **Ghi**.
@@ -211,7 +306,7 @@ Phần kiểm tra mặt đổi biểu cảm và màu mắt từ trang (bảng m�
 
 `web_panel_check.py` cần Playwright: `pip install playwright && python -m playwright install chromium`. Đây là công cụ test, không phải thư viện của app.
 
-Unit test: `pytest tests/test_web_panel.py tests/test_eye_color.py tests/test_music_library.py`.
+Unit test: `pytest tests/test_web_panel.py tests/test_eye_color.py tests/test_music_library.py tests/test_stt_filter.py`.
 
 Mô hình `web_assets/xiaozhi_robot.glb` là bản lắp ráp CAD (glTF, đơn vị mm). Cây node:
 
