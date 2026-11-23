@@ -78,6 +78,30 @@ h2 { font-size: 15px; font-weight: 650; margin: 0; letter-spacing: .01em; }
 .chip[data-tone="accent"] i { background: var(--accent); }
 @keyframes pulse { 50% { opacity: .35; } }
 
+/* ----- Rest ("Nghỉ / Thức") toggle: always in the top bar ----- */
+.rest-toggle {
+  display: inline-flex; align-items: center; gap: 10px; min-height: 44px; min-width: 190px;
+  padding: 6px 10px 6px 12px; border-radius: 999px; cursor: pointer; text-align: left;
+  background: var(--surface); border: 1.5px solid var(--border); color: var(--text);
+  transition: background .2s, border-color .2s, color .2s;
+}
+.rest-toggle[hidden] { display: none; }
+.rest-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.rest-toggle .rest-ico { width: 24px; height: 24px; flex: none; color: var(--warn); }
+.rest-toggle .ico-moon { display: none; }
+.rest-text { display: grid; line-height: 1.15; flex: 1; }
+.rest-text b { font-size: 15px; font-weight: 700; }
+.rest-text small { font-size: 11.5px; color: var(--muted); }
+.rest-switch { width: 40px; height: 24px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); position: relative; flex: none; transition: background .2s; }
+.rest-switch i { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--muted); transition: transform .2s, background .2s; }
+.rest-toggle[data-state="resting"] { background: color-mix(in srgb, var(--info) 16%, var(--surface)); border-color: var(--info); }
+.rest-toggle[data-state="resting"] .rest-ico { color: var(--info); }
+.rest-toggle[data-state="resting"] .ico-moon { display: block; }
+.rest-toggle[data-state="resting"] .ico-sun { display: none; }
+.rest-toggle[data-state="resting"] .rest-switch { background: var(--info); border-color: var(--info); }
+.rest-toggle[data-state="resting"] .rest-switch i { transform: translateX(16px); background: #fff; }
+.rest-toggle[data-busy="true"] { opacity: .65; pointer-events: none; }
+
 /* ----- Layout ----- */
 .layout {
   display: grid; gap: 16px; padding: 16px;
@@ -392,6 +416,7 @@ input[type="range"].mu-range { appearance: none; -webkit-appearance: none; flex:
   .tabs { top: calc(var(--topbar-h, 56px) + 4px); }
   .topbar { padding: 8px 12px; gap: 8px; }
   .chips { margin-left: 0; width: 100%; }
+  .rest-toggle { margin-left: auto; min-width: 0; flex: 1 1 200px; max-width: 280px; }
   .brand { font-size: 16px; }
   .stage-hint { top: 12px; bottom: auto; left: auto; right: 12px; transform: none; max-width: 52%; font-size: 11.5px; border-radius: 10px; text-align: left; }
   .legend { display: none; }

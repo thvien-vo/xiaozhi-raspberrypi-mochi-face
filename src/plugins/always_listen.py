@@ -115,6 +115,7 @@ class AlwaysListenPlugin(Plugin):
         self._greet_spoke = False
         self._seen_connected = False
         self.greet_count = 0
+        self._rested_since: Optional[float] = None
 
     @classmethod
     def from_config(cls, config: Any, audio_plugin: Any = None) -> "AlwaysListenPlugin":
@@ -162,6 +163,10 @@ class AlwaysListenPlugin(Plugin):
             return False
         return state in (DeviceState.LISTENING, DeviceState.SPEAKING)
 
+    def _resting(self) -> bool:
+        check = getattr(self._ctx, "is_resting", None)
+        return bool(check()) if callable(check) else False
+
     def _delay_for(self, failures: int) -> float:
         if failures <= 0:
             return self._grace_s
@@ -179,6 +184,23 @@ class AlwaysListenPlugin(Plugin):
 
     async def tick(self, now: float) -> None:
         """One supervisor step (separate from the loop so tests can drive time)."""
+        if self._resting():
+            # Rest mode: stay disconnected. No greeting either; waking restores listening
+            # (after the usual grace) without any speech.
+            if not self._startup_done:
+                self._startup_done = True
+            if self._rested_since is None:
+                self._rested_since = now
+                logger.info("AlwaysListen: resting, supervisor paused")
+            self._greet_sent_at = None
+            self._lost_since = None
+            self._good_since = None
+            return
+        if self._rested_since is not None:
+            self._rested_since = None
+            self._failures = 0
+            self._next_attempt = 0.0
+            logger.info("AlwaysListen: awake again, restoring listening")
         if not self._startup_done:
             await self._startup_step(now)
             if not self._startup_done:

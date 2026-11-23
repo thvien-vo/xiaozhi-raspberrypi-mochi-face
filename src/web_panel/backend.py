@@ -150,6 +150,7 @@ class RobotBackend:
         face_frames=None,
         music=None,
         levels=None,
+        rest=None,
     ) -> None:
         self.controller = controller
         self.tracker = tracker
@@ -168,6 +169,9 @@ class RobotBackend:
         self.face_frames = face_frames  # src.web_panel.face_stream.FaceFrameHub
         self.music = music  # src.web_panel.music.MusicControl
         self.levels = levels  # src.audio_codecs.levels.AudioLevels
+        self.rest = rest  # src.core.rest_mode.RestController
+        if rest is not None:
+            rest.add_listener(lambda _resting, _source: self._changed())
         if levels is not None:
             levels.add_listener(self._changed)
         if eye_colors is not None:
@@ -243,6 +247,17 @@ class RobotBackend:
         now = self.levels.toggle_muted() if muted is None else self.levels.set_muted(muted)
         return {"ok": True, "message": "Đã tắt tiếng" if now else "Đã bật tiếng"}
 
+    @property
+    def resting(self) -> bool:
+        return bool(self.rest is not None and self.rest.resting)
+
+    def _cmd_rest(self, enabled: bool) -> dict:
+        if self.rest is None:
+            return {"ok": False, "message": "chế độ nghỉ không chạy"}
+        result = self.rest.request(enabled, "web")
+        self._changed()
+        return result
+
     def _cmd_ping(self) -> dict:
         return {"ok": True, "pong": time.time()}
 
@@ -266,6 +281,8 @@ class RobotBackend:
         return {"ok": True}
 
     def _cmd_tracking(self, enabled: bool) -> dict:
+        if enabled and self.resting:
+            return {"ok": False, "message": "robot đang nghỉ: thức dậy rồi mới bật bám người"}
         if self.tracker is None:
             return {"ok": False, "message": "không có bám người (camera/YOLO hoặc servo đang tắt)"}
         self.tracker.set_enabled(enabled)
@@ -374,12 +391,16 @@ class RobotBackend:
         return {"ok": True}
 
     def _cmd_face_wake(self) -> dict:
+        if self.resting:
+            return {"ok": False, "message": "robot đang nghỉ"}
         if self.hooks.face_wake is None:
             return {"ok": False, "message": "mặt robot không chạy"}
         self.hooks.face_wake()
         return {"ok": True}
 
     def _cmd_send_text(self, text: str) -> dict:
+        if self.resting:
+            return {"ok": False, "message": "robot đang nghỉ, không nhận tin nhắn: bấm Thức dậy trước"}
         if self.hooks.send_text is None or not self.app.text_supported:
             return {"ok": False, "message": "không gửi được tin nhắn chữ"}
         self.hooks.send_text(text)
@@ -445,6 +466,7 @@ class RobotBackend:
             "face": self.face_snapshot(),
             "music": self.music.snapshot() if self.music is not None else None,
             "volume": self.levels.snapshot() if self.levels is not None else None,
+            "rest": self.rest.snapshot() if self.rest is not None else None,
         }
 
     def face_snapshot(self) -> dict:

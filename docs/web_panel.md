@@ -35,6 +35,7 @@ Không cần cài thêm gì. three.js 0.170 (GLTFLoader, OrbitControls) nằm s�
 
 | Phần | Làm gì |
 |---|---|
+| **Nghỉ / Thức** (thanh trên cùng) | Công tắc lớn cho robot đi nghỉ hoặc thức dậy, tab nào cũng thấy (xem "Chế độ Nghỉ") |
 | Thanh trạng thái | Trạng thái WebSocket, servo đã nối chưa, app đang rảnh/nghe/nói, ai đang điều khiển đầu |
 | Khung 3D | Mô hình đặc là góc thật robot báo về. Mô hình cam mờ là góc đích. **Kéo vào đầu robot**: ngang để xoay, dọc để gật. Kéo chỗ trống để xoay góc nhìn, cuộn để phóng to. Nút Trước/Sau/Trên đổi góc nhìn, "Nhìn thẳng" đưa đầu về giữa. |
 | Điều khiển | Thanh trượt xoay/gật, joystick, chế độ nghiêng điện thoại, bật/tắt bám người, chỉnh KP và vùng chết khi đang chạy ("Lưu vào cấu hình" ghi vào `SERVO.*`) |
@@ -146,6 +147,26 @@ Bốn kênh, mỗi kênh 0-100%: **Tổng** (mọi âm ra loa), **Giọng robot*
 - **Lệnh giọng nói:** "to lên" / "nhỏ xuống" / "âm lượng 50%" / "tắt tiếng" / "bật tiếng" chỉnh âm lượng Tổng (tool `self.audio_speaker.set_volume` với `change`, `volume`, `mute`, `channel`). "Robot nói nhỏ lại" chỉnh kênh Giọng robot. Chỉ khi nói rõ về nhạc ("nhạc to lên") mới dùng tool nhạc `music_player.set_volume`.
 - **Lưu:** mục `AUDIO_VOLUME` trong `config.json` (`MASTER`, `VOICE`, `MUSIC`, `EFFECTS`, `MUTED`), ghi sau lần chỉnh cuối khoảng nửa giây; khởi động lại vẫn giữ.
 - **Lệnh WebSocket:** `{"type":"volume","channel":"master|voice|music|effects","volume":0-100,"save":true}`, `{"type":"volume_step","channel":"master","delta":5}`, `{"type":"mute","muted":true}` (bỏ `muted` để đảo). Kênh lạ bị từ chối, số ngoài 0-100 bị cắt về giới hạn.
+
+## Chế độ Nghỉ
+
+Công tắc lớn **Đang thức / Đang nghỉ** nằm ở thanh trên cùng (mọi tab, dùng được trên điện thoại; trên điện thoại nó nằm cạnh tên robot). Bấm để đổi; trạng thái hiện chữ rõ ("Đang nghỉ · Bấm để thức dậy") và mọi trình duyệt đang mở đổi theo cùng lúc (WebSocket). Bấm lặp trong vòng 1 giây bị bỏ qua.
+
+**Khi bật Nghỉ** (`src/core/rest_mode.py`, `src/plugins/rest.py`):
+
+1. Robot đang nói thì dừng ngay: gửi `abort` cho server, xóa hàng đợi giọng đang phát.
+2. **Đóng hẳn phiên trò chuyện với server** (đóng kênh âm thanh WebSocket). Không còn gói mic nào gửi lên, không có lượt STT/hội thoại mới nên không tốn hạn mức xiaozhi.me. Mọi đường mở lại phiên (từ khóa đánh thức, chạm màn hình, tin nhắn chữ từ web, `AlwaysListen`, lời chào) đều bị chặn trong `ConversationSession.connect_protocol`, và gói mic bị chặn ở `StateManager.should_capture_audio`. Thông báo âm thanh của server (`notify`) cũng bị bỏ qua. Với giao thức MQTT, kênh điều khiển (không phải phiên hội thoại) vẫn giữ như thường lệ; WebSocket mặc định của Pi không có kênh nào mở.
+3. Mặt chuyển sang biểu cảm **ngủ** có sẵn (mắt nhắm, chữ "zzz"). Chạm màn hình, âm thanh hay nhạc không đánh thức mặt. `FACE.AUTO_MODE` / `ALWAYS_LISTEN` không bị sửa trong config, nhưng không có gì được phép nghe cho tới khi thức.
+4. Dừng bám người (nhớ trạng thái bật/tắt trước đó), đầu từ từ về giữa rồi cúi nhẹ **-15°** (không vượt `SERVO.TILT_LIMIT`).
+5. **Nhạc vẫn phát** nếu đang phát, và vẫn điều khiển được từ web. Xoay đầu, cử chỉ, âm lượng trên web vẫn dùng được; chỉ không bật bám người, không gửi tin nhắn chữ, không "đánh thức mặt" trong lúc nghỉ (trang báo lý do).
+
+**Khi thức dậy:** cho phép nghe lại; `AlwaysListen` tự mở lại phiên và nghe sau khoảng 0,5 s. Mặt hết ngủ và có một vẻ mặt vui ngắn (2,5 s) thay cho lời chào, không bắt robot nói gì để khỏi tốn lượt. Bám người trở lại như trước khi nghỉ, đầu về giữa.
+
+**Lưu trạng thái:** `FACE.RESTING` trong `config.json` (ghi mỗi lần đổi). Khởi động lại khi đang nghỉ thì vẫn nghỉ: không kết nối, không chào, mặt ngủ, đầu cúi. Nhật ký `app.log` ghi các dòng `Chế độ NGHỈ: VÀO nghỉ / RA khỏi nghỉ (nguồn: web|voice|khởi động)`.
+
+**Bằng giọng nói:** nói "đi ngủ đi" / "nghỉ đi" thì tool `self.robot.go_to_rest` đặt lịch nghỉ; robot chúc ngủ ngon xong (khoảng 2,5 s sau khi server báo hết câu) mới vào nghỉ, tối đa chờ 25 s. **Không có lệnh giọng nói để thức**, vì lúc nghỉ robot không nghe; chỉ đánh thức bằng công tắc web.
+
+**Lệnh WebSocket:** `{"type":"rest","enabled":true|false}`; `enabled` phải là `true`/`false` (kiểm tra lại ở phía Pi). Trạng thái nằm trong `state.rest` = `{resting, since, source, pending}`.
 
 ## Ghi và phát lại động tác
 

@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING
 
-from src.constants.constants import DeviceState, ListeningMode
+from src.constants.constants import AbortReason, DeviceState, ListeningMode
 from src.core.event_bus import Events
 from src.logging import get_logger
 
@@ -69,6 +69,9 @@ class ConversationSession:
     # Event handlers
     # -------------------------
     async def _on_audio_channel_opened(self, _=None) -> None:
+        if self.state.resting:
+            await self.state.set_device_state(DeviceState.IDLE)
+            return
         if self._keep_idle_on_channel_open:
             self._keep_idle_on_channel_open = False
             self.state.set_keep_listening(False)
@@ -171,6 +174,9 @@ class ConversationSession:
         audio_url, subtitles = parsed
 
         async with self._notification_lock:
+            if self.state.resting:
+                logger.info("Resting, ignoring notify")
+                return
             if not self.state.is_idle():
                 logger.info("Device is busy, ignoring notify")
                 return
@@ -220,10 +226,21 @@ class ConversationSession:
     # Operations
     # -------------------------
     async def connect_protocol(self) -> bool:
+        # Resting: nothing may open a session with the server (wake word, taps, typed
+        # text, the always-listen supervisor and the greeting all come through here)
+        if self.state.resting:
+            logger.debug("Resting: not connecting to the server")
+            return False
         if self.protocol.is_audio_channel_opened():
             return True
 
         opened = await self.protocol.connect()
+        if opened and self.state.resting:
+            # Rest started while this connection was being made: close it again
+            logger.info("Resting: closing a connection that opened after rest began")
+            await self.protocol.disconnect()
+            await self.state.set_device_state(DeviceState.IDLE)
+            return False
         if opened:
             await self.plugins.notify_protocol_connected(self.protocol.protocol)
         return opened
@@ -336,6 +353,34 @@ class ConversationSession:
 
         await self.protocol.send_start_listening(mode)
         await self.state.set_device_state(DeviceState.LISTENING)
+
+    async def enter_rest(self) -> None:
+        """Stop speaking and listening and close the conversation with the server.
+
+        The caller has already set ``state.resting`` so no microphone audio goes out and
+        nothing reconnects. Music is left alone (it has its own queue and player).
+        """
+        self.state.set_keep_listening(False)
+        await self._cancel_notification()
+        if self.protocol.is_audio_channel_opened():
+            try:
+                await self.protocol.send_abort_speaking(AbortReason.USER_INTERRUPTION)
+            except Exception as e:
+                logger.warning(f"Failed to send abort when going to rest: {e}", exc_info=True)
+        try:
+            audio_plugin = self.plugins.get_plugin("audio")
+            if audio_plugin and audio_plugin.codec:
+                await audio_plugin.codec.clear_audio_queue()
+        except Exception as e:
+            logger.warning(f"Failed to clear audio queue when going to rest: {e}", exc_info=True)
+        try:
+            # Closing the audio channel ends the session on the server: no more STT turns
+            await self.protocol.disconnect()
+        except Exception as e:
+            logger.warning(f"Failed to close the protocol channel when going to rest: {e}", exc_info=True)
+        self._aborted = False
+        self.state.set_aborted(False)
+        await self.state.set_device_state(DeviceState.IDLE)
 
     async def abort_speaking(self, reason: str) -> None:
         if self._is_notifying():

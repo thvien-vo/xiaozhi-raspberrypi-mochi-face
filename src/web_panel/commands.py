@@ -172,6 +172,8 @@ def parse_command(
         if emotions and name not in emotions:
             raise CommandError(f"biểu cảm không có: {name}")
         return Command(kind, {"name": name})
+    if kind == "rest":
+        return Command(kind, {"enabled": _bool(data, "enabled")})
     if kind == "auto_mode":
         return Command(kind, {"enabled": _bool(data, "enabled")})
     if kind == "eye_color":

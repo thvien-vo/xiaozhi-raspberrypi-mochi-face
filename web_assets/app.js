@@ -127,10 +127,36 @@ function onState(s) {
   }
   const real = servo.current || servo.acked;
   if (real) robot.setReal(real.pan, real.tilt);
-  renderChips(); renderAngles(); renderTracking(); renderMotion(); renderFace(); renderChatState(); renderCameraAvailability();
+  renderRest(); renderChips(); renderAngles(); renderTracking(); renderMotion(); renderFace(); renderChatState(); renderCameraAvailability();
   music.onState(s.music);
   volume.onState(s.volume);
 }
+
+// Rest mode: one switch in the top bar; the robot owns the state (all pages follow it)
+function renderRest() {
+  const rest = state.snapshot?.rest;
+  const btn = $("rest-toggle");
+  btn.hidden = !rest;
+  if (!rest) return;
+  const on = !!rest.resting;
+  btn.dataset.state = on ? "resting" : "awake";
+  btn.setAttribute("aria-checked", String(on));
+  $("rest-label").textContent = on ? "Đang nghỉ" : rest.pending ? "Sắp nghỉ…" : "Đang thức";
+  $("rest-hint").textContent = on ? "Bấm để thức dậy" : "Bấm để cho nghỉ";
+  btn.title = on ? "Robot đang nghỉ (không nghe, không nói). Bấm để đánh thức." : "Robot đang thức. Bấm để cho nghỉ (ngừng nghe và nói).";
+  document.body.dataset.resting = String(on);
+  btn.dataset.busy = "false";
+}
+
+async function toggleRest() {
+  const btn = $("rest-toggle");
+  const on = btn.dataset.state === "resting";
+  btn.dataset.busy = "true";
+  const res = await command({ type: "rest", enabled: !on });
+  // The new state arrives with the next snapshot; if it never does, unlock the button
+  setTimeout(() => { btn.dataset.busy = "false"; }, res && res.ok === false ? 0 : 1200);
+}
+$("rest-toggle").onclick = toggleRest;
 
 function renderChips() {
   const s = state.snapshot;
@@ -144,7 +170,8 @@ function renderChips() {
   else set("chip-servo", sv.connected ? "good" : "warn", sv.connected ? "Servo OK" : "Servo chưa nối");
   const app = s.app || {};
   const tone = { listening: "info", speaking: "accent", idle: "muted" }[app.device_state] || "muted";
-  set("chip-app", tone, app.device_state_label || app.device_state || "App");
+  if (s.rest?.resting) set("chip-app", "muted", "Đang nghỉ");
+  else set("chip-app", tone, app.device_state_label || app.device_state || "App");
   const owners = { web: "Web đang điều khiển", voice: "Lệnh giọng nói", tracking: "Bám người", music: "Nhảy theo nhạc" };
   let owner = sv.owner ? owners[sv.owner] : null;
   if (!owner && s.tracking?.enabled && !s.tracking.holding) owner = "Bám người";

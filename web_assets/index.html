@@ -22,6 +22,11 @@
     <svg viewBox="0 0 64 64" aria-hidden="true"><rect x="6" y="14" width="52" height="36" rx="10" fill="currentColor"/><rect x="18" y="24" width="9" height="14" rx="3" fill="var(--bg)"/><rect x="37" y="24" width="9" height="14" rx="3" fill="var(--bg)"/></svg>
     <span>Xiaozhi</span>
   </div>
+  <button class="rest-toggle" id="rest-toggle" type="button" role="switch" aria-checked="false" data-state="awake" hidden>
+    <svg class="rest-ico" viewBox="0 0 24 24" aria-hidden="true"><path class="ico-moon" d="M20.5 14.6A8.5 8.5 0 0 1 9.4 3.5a8.5 8.5 0 1 0 11.1 11.1z" fill="currentColor"/><g class="ico-sun" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></g></svg>
+    <span class="rest-text"><b id="rest-label">Đang thức</b><small id="rest-hint">Bấm để cho nghỉ</small></span>
+    <span class="rest-switch" aria-hidden="true"><i></i></span>
+  </button>
   <div class="chips" id="chips">
     <span class="chip" id="chip-ws" data-tone="bad"><i></i><b>Mất kết nối</b></span>
     <span class="chip" id="chip-servo" data-tone="muted"><i></i><b>Servo</b></span>

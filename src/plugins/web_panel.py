@@ -47,8 +47,9 @@ class WebPanelPlugin(Plugin):
     priority = 80  # After ui, vision and servo
     requires = ["ui"]
 
-    def __init__(self, config, servo=None, tracker=None, arbiter=None, player=None, vision=None, mode: str = "gui", music_player=None) -> None:
+    def __init__(self, config, servo=None, tracker=None, arbiter=None, player=None, vision=None, mode: str = "gui", music_player=None, rest=None) -> None:
         super().__init__()
+        self._rest = rest
         self._config = config
         self._servo = servo
         self._tracker = tracker
@@ -75,6 +76,7 @@ class WebPanelPlugin(Plugin):
             vision=container.vision,
             mode=getattr(container, "_mode", "gui"),
             music_player=container.music_player,
+            rest=container.rest,
         )
 
     # ----- Setup -----
@@ -138,6 +140,7 @@ class WebPanelPlugin(Plugin):
             face_frames=self._frames,
             music=MusicControl(self._music_player, lambda: self._loop) if self._music_player is not None else None,
             levels=get_audio_levels(self._config),
+            rest=self._rest,
         )
         if self._music_player is not None:
             self._music_player.add_listener(self.backend._changed)

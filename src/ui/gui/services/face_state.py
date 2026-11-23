@@ -44,6 +44,21 @@ class FaceStateMachine:
         self._thinking_since: float | None = None
         self._last_activity = clock()
         self._activity = ACTIVITY_AWAKE
+        self._resting = False
+
+    @property
+    def resting(self) -> bool:
+        return self._resting
+
+    def set_resting(self, resting: bool) -> None:
+        """Rest mode: asleep (eyes closed, zzz) until woken; touches and sounds do not wake it."""
+        self._resting = bool(resting)
+        self._thinking_since = None
+        if self._resting:
+            self._activity = ACTIVITY_ASLEEP
+        else:
+            self._last_activity = self._clock()
+            self._activity = ACTIVITY_AWAKE
 
     @property
     def activity(self) -> str:
@@ -60,17 +75,23 @@ class FaceStateMachine:
 
     def on_user_text(self) -> None:
         """Final recognized user sentence received: wait for the reply."""
-        if self._device_state == VISUAL_LISTENING:
+        if self._device_state == VISUAL_LISTENING and not self._resting:
             self._thinking_since = self._clock()
         self.touch()
 
     def touch(self) -> None:
-        """Record an interaction and wake up."""
+        """Record an interaction and wake up (not while resting)."""
+        if self._resting:
+            return
         self._last_activity = self._clock()
         self._activity = ACTIVITY_AWAKE
 
     def tick(self) -> None:
         """Advance time-based transitions."""
+        if self._resting:
+            self._thinking_since = None
+            self._activity = ACTIVITY_ASLEEP
+            return
         now = self._clock()
         if (
             self._thinking_since is not None

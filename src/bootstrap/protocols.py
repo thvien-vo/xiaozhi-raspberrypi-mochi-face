@@ -63,6 +63,12 @@ class PluginContext(Protocol):
         """
         ...
 
+    def is_resting(self) -> bool:
+        """
+        Whether rest mode is on: no listening, no speaking, no server session.
+        """
+        ...
+
     def get_config(self) -> Any:
         """
         Get configuration manager.

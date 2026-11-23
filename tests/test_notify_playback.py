@@ -13,6 +13,7 @@ class _FakeState:
     def __init__(self, state=DeviceState.IDLE):
         self.device_state = state
         self.keep_listening = False
+        self.resting = False
         self.listening_mode = None
         self.states = []
 

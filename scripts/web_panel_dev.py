@@ -329,8 +329,37 @@ def main() -> int:
         face_wake=(lambda: face.bridge.wake.emit()) if face is not None else (lambda: print("[dev] face wake")),
     )
     music = make_music(data_dir, not args.no_audio, controller, arbiter, player)
+    # Rest mode on its own event loop (the app's loop in the real robot)
+    from types import SimpleNamespace
+
+    from src.core.rest_mode import RestController
+    from src.plugins.rest import HeadRest
+
+    class DevConfig:
+        def __init__(self):
+            self.values = {}
+
+        def get_config(self, path, default=None):
+            return self.values.get(path, default)
+
+        def update_config(self, path, value, **_):
+            self.values[path] = value
+            print(f"[dev] save {path} = {value}")
+
+    rest = RestController(DevConfig(), SimpleNamespace(set_resting=lambda _v: None))
+    rest_loop = asyncio.new_event_loop()
+    threading.Thread(target=rest_loop.run_forever, daemon=True).start()
+    rest.attach_loop(rest_loop)
+    head_rest = HeadRest(controller, tracker, player)
+
+    def on_rest(resting, source):
+        print(f"[dev] rest={resting} ({source})")
+        state.update(face_activity="asleep" if resting else "awake")
+        head_rest.rest() if resting else head_rest.wake()
+
+    rest.add_listener(on_rest)
     backend = RobotBackend(
-        controller, tracker, arbiter=arbiter, player=player,
+        controller, tracker, arbiter=arbiter, player=player, rest=rest,
         library=MotionLibrary(data_dir / "motions"), app_state=state, hooks=hooks, camera=camera,
         save_setting=lambda path, value: print(f"[dev] save {path} = {value}"),
         eye_colors=eye_colors, face_frames=hub, music=music,

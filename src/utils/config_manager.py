@@ -121,6 +121,9 @@ class ConfigManager:
             # disconnect (with backoff); a tap interrupts speech instead of ending the chat.
             # Implies AUTO_MODE.
             "ALWAYS_LISTEN": False,
+            # Rest mode ("Nghỉ", switched from the web panel): no listening or speaking and no
+            # server session until woken; saved so a restart keeps it.
+            "RESTING": False,
             # With ALWAYS_LISTEN: greet out loud once per launch (at most once per
             # GREET_MIN_INTERVAL_S across restarts), then listen once the greeting ends. GREET_TEXT is sent as
             # a wake word, which the server answers with its own spoken greeting; it rejects long

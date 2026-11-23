@@ -143,6 +143,7 @@ async def setup_plugins(
         head_tracker=container.head_tracker,
         head_arbiter=container.head_arbiter,
         head_player=container.head_player,
+        rest=container.rest,
     )
     vision_plugin = VisionPlugin(container.vision)
 
@@ -166,6 +167,17 @@ async def setup_plugins(
                 player=container.head_player,
             )
         )
+    # Rest mode ("Nghỉ"): sleeping face and bowed head; the core part is in container.rest
+    from src.plugins.rest import RestPlugin
+
+    plugins.append(
+        RestPlugin(
+            container.rest,
+            servo=container.servo,
+            tracker=container.head_tracker,
+            player=container.head_player,
+        )
+    )
     # Web control panel (WEB.ENABLED): 3D head control, camera, face and chat
     if container.config.get_config("WEB.ENABLED", False):
         from src.plugins.web_panel import WebPanelPlugin

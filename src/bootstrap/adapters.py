@@ -44,6 +44,9 @@ class PluginContextAdapter:
     def is_keep_listening(self) -> bool:
         return self._container.state.keep_listening
 
+    def is_resting(self) -> bool:
+        return self._container.state.resting
+
     def get_config(self) -> ConfigManager:
         return self._container.config
 

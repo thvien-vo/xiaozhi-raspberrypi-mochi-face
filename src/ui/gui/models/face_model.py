@@ -194,6 +194,20 @@ class FaceModel(BaseModel):
     def end_speech(self) -> None:
         self._set_speech_active(False)
 
+    def set_resting(self, resting: bool) -> None:
+        """Rest mode: sleeping face (closed eyes, zzz), nothing wakes it until rest ends."""
+        self._machine.set_resting(resting)
+        if resting:
+            self._set_speech_active(False)
+            self._set_user_text("")
+            if self._speech_text:
+                self._speech_text = ""
+                self.speechChanged.emit()
+            if self._emotion != "neutral":
+                self._emotion = "neutral"
+                self.emotionChanged.emit()
+        self._sync()
+
     @Slot()
     def interact(self) -> None:
         """Touch, click or key press."""

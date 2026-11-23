@@ -57,6 +57,20 @@ class StateManager:
         # Abort flag
         self._aborted: bool = False
 
+        # Rest mode: no listening, no speaking, no server session (see src/core/rest_mode.py)
+        self._resting: bool = False
+
+    # -------------------------
+    # Rest mode
+    # -------------------------
+    @property
+    def resting(self) -> bool:
+        """True while the robot is resting: the microphone is never sent to the server."""
+        return self._resting
+
+    def set_resting(self, value: bool) -> None:
+        self._resting = bool(value)
+
     # -------------------------
     # Device state
     # -------------------------
@@ -178,6 +192,9 @@ class StateManager:
         1. Currently listening and not aborted
         2. Currently speaking, but AEC is enabled and continuous listening is active in REALTIME mode
         """
+        if self._resting:
+            return False
+
         if self._device_state == DeviceState.LISTENING and not self._aborted:
             return True
 
@@ -199,4 +216,5 @@ class StateManager:
             "keep_listening": self._keep_listening,
             "aec_enabled": self._aec_enabled,
             "aborted": self._aborted,
+            "resting": self._resting,
         }

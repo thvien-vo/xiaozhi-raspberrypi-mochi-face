@@ -30,6 +30,7 @@ class McpPlugin(Plugin):
         head_tracker=None,
         head_arbiter=None,
         head_player=None,
+        rest=None,
     ) -> None:
         super().__init__()
         if server is None:
@@ -43,6 +44,7 @@ class McpPlugin(Plugin):
         self._head_tracker = head_tracker
         self._head_arbiter = head_arbiter
         self._head_player = head_player
+        self._rest = rest
 
     async def setup(self, ctx: "PluginContext", cmd: "PluginCommands") -> None:
         await super().setup(ctx, cmd)
@@ -98,6 +100,11 @@ class McpPlugin(Plugin):
                     config.update_config, path, value
                 )
             register_face_tools(server.add_tool, eye_colors)
+
+            if self._rest is not None:
+                from src.mcp.tools.rest import register_rest_tools
+
+                register_rest_tools(server.add_tool, self._rest)
 
             server.add_common_tools(music_player=self._music_player)
         except Exception as e:

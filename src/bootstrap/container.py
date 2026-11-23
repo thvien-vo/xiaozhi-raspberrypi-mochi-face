@@ -15,6 +15,7 @@ from src.bootstrap.session import ConversationSession
 from src.core.event_bus import EventBus, Events
 from src.core.protocol_manager import ProtocolManager
 from src.core.resource_pool import ResourcePool
+from src.core.rest_mode import RestController
 from src.core.state_manager import StateManager
 from src.core.task_manager import TaskManager
 from src.logging import get_logger
@@ -67,6 +68,9 @@ class ServiceContainer:
             plugins=self.plugins,
             event_bus=self.event_bus,
         )
+
+        # Rest mode ("Nghỉ"): restores the saved state at once, so nothing connects while resting
+        self.rest = RestController(self.config, self.state, self.session)
 
         self._plugin_context: PluginContextAdapter | None = None
         self._plugin_commands: PluginCommandsAdapter | None = None

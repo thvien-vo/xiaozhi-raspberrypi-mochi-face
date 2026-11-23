@@ -100,6 +100,9 @@ class WakeWordPlugin(Plugin):
         Wake word detection callback.
         """
         try:
+            if self._ctx.is_resting():
+                logger.info("Resting: ignoring wake word")
+                return
             if self._ctx.is_speaking():
                 await self._cmd.abort_speaking(AbortReason.WAKE_WORD_DETECTED)
                 if self._audio_plugin and self._audio_plugin.codec:
