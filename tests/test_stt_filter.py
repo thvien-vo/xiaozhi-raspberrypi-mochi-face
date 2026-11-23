@@ -651,3 +651,29 @@ def test_ignored_sentence_shows_in_chat_with_its_own_role():
     state.add_chat("ignored", "La La School", note="La La School")
     (msg,) = state.chat_since(0)
     assert msg["role"] == "ignored" and msg["note"] == "La La School"
+
+
+def test_mic_inject_replaces_frames_and_follows_the_file(tmp_path, monkeypatch):
+    import wave
+
+    from src.audio_codecs.mic_inject import ENV, MicInjector
+
+    path = tmp_path / "in.wav"
+    assert MicInjector.from_env() is None or ENV in __import__("os").environ
+
+    def write(values):
+        with wave.open(str(path), "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(16000)
+            w.writeframes(np.asarray(values, dtype=np.int16).tobytes())
+
+    monkeypatch.setenv(ENV, str(path))
+    inj = MicInjector.from_env()
+    real = np.ones(4, dtype=np.float32)
+    assert inj.next_frame(real) is real  # No file yet: the real microphone
+    write([16384, 0, -16384])
+    inj._checked = 0
+    out = inj.next_frame(real)
+    assert np.allclose(out, [0.5, 0, -0.5, 0.5])  # Looped
+    assert np.allclose(inj.next_frame(real), [0, -0.5, 0.5, 0])

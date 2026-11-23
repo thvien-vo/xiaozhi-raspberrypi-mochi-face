@@ -97,6 +97,9 @@ class AudioCodec:
         self._encoded_callback: Callable | None = None
         # (pcm, opus) -> packets to send; see src/audio_processing/vad_gate.py
         self._input_gate: Callable | None = None
+        from src.audio_codecs.mic_inject import MicInjector
+
+        self._mic_inject = MicInjector.from_env(AudioConfig.INPUT_SAMPLE_RATE)
         self._audio_listeners: list[AudioListener] = []
         self._listeners_lock = threading.Lock()
 
@@ -184,6 +187,9 @@ class AudioCodec:
             )
             if audio_converted is None:
                 return  # Insufficient data, wait for next frame
+            if getattr(self, "_mic_inject", None) is not None:
+                # Test mode (XIAOZHI_MIC_INJECT_FILE): the file stands in for the microphone
+                audio_converted = self._mic_inject.next_frame(audio_converted)
 
             # 1.5 AEC: cancel echo using far reference extracted from playback callback (returns as-is when bypassed)
             if self._aec is not None and self._aec.active:
@@ -195,7 +201,7 @@ class AudioCodec:
                     opus_data = self.opus_codec.encode(
                         audio_converted, AudioConfig.INPUT_FRAME_SIZE
                     )
-                    gate = self._input_gate
+                    gate = getattr(self, "_input_gate", None)
                     if gate is None:
                         self._encoded_callback(opus_data)
                     else:
