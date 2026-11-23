@@ -69,6 +69,15 @@ class ServiceContainer:
             event_bus=self.event_bus,
         )
 
+        # STT hallucination filter: drops turns whose transcript is only noise/outro text
+        from src.core.stt_gate import get_stt_gate
+
+        self.stt_gate = get_stt_gate(self.config)
+        self.protocol.set_stt_gate(self.stt_gate)
+        self.session.attach_stt_gate(
+            self.stt_gate, lambda coro, name: self.tasks.spawn(coro, name=name)
+        )
+
         # Rest mode ("Nghỉ"): restores the saved state at once, so nothing connects while resting
         self.rest = RestController(self.config, self.state, self.session)
 

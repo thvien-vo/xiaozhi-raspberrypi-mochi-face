@@ -282,6 +282,41 @@
         </form>
         <p class="note" id="chat-note"></p>
       </div>
+
+      <div class="card" id="sf-card" hidden>
+        <div class="card-head"><h2>Lọc câu ảo giác</h2>
+          <label class="switch"><input type="checkbox" id="sf-enabled" aria-label="Bật bộ lọc câu ảo giác"><span></span></label>
+        </div>
+        <p class="note">Server đôi khi "nghe" ra câu từ tiếng ồn hoặc nhạc (như "La La School", "subscribe kênh…"). Câu <b>chỉ</b> gồm các mẫu dưới đây (không phân biệt dấu, hoa thường, cho phép sai chính tả nhẹ) bị bỏ qua: robot không trả lời, không chạy lệnh. Câu có thêm yêu cầu thật vẫn được trả lời.</p>
+        <div class="sf-stats" id="sf-stats"></div>
+        <details class="sf-section" id="sf-recent-box" open>
+          <summary>Câu đã bỏ qua gần đây <span class="pill" id="sf-recent-count">0</span></summary>
+          <ul class="list sf-recent" id="sf-recent"></ul>
+          <div class="row end"><button class="btn small" id="sf-recent-clear" type="button">Xóa danh sách</button></div>
+        </details>
+        <details class="sf-section" id="sf-patterns-box">
+          <summary>Mẫu câu ảo giác <span class="pill" id="sf-count">0</span></summary>
+          <form class="row" id="sf-add-form">
+            <input class="input" id="sf-add" maxlength="120" placeholder="Thêm mẫu, ví dụ: cảm ơn các bạn đã xem" autocomplete="off">
+            <button class="btn primary" type="submit">Thêm</button>
+          </form>
+          <ul class="sf-chips" id="sf-patterns"></ul>
+          <div class="row sf-foot">
+            <label class="sf-min">Bỏ qua câu ngắn hơn <input class="input" id="sf-min" type="number" min="0" max="20" step="1" inputmode="numeric"> chữ cái</label>
+            <button class="btn small" id="sf-reset" type="button">Đặt lại mặc định</button>
+          </div>
+        </details>
+      </div>
+
+      <div class="card" id="vad-card" hidden>
+        <div class="card-head"><h2>Nghe: chỉ gửi khi có tiếng nói</h2>
+          <label class="switch"><input type="checkbox" id="vad-enabled" aria-label="Bật VAD"><span></span></label>
+        </div>
+        <p class="note">VAD trên robot: micro chỉ gửi lên server khi nghe thấy tiếng người nói đủ lâu, kèm một đoạn ngay trước đó để không mất chữ đầu. Tắt VAD thì micro gửi liên tục (như trước).</p>
+        <div class="vad-live" id="vad-live"><span class="vad-dot" id="vad-dot"></span><span id="vad-status">-</span></div>
+        <div class="vad-sliders" id="vad-sliders"></div>
+        <p class="note" id="vad-note"></p>
+      </div>
     </div>
   </section>
 </main>

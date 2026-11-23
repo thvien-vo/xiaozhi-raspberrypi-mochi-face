@@ -84,7 +84,10 @@ class WebPanelPlugin(Plugin):
     async def setup(self, ctx: PluginContext, cmd: PluginCommands) -> None:
         await super().setup(ctx, cmd)
         from src.audio_codecs.levels import get_audio_levels
+        from src.audio_processing.stt_filter import get_stt_filter
+        from src.audio_processing.vad_gate import get_mic_vad
         from src.core.event_bus import Events
+        from src.core.stt_gate import get_stt_gate
         from src.servo.motion import MotionLibrary
         from src.utils.resource_finder import get_app_root, get_user_data_dir
         from src.web_panel.backend import AppHooks, AppState, RobotBackend
@@ -141,6 +144,9 @@ class WebPanelPlugin(Plugin):
             music=MusicControl(self._music_player, lambda: self._loop) if self._music_player is not None else None,
             levels=get_audio_levels(self._config),
             rest=self._rest,
+            stt_filter=get_stt_filter(self._config),
+            stt_gate=get_stt_gate(),
+            vad=get_mic_vad(self._config),
         )
         if self._music_player is not None:
             self._music_player.add_listener(self.backend._changed)
@@ -158,6 +164,7 @@ class WebPanelPlugin(Plugin):
         bus = ctx.event_bus
         bus.on(Events.PROTOCOL_CONNECTED, self._on_connected)
         bus.on(Events.PROTOCOL_DISCONNECTED, self._on_disconnected)
+        bus.on(Events.STT_IGNORED, self._on_stt_ignored)
 
     async def start(self) -> None:
         await super().start()
@@ -202,6 +209,11 @@ class WebPanelPlugin(Plugin):
             if emotion not in self.backend.app.emotions:
                 emotion = "neutral"
             self.backend.app.update(emotion=emotion)
+
+    async def _on_stt_ignored(self, data=None) -> None:
+        """A hallucinated transcript was dropped: shown greyed out, never as the user's words."""
+        if self.backend is not None and isinstance(data, dict):
+            self.backend.app.add_chat("ignored", str(data.get("text") or ""), note=str(data.get("pattern") or ""))
 
     async def _on_connected(self, _data=None) -> None:
         if self.backend is not None:

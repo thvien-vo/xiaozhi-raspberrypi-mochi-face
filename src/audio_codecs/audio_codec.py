@@ -95,6 +95,8 @@ class AudioCodec:
 
         # Listeners (thread-safe)
         self._encoded_callback: Callable | None = None
+        # (pcm, opus) -> packets to send; see src/audio_processing/vad_gate.py
+        self._input_gate: Callable | None = None
         self._audio_listeners: list[AudioListener] = []
         self._listeners_lock = threading.Lock()
 
@@ -193,7 +195,13 @@ class AudioCodec:
                     opus_data = self.opus_codec.encode(
                         audio_converted, AudioConfig.INPUT_FRAME_SIZE
                     )
-                    self._encoded_callback(opus_data)
+                    gate = self._input_gate
+                    if gate is None:
+                        self._encoded_callback(opus_data)
+                    else:
+                        # Local VAD: none, one or a burst (pre-roll) of packets to send
+                        for packet in gate(audio_converted, opus_data):
+                            self._encoded_callback(packet)
                 except Exception as e:
                     logger.warning(f"Encoding failed: {e}", exc_info=True)
 
@@ -488,6 +496,13 @@ class AudioCodec:
             logger.info("Encoded audio callback set")
         else:
             logger.info("Encoded audio callback cleared")
+
+    def set_input_gate(self, gate: Callable | None) -> None:
+        """Filter between the encoder and the encoded callback (audio input thread).
+
+        gate(pcm_16k_float32, opus_packet) returns the packets to pass on now.
+        """
+        self._input_gate = gate
 
     def add_audio_listener(self, listener: AudioListener):
         """Add audio listener (thread-safe)

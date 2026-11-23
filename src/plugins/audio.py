@@ -72,6 +72,11 @@ class AudioPlugin(Plugin):
         from src.audio_codecs.levels import get_audio_levels
 
         get_audio_levels(ctx.get_config()).attach(codec)
+        # Local VAD: only frames with speech (plus pre-roll and hangover) go to the server
+        from src.audio_processing.vad_gate import get_mic_vad
+
+        if hasattr(codec, "set_input_gate"):
+            codec.set_input_gate(get_mic_vad(ctx.get_config()).push)
 
         from src.core.event_bus import Events
 
@@ -181,6 +186,11 @@ class AudioPlugin(Plugin):
             self.codec.set_music_ducked(state == DeviceState.SPEAKING)
 
         if state == DeviceState.LISTENING:
+            # A new sentence starts: close the VAD and drop its pre-roll (it may hold the
+            # tail of the robot's own voice)
+            from src.audio_processing.vad_gate import get_mic_vad
+
+            get_mic_vad().reset()
             self._in_silence_period = True
             try:
                 await asyncio.sleep(0.2)
@@ -305,6 +315,12 @@ class AudioPlugin(Plugin):
         """
         try:
             if self._in_silence_period:
+                return False
+            # A hallucinated transcript was just dropped: hold the microphone until the
+            # session has reopened listening (src/core/stt_gate.py)
+            from src.core.stt_gate import get_stt_gate
+
+            if get_stt_gate().mic_blocked:
                 return False
             return self._ctx.should_capture_audio()
         except Exception as e:

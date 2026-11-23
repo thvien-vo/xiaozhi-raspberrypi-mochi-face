@@ -50,6 +50,9 @@ class Events:
     MUSIC_LYRICS_UPDATE = "music_lyrics_update"  # Lyrics updated
     MUSIC_PROGRESS_UPDATE = "music_progress_update"  # Progress updated
 
+    # A transcript was dropped as an STT hallucination (payload: dict text/pattern/time)
+    STT_IGNORED = "stt_ignored"
+
     # Server one-way notification subtitle (payload: str)
     NOTIFICATION_SUBTITLE = "notification_subtitle"
 

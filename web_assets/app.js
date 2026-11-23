@@ -3,6 +3,7 @@ import { Robot3D } from "./robot3d.js";
 import { FaceScreen } from "./face.js";
 import { MusicTab } from "./music.js";
 import { VolumePanel } from "./volume.js";
+import { ListenPanel } from "./listen.js";
 
 const $ = (id) => document.getElementById(id);
 const SEND_INTERVAL_MS = 50;      // Angle commands while dragging: at most 20 per second
@@ -130,6 +131,7 @@ function onState(s) {
   renderRest(); renderChips(); renderAngles(); renderTracking(); renderMotion(); renderFace(); renderChatState(); renderCameraAvailability();
   music.onState(s.music);
   volume.onState(s.volume);
+  listen.onState(s);
 }
 
 // Rest mode: one switch in the top bar; the robot owns the state (all pages follow it)
@@ -407,8 +409,16 @@ function onChat(messages) {
     state.chatIds.add(m.id);
     box.querySelector(".empty")?.remove();
     const el = document.createElement("div");
-    el.className = `msg ${m.role === "user" ? "user" : "robot"}`;
+    // "ignored": a transcript the STT filter dropped (noise the server misheard)
+    el.className = `msg ${m.role === "user" ? "user" : m.role === "ignored" ? "ignored" : "robot"}`;
     el.textContent = m.text;
+    if (m.role === "ignored") {
+      el.title = m.note ? `Khớp mẫu: ${m.note}` : "Bị bộ lọc bỏ qua";
+      const tag = document.createElement("small");
+      tag.className = "msg-tag";
+      tag.textContent = "đã bỏ qua";
+      el.prepend(tag);
+    }
     const t = document.createElement("time");
     t.textContent = new Date(m.time * 1000).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
     el.append(t);
@@ -554,6 +564,7 @@ function stopTilt() {
 // ---------- Music ----------
 const music = new MusicTab({ send, command, toast });
 const volume = new VolumePanel({ send });
+const listen = new ListenPanel({ send, command });
 window.__music = music;
 
 // ---------- 3D ----------

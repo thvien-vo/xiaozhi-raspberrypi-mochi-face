@@ -44,6 +44,16 @@ class ProtocolTransport:
         )
         self._audio_consumer_task: Optional[asyncio.Task] = None
         self._audio_consumer_running = False
+        # Drops turns whose transcript is an STT hallucination (src/core/stt_gate.py)
+        self._stt_gate = None
+
+    def set_stt_gate(self, gate) -> None:
+        """Ask this gate about every server message and audio frame, in arrival order."""
+        self._stt_gate = gate
+
+    @property
+    def stt_gate(self):
+        return self._stt_gate
 
     def set_task_manager(self, task_manager: "TaskManager") -> None:
         """Inject TaskManager (can be bound after container initialization)."""
@@ -220,12 +230,21 @@ class ProtocolTransport:
         await self._event_bus.emit(Events.NETWORK_ERROR, error_message)
 
     def _on_incoming_json(self, json_data: dict) -> None:
+        # Decided here, synchronously, so the order against the audio frames is kept
+        gate = self._stt_gate
+        if gate is not None and not gate.filter_json(json_data):
+            msg_type = json_data.get("type") if isinstance(json_data, dict) else None
+            logger.info(f"Dropped JSON message of an ignored turn: type={msg_type}")
+            return
         self._spawn(
             self._event_bus.emit(Events.INCOMING_JSON, json_data),
             name="protocol:incoming_json",
         )
 
     def _on_incoming_audio(self, data: bytes) -> None:
+        gate = self._stt_gate
+        if gate is not None and not gate.filter_audio():
+            return
         try:
             self._ensure_audio_consumer()
             self._enqueue_audio(data)
@@ -239,6 +258,8 @@ class ProtocolTransport:
 
     async def _on_audio_channel_closed(self) -> None:
         logger.info("Protocol channel closed")
+        if self._stt_gate is not None:
+            self._stt_gate.reset()
         await self._event_bus.emit(Events.AUDIO_CHANNEL_CLOSED)
         await self._event_bus.emit(Events.PROTOCOL_DISCONNECTED)
 
@@ -349,6 +370,10 @@ class ProtocolGateway:
 
     async def send_wake_word_detected(self, wake_word: str) -> None:
         protocol = self._transport.protocol
+        gate = self._transport.stt_gate
+        if gate is not None:
+            # Typed text and the greeting come back as a transcript: never filter those
+            gate.note_typed(wake_word)
         if protocol and self._transport.is_audio_channel_opened():
             await protocol.send_wake_word_detected(wake_word)
         else:
@@ -394,6 +419,13 @@ class ProtocolManager:
 
     def set_audio_handler(self, handler: Optional[AudioCallback]) -> None:
         self._transport.set_audio_handler(handler)
+
+    def set_stt_gate(self, gate) -> None:
+        self._transport.set_stt_gate(gate)
+
+    @property
+    def stt_gate(self):
+        return self._transport.stt_gate
 
     def set_idle_checker(self, checker: Callable[[], bool]) -> None:
         self._transport.set_idle_checker(checker)

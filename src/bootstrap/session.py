@@ -22,6 +22,10 @@ if TYPE_CHECKING:
 
 logger = get_logger()
 
+# After dropping a hallucinated turn: reopen listening this long after the abort if the
+# server has not sent the turn's "tts stop" by then
+STT_RESUME_FALLBACK_S = 2.5
+
 
 class ConversationSession:
     """Application-level session controller."""
@@ -44,6 +48,110 @@ class ConversationSession:
         self._notification_player = notification_player
         self._notification_generation = 0
         self._notification_lock = asyncio.Lock()
+
+    # -------------------------
+    # STT hallucination filter (src/core/stt_gate.py)
+    # -------------------------
+    def attach_stt_gate(self, gate, spawn) -> None:
+        """Handle the turns the gate drops; spawn(coro, name) schedules on the app loop."""
+        self._stt_gate = gate
+        self._spawn = spawn
+        self._dropped_turn = 0
+        self._resumed_turn = 0
+        gate.on_drop = self._on_stt_dropped
+        gate.on_resume = lambda turn: self._spawn_safe(self.resume_after_dropped_turn(turn), "stt:resume")
+        gate.on_tool_blocked = lambda payload: self._spawn_safe(self._refuse_tool_call(payload), "stt:tool")
+
+    def _spawn_safe(self, coro, name: str) -> None:
+        spawn = getattr(self, "_spawn", None)
+        task = spawn(coro, name) if spawn is not None else None
+        if task is None and asyncio.iscoroutine(coro):
+            coro.close()
+
+    def _on_stt_dropped(self, turn: int, text: str, result) -> None:
+        self._dropped_turn = turn
+        self._spawn_safe(self.drop_hallucinated_turn(turn, text, getattr(result, "label", "")), "stt:drop")
+
+    async def drop_hallucinated_turn(self, turn: int, text: str = "", pattern: str = "") -> None:
+        """The server is about to answer a hallucinated sentence: stop it, say nothing.
+
+        The face stays as it is (listening): the gate swallows tts/llm, so no state change
+        reaches it. Listening resumes on the turn's "tts stop" or after a short fallback.
+        """
+        if self._event_bus is not None:
+            try:
+                await self._event_bus.emit(
+                    Events.STT_IGNORED, {"text": text, "pattern": pattern, "turn": turn}
+                )
+            except Exception:
+                logger.debug("STT_IGNORED subscribers failed", exc_info=True)
+        if self.protocol.is_audio_channel_opened():
+            try:
+                await self.protocol.send_abort_speaking(None)
+                logger.info("STT filter: sent abort for the ignored turn")
+            except Exception as e:
+                logger.warning(f"STT filter: failed to send abort: {e}", exc_info=True)
+        await self._clear_tts_queue()
+        await asyncio.sleep(STT_RESUME_FALLBACK_S)
+        if self._resumed_turn < turn and getattr(self, "_dropped_turn", 0) == turn:
+            logger.info("STT filter: no tts stop after the abort, reopening listening anyway")
+            await self.resume_after_dropped_turn(turn)
+
+    async def resume_after_dropped_turn(self, turn: int) -> None:
+        """Back to normal listening after a dropped turn (once per turn)."""
+        if turn <= self._resumed_turn:
+            return
+        self._resumed_turn = turn
+        gate = getattr(self, "_stt_gate", None)
+        await self._clear_tts_queue()
+        if (
+            not self.state.resting
+            and self.state.keep_listening
+            and self.state.listening_mode != ListeningMode.REALTIME
+            and self.protocol.is_audio_channel_opened()
+        ):
+            try:
+                await self.protocol.send_start_listening(self.state.listening_mode)
+            except Exception as e:
+                logger.warning(f"STT filter: failed to restart listening: {e}", exc_info=True)
+        if gate is not None:
+            gate.release_mic(turn)
+        if self.state.keep_listening and not self.state.resting and not self.state.is_listening():
+            await self.state.set_device_state(DeviceState.LISTENING)
+        else:
+            # Same as entering listening: VAD closed, pre-roll dropped
+            try:
+                from src.audio_processing.vad_gate import get_mic_vad
+
+                get_mic_vad().reset()
+            except Exception:
+                pass
+        logger.info("STT filter: listening again after the ignored turn")
+
+    async def _refuse_tool_call(self, payload: dict) -> None:
+        request_id = payload.get("id")
+        if request_id is None:
+            return
+        reply = {
+            "jsonrpc": "2.0",
+            "id": request_id,
+            "result": {
+                "content": [{"type": "text", "text": "Cancelled: the sentence was background noise."}],
+                "isError": True,
+            },
+        }
+        try:
+            await self.protocol.send_mcp_message(reply)
+        except Exception as e:
+            logger.warning(f"STT filter: failed to answer the blocked tool call: {e}")
+
+    async def _clear_tts_queue(self) -> None:
+        try:
+            audio_plugin = self.plugins.get_plugin("audio")
+            if audio_plugin and audio_plugin.codec:
+                await audio_plugin.codec.clear_audio_queue()
+        except Exception as e:
+            logger.warning(f"Failed to clear audio queue: {e}", exc_info=True)
 
     def set_notification_player(self, player: NotificationPlayer) -> None:
         """Inject notify playback service from the container."""

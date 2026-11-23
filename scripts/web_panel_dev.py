@@ -358,12 +358,34 @@ def main() -> int:
         head_rest.rest() if resting else head_rest.wake()
 
     rest.add_listener(on_rest)
+    # STT hallucination filter and VAD: the real classes, a dev config, a few sample entries
+    from src.audio_processing.stt_filter import SttFilter
+    from src.audio_processing.vad_gate import MicVadGate
+    from src.core.stt_gate import SttGate
+
+    stt_filter = SttFilter.from_config(DevConfig())
+    stt_gate = SttGate(stt_filter)
+    for heard in ("Hãy subscribe cho kênh Ghiền Mì Gõ để không bỏ lỡ những video hấp dẫn", "La La School"):
+        if not stt_gate.filter_json({"type": "stt", "text": heard}):
+            stt_gate.filter_json({"type": "tts", "state": "stop"})
+            state.add_chat("ignored", heard, note=stt_filter.snapshot()["recent"][0]["pattern"])
+    vad = MicVadGate.from_config(DevConfig())
+
+    def feed_vad():
+        """Room noise into the VAD so its status is live (no microphone in dev)."""
+        rng = np.random.default_rng(1)
+        while True:
+            vad.push((rng.standard_normal(320) * 0.003).astype(np.float32), b"x")
+            time.sleep(0.02)
+
+    threading.Thread(target=feed_vad, daemon=True).start()
     backend = RobotBackend(
         controller, tracker, arbiter=arbiter, player=player, rest=rest,
         library=MotionLibrary(data_dir / "motions"), app_state=state, hooks=hooks, camera=camera,
         save_setting=lambda path, value: print(f"[dev] save {path} = {value}"),
         eye_colors=eye_colors, face_frames=hub, music=music,
         levels=get_audio_levels(),
+        stt_filter=stt_filter, stt_gate=stt_gate, vad=vad,
     )
     music.player.add_listener(backend._changed)
     web = WebSettings(

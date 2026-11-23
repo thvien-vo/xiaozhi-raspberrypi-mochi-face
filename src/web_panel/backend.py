@@ -92,7 +92,8 @@ class AppState:
         if changed:
             self._notify()
 
-    def add_chat(self, role: str, text: str) -> None:
+    def add_chat(self, role: str, text: str, note: str = "") -> None:
+        """role: user, robot, or ignored (a transcript the STT filter dropped)."""
         text = (text or "").strip()
         if not text:
             return
@@ -101,7 +102,10 @@ class AppState:
             if self._chat and self._chat[-1]["role"] == role and self._chat[-1]["text"] == text:
                 return
             self._chat_seq += 1
-            self._chat.append({"id": self._chat_seq, "role": role, "text": text[:1000], "time": time.time()})
+            entry = {"id": self._chat_seq, "role": role, "text": text[:1000], "time": time.time()}
+            if note:
+                entry["note"] = note[:200]
+            self._chat.append(entry)
         self._notify()
 
     def chat_since(self, seq: int) -> list[dict]:
@@ -151,6 +155,9 @@ class RobotBackend:
         music=None,
         levels=None,
         rest=None,
+        stt_filter=None,
+        stt_gate=None,
+        vad=None,
     ) -> None:
         self.controller = controller
         self.tracker = tracker
@@ -170,6 +177,13 @@ class RobotBackend:
         self.music = music  # src.web_panel.music.MusicControl
         self.levels = levels  # src.audio_codecs.levels.AudioLevels
         self.rest = rest  # src.core.rest_mode.RestController
+        self.stt_filter = stt_filter  # src.audio_processing.stt_filter.SttFilter
+        self.stt_gate = stt_gate  # src.core.stt_gate.SttGate
+        self.vad = vad  # src.audio_processing.vad_gate.MicVadGate
+        if stt_filter is not None:
+            stt_filter.add_listener(self._changed)
+        if vad is not None:
+            vad.add_listener(self._changed)
         if rest is not None:
             rest.add_listener(lambda _resting, _source: self._changed())
         if levels is not None:
@@ -246,6 +260,62 @@ class RobotBackend:
             return {"ok": False, "message": "không chỉnh được âm lượng"}
         now = self.levels.toggle_muted() if muted is None else self.levels.set_muted(muted)
         return {"ok": True, "message": "Đã tắt tiếng" if now else "Đã bật tiếng"}
+
+    # ----- STT hallucination filter and VAD -----
+
+    def _need_filter(self):
+        if self.stt_filter is None:
+            raise CommandError("bộ lọc câu ảo giác không chạy")
+        return self.stt_filter
+
+    def _cmd_stt_filter(self, enabled: bool | None, min_chars: int | None) -> dict:
+        f = self._need_filter()
+        if enabled is not None:
+            f.set_enabled(enabled)
+        if min_chars is not None:
+            f.set_min_chars(min_chars)
+        if enabled is not None:
+            return {"ok": True, "message": "Đã bật bộ lọc" if enabled else "Đã tắt bộ lọc"}
+        return {"ok": True, "message": f"Câu ngắn hơn {f.min_chars} chữ cái sẽ bị bỏ qua"}
+
+    def _cmd_stt_pattern_add(self, pattern: str) -> dict:
+        try:
+            added = self._need_filter().add_pattern(pattern)
+        except ValueError as e:
+            return {"ok": False, "message": str(e)}
+        return {"ok": True, "message": f"Đã thêm mẫu: {added}"}
+
+    def _cmd_stt_pattern_remove(self, pattern: str) -> dict:
+        try:
+            removed = self._need_filter().remove_pattern(pattern)
+        except ValueError as e:
+            return {"ok": False, "message": str(e)}
+        return {"ok": True, "message": f"Đã xóa mẫu: {removed}"}
+
+    def _cmd_stt_patterns_reset(self) -> dict:
+        self._need_filter().reset_patterns()
+        return {"ok": True, "message": "Đã đặt lại danh sách mẫu mặc định"}
+
+    def _cmd_stt_recent_clear(self) -> dict:
+        self._need_filter().clear_recent()
+        return {"ok": True}
+
+    def _cmd_vad(self, save: bool = True, **values) -> dict:
+        if self.vad is None:
+            return {"ok": False, "message": "VAD không chạy (không có micro)"}
+        new = self.vad.update(save=save, **values)
+        self._changed()
+        if values.get("enabled") is not None:
+            return {"ok": True, "message": "Đã bật VAD" if new.enabled else "Đã tắt VAD: gửi micro liên tục"}
+        return {"ok": True}
+
+    def stt_filter_snapshot(self) -> dict | None:
+        if self.stt_filter is None:
+            return None
+        snap = self.stt_filter.snapshot()
+        if self.stt_gate is not None:
+            snap["gate"] = self.stt_gate.snapshot()
+        return snap
 
     @property
     def resting(self) -> bool:
@@ -467,6 +537,8 @@ class RobotBackend:
             "music": self.music.snapshot() if self.music is not None else None,
             "volume": self.levels.snapshot() if self.levels is not None else None,
             "rest": self.rest.snapshot() if self.rest is not None else None,
+            "stt_filter": self.stt_filter_snapshot(),
+            "vad": self.vad.snapshot() if self.vad is not None else None,
         }
 
     def face_snapshot(self) -> dict:

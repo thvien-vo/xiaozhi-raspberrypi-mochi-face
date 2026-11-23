@@ -126,6 +126,49 @@ def _parse_volume(kind: str, data: dict) -> Command:
     return Command(kind, {"muted": muted})
 
 
+# VAD settings the page may change, with the ranges the gate clamps to again
+VAD_FIELDS = {
+    "threshold": (0.1, 0.95),
+    "min_speech_ms": (60.0, 2000.0),
+    "preroll_ms": (0.0, 1000.0),
+    "hangover_ms": (200.0, 3000.0),
+    "energy_db": (-80.0, -10.0),
+}
+
+
+def _parse_stt_filter(kind: str, data: dict) -> Command:
+    from src.audio_processing.stt_filter import MIN_CHARS_RANGE, clean_pattern
+
+    if kind == "stt_filter":
+        enabled = None if data.get("enabled") is None else _bool(data, "enabled")
+        min_chars = _number(data, "min_chars", *MIN_CHARS_RANGE, required=False)
+        if enabled is None and min_chars is None:
+            raise CommandError("cần 'enabled' hoặc 'min_chars'")
+        return Command(kind, {"enabled": enabled, "min_chars": None if min_chars is None else int(round(min_chars))})
+    if kind in ("stt_pattern_add", "stt_pattern_remove"):
+        value = data.get("pattern")
+        if kind == "stt_pattern_add":
+            try:
+                value = clean_pattern(value)
+            except ValueError as e:
+                raise CommandError(str(e)) from e
+        elif not isinstance(value, str) or not value.strip():
+            raise CommandError("'pattern' phải là chuỗi")
+        return Command(kind, {"pattern": value})
+    if kind in ("stt_patterns_reset", "stt_recent_clear"):
+        return Command(kind)
+    raise CommandError(f"lệnh không biết: {kind}")
+
+
+def _parse_vad(data: dict) -> Command:
+    args = {k: _number(data, k, lo, hi, required=False) for k, (lo, hi) in VAD_FIELDS.items()}
+    args["enabled"] = None if data.get("enabled") is None else _bool(data, "enabled")
+    if all(v is None for v in args.values()):
+        raise CommandError("không có tham số VAD nào")
+    args["save"] = data.get("save") is not False
+    return Command("vad", args)
+
+
 def parse_command(
     raw: str | bytes,
     pan_limit: float,
@@ -209,6 +252,10 @@ def parse_command(
         return _parse_music(kind, data)
     if kind in ("volume", "volume_step", "mute"):
         return _parse_volume(kind, data)
+    if kind.startswith("stt_"):
+        return _parse_stt_filter(kind, data)
+    if kind == "vad":
+        return _parse_vad(data)
     if kind == "send_text":
         return Command(kind, {"text": _text(data, "text", MAX_TEXT_CHARS)})
     raise CommandError(f"lệnh không biết: {kind}")

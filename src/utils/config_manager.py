@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict
 
 from src.logging import get_logger
+from src.audio_processing.stt_filter import DEFAULT_PATTERNS as DEFAULT_STT_PATTERNS
 from src.utils.resource_finder import (
     get_config_dir,
     get_user_data_dir,
@@ -325,6 +326,25 @@ class ConfigManager:
             "MUSIC": None,
             "EFFECTS": 100,  # Sound effects (none play yet)
             "MUTED": False,
+        },
+        # Sentences the server STT invents from noise/music; the robot drops those turns
+        # (src/audio_processing/stt_filter.py; edited from the web panel's chat tab).
+        # Ignored when the text is only patterns (fuzzy, no accents/case) and filler words,
+        # or has fewer than MIN_CHARS letters.
+        "STT_FILTER": {
+            "ENABLED": True,
+            "PATTERNS": list(DEFAULT_STT_PATTERNS),
+            "MIN_CHARS": 2,
+        },
+        # Local voice activity detection: microphone audio goes to the server only while
+        # someone speaks (src/audio_processing/vad_gate.py; Silero via sherpa-onnx)
+        "VAD": {
+            "ENABLED": True,
+            "THRESHOLD": 0.5,  # Silero speech probability, 0.1-0.95 (higher = stricter)
+            "MIN_SPEECH_MS": 300,  # Speech needed before sending starts
+            "PREROLL_MS": 300,  # Audio from before the speech that is sent too
+            "HANGOVER_MS": 900,  # Silence after speech that is still sent
+            "ENERGY_DB": -50.0,  # Quietest level (dBFS) that can count as speech
         },
         # Music API (empty string = use built-in default URL at runtime)
         "MUSIC": {
