@@ -15,9 +15,15 @@ synchronously and in arrival order (see src/core/protocol_manager.py):
 * While suppressing, ``tts``, ``llm`` and MCP ``tools/call`` messages are swallowed (a tool
   call gets an error answer through ``on_tool_blocked`` so the server does not wait for it),
   and so is every audio frame. The microphone is held closed too (``mic_blocked``).
-* The swallowed ``tts stop`` ends the turn and runs ``on_resume`` (the session reopens the
-  listening). Audio frames stay blocked until the next turn's ``tts start``, so speech that
-  arrives late for the dropped turn is never played.
+* The turn ends with a ``tts stop`` that follows its ``tts start``; ``on_resume`` runs (the
+  session reopens listening). Measured on the official server (2026-11-23): when the abort
+  arrives before ``tts start``, the server answers it with an immediate ``tts stop`` and then
+  sends ``llm``, ``tts start``, the sentences and the audio of the reply anyway. So a
+  ``tts stop`` without a ``start`` does not end the turn; a later ``tts start`` triggers
+  ``on_late_start`` (the session aborts again), and the session's watchdog ends the turn
+  (``finish``) when no reply follows the early stop within a few seconds.
+* Audio frames stay blocked until the next delivered ``tts start``, so speech that arrives
+  late for the dropped turn is never played.
 * A real ``stt`` during suppression (the user spoke) ends it at once and is delivered.
   Suppression also ends by itself after ``max_suppress_s``, for a server that never sends
   ``tts stop`` after an abort (the session also has its own resume fallback).
@@ -57,6 +63,8 @@ class SttGate:
         self._audio_blocked = False
         self._mic_blocked = False
         self._turn = 0
+        self._seen_start = False  # A "tts start" arrived for the dropped turn
+        self._early_stop_at: float | None = None  # "tts stop" that came before any start
         self._typed: list[tuple[float, str]] = []
         self.dropped_turns = 0
         self.dropped_audio_frames = 0
@@ -65,6 +73,8 @@ class SttGate:
         self.on_drop: Callable[[int, str, Any], None] | None = None
         self.on_resume: Callable[[int], None] | None = None
         self.on_tool_blocked: Callable[[dict], None] | None = None
+        # The server started speaking the dropped turn anyway (abort came too early): abort again
+        self.on_late_start: Callable[[int], None] | None = None
 
     # ----- State -----
 
@@ -83,6 +93,23 @@ class SttGate:
     def turn(self) -> int:
         with self._lock:
             return self._turn
+
+    def early_stop_age(self) -> float | None:
+        """Seconds since a "tts stop" that arrived before any "tts start" of the dropped turn."""
+        with self._lock:
+            if not self._suppressing or self._seen_start or self._early_stop_at is None:
+                return None
+            return self._clock() - self._early_stop_at
+
+    def finish(self, turn: int, reason: str = "") -> bool:
+        """End the drop of this turn now (the session's watchdog); runs on_resume."""
+        with self._lock:
+            if not self._suppressing or turn != self._turn:
+                return False
+            self._suppressing = False
+        logger.info(f"STT filter: dropped turn over ({reason or 'watchdog'})")
+        self._call(self.on_resume, turn)
+        return True
 
     def release_mic(self, turn: int | None = None) -> None:
         with self._lock:
@@ -117,6 +144,7 @@ class SttGate:
         resume_turn = None
         drop = None
         blocked_tool = None
+        late_start = None
         deliver = True
         with self._lock:
             if self._suppressing and now - self._suppress_since > self._max_suppress_s:
@@ -132,6 +160,8 @@ class SttGate:
                     self._turn += 1
                     self._suppressing = True
                     self._suppress_since = now
+                    self._seen_start = False
+                    self._early_stop_at = None
                     self._audio_blocked = True
                     self._mic_blocked = True
                     self.dropped_turns += 1
@@ -146,9 +176,20 @@ class SttGate:
                 swallow = False
                 if kind in ("tts", "llm"):
                     swallow = True
-                    if kind == "tts" and message.get("state") == "stop":
-                        self._suppressing = False
-                        resume_turn = self._turn
+                    state = message.get("state") if kind == "tts" else None
+                    if state == "start" and not self._seen_start:
+                        self._seen_start = True
+                        if self._early_stop_at is not None:
+                            # The server acknowledged the abort, then started the reply anyway
+                            late_start = self._turn
+                    elif state == "stop":
+                        if self._seen_start:
+                            self._suppressing = False
+                            resume_turn = self._turn
+                        elif self._early_stop_at is None:
+                            # Answer to our abort, sent before the reply even started: the
+                            # official server may still send the reply after it
+                            self._early_stop_at = now
                 elif kind == "mcp":
                     payload = message.get("payload")
                     if isinstance(payload, dict) and payload.get("method") == "tools/call":
@@ -171,6 +212,9 @@ class SttGate:
                 (blocked_tool.get("params") or {}).get("name"),
             )
             self._call(self.on_tool_blocked, blocked_tool)
+        if late_start is not None:
+            logger.info("STT filter: server started the dropped reply after the abort; aborting again")
+            self._call(self.on_late_start, late_start)
         if resume_turn is not None:
             self._call(self.on_resume, resume_turn)
         return deliver

@@ -238,6 +238,46 @@ def test_gate_swallows_the_whole_hallucinated_turn():
     assert not gate.mic_blocked
 
 
+def early_abort_turn(text="Hãy subscribe cho kênh La La School"):
+    """Seen on the official server: our abort lands before "tts start"; the server answers
+    it with "tts stop" at once, then sends the whole reply anyway."""
+    return [
+        {"type": "stt", "text": text},
+        {"type": "tts", "state": "stop"},
+        {"type": "alert", "status": "x"},
+        {"type": "llm", "emotion": "happy"},
+        {"type": "tts", "state": "start"},
+        {"type": "tts", "state": "sentence_start", "text": "Mời bạn subscribe kênh La La School!"},
+        "AUDIO", "AUDIO",
+        {"type": "tts", "state": "stop"},
+    ]
+
+
+def test_reply_sent_after_the_abort_is_still_swallowed():
+    gate = SttGate(SttFilter())
+    events = []
+    gate.on_drop = lambda turn, text, result: events.append("drop")
+    gate.on_late_start = lambda turn: events.append(("abort again", turn))
+    gate.on_resume = lambda turn: events.append(("resume", turn))
+    delivered = run_gate(gate, early_abort_turn())
+    assert delivered == [{"type": "alert", "status": "x"}]  # Nothing of the reply
+    assert events == ["drop", ("abort again", 1), ("resume", 1)]
+    assert gate.dropped_audio_frames == 2
+
+
+def test_early_stop_without_a_reply_waits_for_the_watchdog():
+    t = [10.0]
+    gate = SttGate(SttFilter(), clock=lambda: t[0])
+    resumed = []
+    gate.on_resume = resumed.append
+    run_gate(gate, early_abort_turn()[:2])
+    assert gate.suppressing and resumed == []
+    t[0] += 2.5
+    assert gate.early_stop_age() == pytest.approx(2.5)
+    assert gate.finish(1, "test") and resumed == [1]
+    assert not gate.finish(1)  # Once
+
+
 def test_late_audio_of_a_dropped_turn_is_not_played():
     gate = SttGate(SttFilter())
     run_gate(gate, hallucinated_turn())
@@ -336,7 +376,8 @@ class FakePlugins:
 async def wired(monkeypatch):
     import src.bootstrap.session as session_mod
 
-    monkeypatch.setattr(session_mod, "STT_RESUME_FALLBACK_S", 0.05)
+    monkeypatch.setattr(session_mod, "STT_RESUME_FALLBACK_S", 0.3)
+    monkeypatch.setattr(session_mod, "STT_EARLY_STOP_WAIT_S", 0.1)
     bus = EventBus()
     state = StateManager(bus)
     protocol = FakeProtocol()
@@ -408,6 +449,31 @@ async def test_hallucinated_turn_is_silent_and_runs_no_tool(monkeypatch):
     await transport._stop_audio_consumer()
 
 
+async def test_reply_after_an_early_abort_never_plays(monkeypatch):
+    transport, session, state, protocol, plugins, gate, played, ignored = await wired(monkeypatch)
+    turn = early_abort_turn()
+    feed(transport, turn[:2])  # stt + the abort's immediate "tts stop"
+    await asyncio.sleep(0.03)
+    assert gate.mic_blocked and gate.suppressing  # Not over yet: the reply may follow
+    feed(transport, turn[2:])
+    await settle()
+    assert played == []
+    assert [m["type"] for m in plugins.json] == ["alert"]
+    assert protocol.calls.count(("abort", None)) == 2  # Second abort when the reply started
+    assert protocol.calls.count(("listen", ListeningMode.AUTO_STOP)) == 1
+    assert not gate.mic_blocked and state.device_state == DeviceState.LISTENING
+    await transport._stop_audio_consumer()
+
+
+async def test_early_abort_without_reply_reopens_listening(monkeypatch):
+    transport, session, state, protocol, plugins, gate, played, ignored = await wired(monkeypatch)
+    feed(transport, early_abort_turn()[:2])
+    await settle()
+    assert ("listen", ListeningMode.AUTO_STOP) in protocol.calls
+    assert not gate.mic_blocked and not gate.suppressing
+    await transport._stop_audio_consumer()
+
+
 async def _record(states, data):
     states.append(data)
 
@@ -416,12 +482,14 @@ async def test_resume_falls_back_when_no_tts_stop_comes(monkeypatch):
     transport, session, state, protocol, plugins, gate, played, ignored = await wired(monkeypatch)
     feed(transport, hallucinated_turn()[:3])  # stt, tts start, llm; then nothing
     await settle()
+    assert gate.mic_blocked  # The server may still be speaking the reply
+    await asyncio.sleep(0.3)
     assert ("listen", ListeningMode.AUTO_STOP) in protocol.calls
     assert not gate.mic_blocked
     await transport._stop_audio_consumer()
 
 
-async def test_microphone_is_held_while_a_turn_is_dropped(monkeypatch):
+def test_microphone_is_held_while_a_turn_is_dropped(monkeypatch):
     from src.core import stt_gate as gate_mod
     from src.plugins.audio import AudioPlugin
 
