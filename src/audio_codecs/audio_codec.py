@@ -434,6 +434,10 @@ class AudioCodec:
         self._music_gain = min(1.0, max(0.0, float(music)))
         self._effects_gain = min(1.0, max(0.0, float(effects)))
 
+    def output_gains(self) -> dict:
+        """The linear gains in effect (for diagnostics and tests)."""
+        return {"voice": self._voice_gain, "music": self._music_gain, "effects": self._effects_gain}
+
     @property
     def effects_gain(self) -> float:
         """Multiply sound effects by this before they are mixed in."""

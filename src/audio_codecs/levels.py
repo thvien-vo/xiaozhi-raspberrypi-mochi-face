@@ -138,7 +138,12 @@ class AudioLevels:
             message = "Chưa có loa (không có thiết bị âm thanh): mức vẫn được lưu và áp dụng khi có loa"
         elif not available:
             message = "Loa không phát được lúc này: mức vẫn được lưu"
-        return {**values, "muted": muted, "available": available, "device": device, "message": message, "step": STEP}
+        getter = getattr(codec, "output_gains", None)
+        applied = getter() if callable(getter) else None  # What the mixer really uses, for checking
+        return {
+            **values, "muted": muted, "available": available, "device": device, "message": message,
+            "step": STEP, "applied": applied,
+        }
 
     # ----- Changing -----
 
