@@ -233,71 +233,60 @@ def run_gate(gate, items):
 
 
 def test_gate_swallows_the_whole_hallucinated_turn():
-    gate = SttGate(SttFilter())
+    t = [10.0]
+    gate = SttGate(SttFilter(), clock=lambda: t[0])
     events = []
     gate.on_drop = lambda turn, text, result: events.append(("drop", turn, text))
-    gate.on_resume = lambda turn: events.append(("resume", turn))
     gate.on_tool_blocked = lambda payload: events.append(("tool", payload["id"]))
 
     delivered = run_gate(gate, hallucinated_turn())
 
     assert delivered == []
-    assert events == [("drop", 1, "Hãy subscribe cho kênh Ghiền Mì Gõ"), ("tool", 7), ("resume", 1)]
+    assert events == [("drop", 1, "Hãy subscribe cho kênh Ghiền Mì Gõ"), ("tool", 7)]
     assert gate.dropped_audio_frames == 3
     assert gate.mic_blocked  # Until the session reopens listening
+    assert gate.quiet_for() == 0
+    t[0] += 2.5
+    assert gate.quiet_for() == pytest.approx(2.5)
     gate.release_mic(1)
     assert not gate.mic_blocked
+    assert gate.suppressing  # Stragglers of the turn are still swallowed
 
 
 def early_abort_turn(text="Hãy subscribe cho kênh La La School"):
-    """Seen on the official server: our abort lands before "tts start"; the server answers
-    it with "tts stop" at once, then sends the whole reply anyway."""
+    """Seen on the official server: our abort is answered by "tts stop" at once (before or
+    after "tts start"), then the server sends the whole reply anyway."""
     return [
         {"type": "stt", "text": text},
-        {"type": "tts", "state": "stop"},
-        {"type": "alert", "status": "x"},
-        {"type": "llm", "emotion": "happy"},
         {"type": "tts", "state": "start"},
+        {"type": "alert", "status": "x"},
+        {"type": "tts", "state": "stop"},
+        {"type": "llm", "emotion": "happy"},
         {"type": "tts", "state": "sentence_start", "text": "Mời bạn subscribe kênh La La School!"},
         "AUDIO", "AUDIO",
+        {"type": "tts", "state": "sentence_end"},
         {"type": "tts", "state": "stop"},
     ]
 
 
 def test_reply_sent_after_the_abort_is_still_swallowed():
     gate = SttGate(SttFilter())
-    events = []
-    gate.on_drop = lambda turn, text, result: events.append("drop")
-    gate.on_late_start = lambda turn: events.append(("abort again", turn))
-    gate.on_resume = lambda turn: events.append(("resume", turn))
     delivered = run_gate(gate, early_abort_turn())
     assert delivered == [{"type": "alert", "status": "x"}]  # Nothing of the reply
-    assert events == ["drop", ("abort again", 1), ("resume", 1)]
-    assert gate.dropped_audio_frames == 2
-
-
-def test_early_stop_without_a_reply_waits_for_the_watchdog():
-    t = [10.0]
-    gate = SttGate(SttFilter(), clock=lambda: t[0])
-    resumed = []
-    gate.on_resume = resumed.append
-    run_gate(gate, early_abort_turn()[:2])
-    assert gate.suppressing and resumed == []
-    t[0] += 2.5
-    assert gate.early_stop_age() == pytest.approx(2.5)
-    assert gate.finish(1, "test") and resumed == [1]
-    assert not gate.finish(1)  # Once
+    assert gate.dropped_audio_frames == 2 and gate.suppressing
+    # Even a second "tts start" later stays swallowed until the user really speaks
+    assert run_gate(gate, [{"type": "tts", "state": "start"}, "AUDIO"]) == []
 
 
 def test_late_audio_of_a_dropped_turn_is_not_played():
     gate = SttGate(SttFilter())
     run_gate(gate, hallucinated_turn())
-    # Frames that arrive after the turn's tts stop (network jitter) stay blocked...
     assert run_gate(gate, ["AUDIO", "AUDIO"]) == []
-    # ...until the next real turn starts speaking
+    # The next real turn is answered normally
     real = [{"type": "stt", "text": "kể chuyện cười"}, {"type": "tts", "state": "start"}, "AUDIO",
             {"type": "tts", "state": "stop"}]
     assert run_gate(gate, real) == real
+    assert not gate.suppressing
 
 
 def test_real_sentence_during_a_drop_is_delivered():
@@ -315,21 +304,21 @@ def test_real_turn_passes_untouched():
     assert run_gate(gate, turn) == turn
 
 
-def test_typed_text_is_never_filtered():
+def test_typed_text_is_never_filtered_and_ends_a_drop():
     gate = SttGate(SttFilter())
+    run_gate(gate, hallucinated_turn()[:2])
     gate.note_typed("La La School")
+    assert not gate.suppressing and not gate.mic_blocked
     assert gate.filter_json({"type": "stt", "text": "la la school"})
 
 
-def test_drop_ends_by_itself_when_the_server_never_says_stop():
+def test_drop_ends_by_itself_after_the_time_limit():
     t = [100.0]
     gate = SttGate(SttFilter(), clock=lambda: t[0], max_suppress_s=5)
-    resumed = []
-    gate.on_resume = resumed.append
     run_gate(gate, hallucinated_turn()[:3])
     t[0] += 6
-    assert gate.filter_json({"type": "hello"})
-    assert resumed == [1] and not gate.suppressing
+    assert gate.filter_json({"type": "tts", "state": "start"})
+    assert not gate.suppressing and not gate.mic_blocked
 
 
 def test_other_messages_pass_during_a_drop():
@@ -388,7 +377,7 @@ async def wired(monkeypatch):
     import src.bootstrap.session as session_mod
 
     monkeypatch.setattr(session_mod, "STT_RESUME_FALLBACK_S", 0.3)
-    monkeypatch.setattr(session_mod, "STT_EARLY_STOP_WAIT_S", 0.1)
+    monkeypatch.setattr(session_mod, "STT_QUIET_S", 0.1)
     bus = EventBus()
     state = StateManager(bus)
     protocol = FakeProtocol()
@@ -448,7 +437,6 @@ async def test_hallucinated_turn_is_silent_and_runs_no_tool(monkeypatch):
     assert tool_answers and tool_answers[0]["id"] == 7 and tool_answers[0]["result"]["isError"]
     assert ignored and ignored[0]["text"] == "Hãy subscribe cho kênh Ghiền Mì Gõ"
     assert not gate.mic_blocked
-    # Resumed once only, although both tts stop and the fallback timer fired
     assert protocol.calls.count(("listen", ListeningMode.AUTO_STOP)) == 1
 
     # The next real sentence is answered normally
@@ -463,25 +451,26 @@ async def test_hallucinated_turn_is_silent_and_runs_no_tool(monkeypatch):
 async def test_reply_after_an_early_abort_never_plays(monkeypatch):
     transport, session, state, protocol, plugins, gate, played, ignored = await wired(monkeypatch)
     turn = early_abort_turn()
-    feed(transport, turn[:2])  # stt + the abort's immediate "tts stop"
+    feed(transport, turn[:4])  # stt, tts start, alert, the abort's immediate "tts stop"
     await asyncio.sleep(0.03)
-    assert gate.mic_blocked and gate.suppressing  # Not over yet: the reply may follow
-    feed(transport, turn[2:])
+    assert gate.mic_blocked and gate.suppressing  # Not over yet: the reply follows
+    feed(transport, turn[4:])
+    await asyncio.sleep(0.05)
+    assert gate.mic_blocked  # Reply still streaming (less than STT_QUIET_S ago)
     await settle()
     assert played == []
     assert [m["type"] for m in plugins.json] == ["alert"]
-    assert protocol.calls.count(("abort", None)) == 2  # Second abort when the reply started
     assert protocol.calls.count(("listen", ListeningMode.AUTO_STOP)) == 1
     assert not gate.mic_blocked and state.device_state == DeviceState.LISTENING
     await transport._stop_audio_consumer()
 
 
-async def test_early_abort_without_reply_reopens_listening(monkeypatch):
+async def test_abort_without_reply_reopens_listening(monkeypatch):
     transport, session, state, protocol, plugins, gate, played, ignored = await wired(monkeypatch)
-    feed(transport, early_abort_turn()[:2])
+    feed(transport, early_abort_turn()[:4])
     await settle()
     assert ("listen", ListeningMode.AUTO_STOP) in protocol.calls
-    assert not gate.mic_blocked and not gate.suppressing
+    assert not gate.mic_blocked
     await transport._stop_audio_consumer()
 
 
@@ -489,12 +478,21 @@ async def _record(states, data):
     states.append(data)
 
 
-async def test_resume_falls_back_when_no_tts_stop_comes(monkeypatch):
+async def test_resume_falls_back_when_the_reply_never_ends(monkeypatch):
     transport, session, state, protocol, plugins, gate, played, ignored = await wired(monkeypatch)
-    feed(transport, hallucinated_turn()[:3])  # stt, tts start, llm; then nothing
-    await settle()
-    assert gate.mic_blocked  # The server may still be speaking the reply
-    await asyncio.sleep(0.3)
+    feed(transport, hallucinated_turn()[:3])
+
+    async def stream():  # The server keeps streaming audio of the dropped reply
+        for _ in range(20):
+            transport._on_incoming_audio(b"\x00opus")
+            await asyncio.sleep(0.03)
+
+    task = asyncio.get_running_loop().create_task(stream())
+    await asyncio.sleep(0.2)
+    assert gate.mic_blocked  # Never quiet long enough
+    await asyncio.sleep(0.2)
+    await task
+    assert played == []
     assert ("listen", ListeningMode.AUTO_STOP) in protocol.calls
     assert not gate.mic_blocked
     await transport._stop_audio_consumer()

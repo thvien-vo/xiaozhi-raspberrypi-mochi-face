@@ -22,12 +22,11 @@ if TYPE_CHECKING:
 
 logger = get_logger()
 
-# After dropping a hallucinated turn: reopen listening at the latest this long after the
-# abort, whatever the server sent
+# After dropping a hallucinated turn, reopen the microphone once the server has sent
+# nothing more for the turn (no tts/llm/audio) for this long...
+STT_QUIET_S = 2.0
+# ...or at the latest this long after the abort
 STT_RESUME_FALLBACK_S = 15.0
-# The official server answers an early abort with "tts stop" and may still send the reply
-# right after; wait this long after such a stop before calling the turn over
-STT_EARLY_STOP_WAIT_S = 3.0
 
 
 class ConversationSession:
@@ -62,9 +61,7 @@ class ConversationSession:
         self._dropped_turn = 0
         self._resumed_turn = 0
         gate.on_drop = self._on_stt_dropped
-        gate.on_resume = lambda turn: self._spawn_safe(self.resume_after_dropped_turn(turn), "stt:resume")
         gate.on_tool_blocked = lambda payload: self._spawn_safe(self._refuse_tool_call(payload), "stt:tool")
-        gate.on_late_start = lambda turn: self._spawn_safe(self._abort_dropped_reply(turn), "stt:abort")
 
     def _spawn_safe(self, coro, name: str) -> None:
         spawn = getattr(self, "_spawn", None)
@@ -80,8 +77,9 @@ class ConversationSession:
         """The server is about to answer a hallucinated sentence: stop it, say nothing.
 
         The face stays as it is (listening): the gate swallows tts/llm, so no state change
-        reaches it. The microphone stays closed until the turn is over (the reply's "tts stop",
-        or the watchdog below); then listening resumes.
+        reaches it. The microphone stays closed while the server still streams the (swallowed)
+        reply; once that stream has been quiet for STT_QUIET_S, listening resumes. The gate
+        keeps swallowing stragglers until the next real transcript.
         """
         if self._event_bus is not None:
             try:
@@ -97,28 +95,27 @@ class ConversationSession:
             except Exception as e:
                 logger.warning(f"STT filter: failed to send abort: {e}", exc_info=True)
         await self._clear_tts_queue()
-        # Watchdog: the gate ends the turn on the reply's "tts stop"; end it here when the
-        # server only acknowledged the abort and sent no reply, or sent nothing at all
+        # The server still sends the whole reply after the abort (measured): wait until it
+        # has gone quiet, then listen again
         gate = getattr(self, "_stt_gate", None)
         loop = asyncio.get_running_loop()
         started = loop.time()
-        while gate is not None and gate.suppressing and gate.turn == turn:
-            age = gate.early_stop_age()
-            if age is not None and age >= STT_EARLY_STOP_WAIT_S:
-                gate.finish(turn, "no reply after the abort")
+        reason = "the server's reply is over"
+        while gate is not None and gate.turn == turn:
+            quiet = gate.quiet_for()
+            if quiet is None:
+                reason = "the drop ended"
+                break
+            if quiet >= STT_QUIET_S:
                 break
             if loop.time() - started >= STT_RESUME_FALLBACK_S:
-                gate.finish(turn, "server sent no end of turn")
+                reason = "time limit"
                 break
             await asyncio.sleep(0.1)
-
-    async def _abort_dropped_reply(self, turn: int) -> None:
-        if self.protocol.is_audio_channel_opened():
-            try:
-                await self.protocol.send_abort_speaking(None)
-            except Exception as e:
-                logger.warning(f"STT filter: failed to send the second abort: {e}")
-        await self._clear_tts_queue()
+        if gate is not None and gate.turn != turn:
+            return  # A newer dropped turn took over
+        logger.info(f"STT filter: dropped turn over ({reason})")
+        await self.resume_after_dropped_turn(turn)
 
     async def resume_after_dropped_turn(self, turn: int) -> None:
         """Back to normal listening after a dropped turn (once per turn)."""
