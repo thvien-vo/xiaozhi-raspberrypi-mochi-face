@@ -693,7 +693,7 @@ def test_web_commands_are_validated():
     cmd = parse_command(json.dumps({"type": "vad", "threshold": 9, "hangover_ms": 1, "save": False}), 90, 45)
     assert cmd.args["threshold"] == 0.95 and cmd.args["hangover_ms"] == 200 and cmd.args["save"] is False
     cmd = parse_command(json.dumps({"type": "stt_filter", "min_chars": 3.6}), 90, 45)
-    assert cmd.args == {"enabled": None, "min_chars": 4}
+    assert cmd.args == {"enabled": None, "min_chars": 4, "reply_filter": None, "reset_context": None}
 
 
 def test_web_commands_edit_the_filter_and_vad():
@@ -754,3 +754,105 @@ def test_mic_inject_replaces_frames_and_follows_the_file(tmp_path, monkeypatch):
     out = inj.next_frame(real)
     assert np.allclose(out, [0.5, 0, -0.5, 0.5])  # Looped
     assert np.allclose(inj.next_frame(real), [0, -0.5, 0.5, 0])
+
+
+# ----- Fragments, tails and the robot's own sentences -----
+
+FRAGMENTS_IGNORED = ["Để không bỏ lỡ.", "những video hấp dẫn", "Bấm chuông", "và hẹn gặp lại", "de khong bo lo nhe"]
+FRAGMENTS_ANSWERED = ["mở nhạc", "kể chuyện cười", "hẹn gặp lại", "để không bỏ lỡ cuộc hẹn", "bấm vào đèn"]
+
+
+@pytest.mark.parametrize("text", FRAGMENTS_IGNORED)
+def test_pieces_of_a_hallucination_are_ignored(text):
+    assert SttFilter().check(text).ignored, text
+
+
+@pytest.mark.parametrize("text", FRAGMENTS_ANSWERED)
+def test_real_sentences_next_to_the_fragments_are_answered(text):
+    assert not SttFilter().check(text).ignored, text
+
+
+def test_tail_of_a_dropped_sentence_is_ignored_only_within_the_window():
+    t = [0.0]
+    gate = SttGate(SttFilter(), clock=lambda: t[0])
+    long_text = "Hãy subscribe cho kênh La La School để không bỏ lỡ những video hấp dẫn"
+    run_gate(gate, hallucinated_turn(long_text))
+    t[0] += 5
+    assert not gate.filter_json({"type": "stt", "text": "cho kênh La La"})
+    assert gate.mic_blocked
+    t[0] += 40
+    assert gate.filter_json({"type": "stt", "text": "cho kênh La La"})
+
+
+def reply_turn(sentences):
+    items = [{"type": "tts", "state": "start"}]
+    for text in sentences:
+        items += [{"type": "tts", "state": "sentence_start", "text": text}, "AUDIO", "AUDIO",
+                  {"type": "tts", "state": "sentence_end", "text": text}]
+    return items + [{"type": "tts", "state": "stop"}]
+
+
+def test_reported_sequence_makes_no_sound():
+    """Hallucination -> fragment "Để không bỏ lỡ." -> reply that repeats La La School."""
+    t = [0.0]
+    gate = SttGate(SttFilter(), clock=lambda: t[0])
+    blocked = []
+    gate.on_reply_blocked = lambda s, m: blocked.append(s)
+    first = "Hãy subscribe cho kênh La La School để không bỏ lỡ những video hấp dẫn"
+    delivered = run_gate(gate, hallucinated_turn(first))
+    t[0] += 6
+    fragment = [{"type": "stt", "text": "Để không bỏ lỡ."}] + reply_turn(
+        ["Subscribe kênh La La School để không bỏ lỡ video hấp dẫn"]
+    )
+    delivered += run_gate(gate, fragment)
+    assert delivered == []
+    # Even if the fragment slipped through, the reply itself is not spoken
+    t[0] += 100
+    gate2 = SttGate(SttFilter(), clock=lambda: t[0])
+    gate2.on_reply_blocked = lambda s, m: blocked.append(s)
+    turn = [{"type": "stt", "text": "ừm ví dụ thôi"}] + reply_turn(
+        ["Subscribe kênh La La School để không bỏ lỡ video hấp dẫn"]
+    )
+    out = run_gate(gate2, turn)
+    assert "AUDIO" not in out
+    assert all(m.get("state") not in ("sentence_start", "sentence_end") for m in out if m != "AUDIO")
+    assert len(blocked) == 1 and gate2.dropped_audio_frames == 2
+
+
+def test_only_the_bad_sentence_of_a_reply_is_dropped():
+    gate = SttGate(SttFilter())
+    ok1, bad, ok2 = "Được rồi, để tôi kể.", "Hãy đăng ký kênh La La School nhé", "Chuyện bắt đầu thế này."
+    items = [{"type": "stt", "text": "kể chuyện cười"}] + reply_turn([ok1, bad, ok2])
+    out = run_gate(gate, items)
+    texts = [m["text"] for m in out if m != "AUDIO" and m.get("state") == "sentence_start"]
+    assert texts == [ok1, ok2]
+    assert out.count("AUDIO") == 4
+    assert out[-1] == {"type": "tts", "state": "stop"}
+
+
+def test_normal_replies_and_requested_names_are_not_blocked():
+    gate = SttGate(SttFilter())
+    normal = [{"type": "stt", "text": "mở nhạc"}] + reply_turn(["Đang mở nhạc cho bạn.", "Chúc bạn nghe vui!"])
+    assert run_gate(gate, normal) == normal
+    asked = [{"type": "stt", "text": "mở nhạc La La School"}] + reply_turn(["Đang mở La La School."])
+    assert run_gate(gate, asked) == asked
+
+
+def test_reply_filter_can_be_switched_off():
+    f = SttFilter(reply_enabled=False)
+    gate = SttGate(f)
+    items = [{"type": "stt", "text": "kể chuyện"}] + reply_turn(["Kênh La La School rất hay"])
+    assert run_gate(gate, items) == items
+    f.set_reply_enabled(True)
+    assert f.check_reply("kênh Ghiền Mì Gõ")
+
+
+def test_filter_saves_the_new_settings():
+    cfg = Config()
+    f = SttFilter.from_config(cfg)
+    f._save = lambda u: cfg.update_configs({f"STT_FILTER.{k}": v for k, v in u.items()})
+    f.set_reset_context(True)
+    f.set_reply_enabled(False)
+    assert cfg.values["STT_FILTER.RESET_CONTEXT"] is True
+    assert cfg.values["STT_FILTER.REPLY_FILTER"] is False
+    assert "để không bỏ lỡ" in cfg.values["STT_FILTER.FRAGMENTS"]

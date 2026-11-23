@@ -28,6 +28,15 @@ message marks the end of the dropped turn, and the gate works like this:
 * Audio frames stay blocked until the next delivered ``tts start``, so speech that arrives
   late for the dropped turn is never played.
 
+* A transcript that comes within TAIL_WINDOW_S of a dropped one and is only a run of words
+  of it ("Để không bỏ lỡ." after "Hãy subscribe ... để không bỏ lỡ những video hấp dẫn") is
+  the leftover of the same hallucination and is dropped too: the server keeps the dropped
+  sentence in its history and would answer the fragment from it.
+* Outside a dropped turn, each robot sentence (``tts sentence_start``) that repeats
+  hallucinated content (SttFilter.check_reply) is swallowed together with its audio frames
+  (up to the next sentence); the other sentences of the turn go through. Not done when the
+  user's own last sentence mentioned the same thing ("mở nhạc La La School").
+
 Typed text (web panel, greeting) is sent as a wake-word "detect"; a transcript equal to a
 text sent in the last few seconds is never filtered.
 """
@@ -45,6 +54,7 @@ logger = get_logger()
 
 MAX_SUPPRESS_S = 30.0
 TYPED_WINDOW_S = 10.0
+TAIL_WINDOW_S = 20.0
 
 
 class SttGate:
@@ -65,12 +75,17 @@ class SttGate:
         self._mic_blocked = False
         self._turn = 0
         self._typed: list[tuple[float, str]] = []
+        self._dropped_texts: list[tuple[float, str]] = []
+        self._last_user_text = ""
+        self._sentence_blocked = False
+        self.dropped_sentences = 0
         self.dropped_turns = 0
         self.dropped_audio_frames = 0
         self.dropped_messages = 0
         # Callbacks (run synchronously on the protocol's thread; they must only schedule work)
         self.on_drop: Callable[[int, str, Any], None] | None = None
         self.on_tool_blocked: Callable[[dict], None] | None = None
+        self.on_reply_blocked: Callable[[str, Any], None] | None = None
 
     # ----- State -----
 
@@ -108,6 +123,7 @@ class SttGate:
             self._suppressing = False
             self._audio_blocked = False
             self._mic_blocked = False
+            self._sentence_blocked = False
 
     def note_typed(self, text: str) -> None:
         """Typed text or the greeting goes out: the user starts a new turn."""
@@ -134,6 +150,7 @@ class SttGate:
         now = self._clock()
         drop = None
         blocked_tool = None
+        reply_blocked = None
         deliver = True
         with self._lock:
             if self._suppressing and now - self._suppress_since > self._max_suppress_s:
@@ -145,6 +162,12 @@ class SttGate:
                 result = None
                 if not self._was_typed_locked(text, now):
                     result = self._filter.check(text)
+                    if not result.ignored:
+                        self._dropped_texts = [
+                            (t, s) for t, s in self._dropped_texts if now - t < TAIL_WINDOW_S
+                        ]
+                        if self._dropped_texts:
+                            result = self._filter.check_tail(text, [s for _, s in self._dropped_texts])
                 if result is not None and result.ignored:
                     self._turn += 1
                     self._suppressing = True
@@ -153,11 +176,15 @@ class SttGate:
                     self._audio_blocked = True
                     self._mic_blocked = True
                     self.dropped_turns += 1
+                    self._sentence_blocked = False
+                    self._dropped_texts.append((now, text))
                     drop = (self._turn, text, result)
                 elif self._suppressing:
                     logger.info("STT filter: a real sentence arrived, the dropped turn is over")
                     self._suppressing = False
                     self._mic_blocked = False
+                if drop is None:
+                    self._last_user_text = text
             elif self._suppressing:
                 swallow = kind in ("tts", "llm")
                 if kind == "mcp":
@@ -169,14 +196,38 @@ class SttGate:
                     self.dropped_messages += 1
                     self._last_activity = now
                 deliver = not swallow
-            elif kind == "tts" and message.get("state") == "start":
-                self._audio_blocked = False
+            elif kind == "tts":
+                state = message.get("state")
+                if state == "start":
+                    self._audio_blocked = False
+                    self._sentence_blocked = False
+                elif state == "stop":
+                    self._sentence_blocked = False
+                elif state == "sentence_start":
+                    sentence = str(message.get("text") or "")
+                    matched = self._filter.check_reply(sentence)
+                    if matched and set(matched) <= set(self._filter.check_reply(self._last_user_text)):
+                        matched = ()  # The user asked for it
+                    if matched:
+                        self._sentence_blocked = True
+                        self.dropped_sentences += 1
+                        reply_blocked = (sentence, matched)
+                        deliver = False
+                    else:
+                        self._sentence_blocked = False
+                elif state == "sentence_end" and self._sentence_blocked:
+                    deliver = False
         if drop is not None:
             turn, text, result = drop
             logger.info(f"STT filter: ignored {text!r} (matched: {result.label})")
             self._filter.record_ignored(text, result)
             self._call(self.on_drop, turn, text, result)
             return False
+        if reply_blocked is not None:
+            sentence, matched = reply_blocked
+            logger.info(f"STT filter: robot sentence not spoken {sentence!r} (matched: {', '.join(matched)})")
+            self._filter.record_reply_blocked(sentence, matched)
+            self._call(self.on_reply_blocked, sentence, matched)
         if blocked_tool is not None:
             logger.info(
                 "STT filter: blocked tool call %r of a dropped turn",
@@ -188,7 +239,7 @@ class SttGate:
     def filter_audio(self) -> bool:
         """True to play the server's audio frame."""
         with self._lock:
-            if self._suppressing or self._audio_blocked:
+            if self._suppressing or self._audio_blocked or self._sentence_blocked:
                 self.dropped_audio_frames += 1
                 if self._suppressing:
                     self._last_activity = self._clock()
@@ -212,6 +263,7 @@ class SttGate:
                 "dropped_turns": self.dropped_turns,
                 "dropped_audio_frames": self.dropped_audio_frames,
                 "dropped_messages": self.dropped_messages,
+                "dropped_sentences": self.dropped_sentences,
             }
 
 

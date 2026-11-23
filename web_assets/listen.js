@@ -31,6 +31,8 @@ export class ListenPanel {
 
   build() {
     $("sf-enabled").onchange = (e) => this.command({ type: "stt_filter", enabled: e.target.checked });
+    $("sf-reply").onchange = (e) => this.command({ type: "stt_filter", reply_filter: e.target.checked });
+    $("sf-context").onchange = (e) => this.command({ type: "stt_filter", reset_context: e.target.checked });
     $("sf-add-form").onsubmit = async (e) => {
       e.preventDefault();
       const input = $("sf-add");
@@ -39,7 +41,7 @@ export class ListenPanel {
       const r = await this.command({ type: "stt_pattern_add", pattern });
       if (r?.ok) input.value = "";
     };
-    $("sf-reset").onclick = () => this.command({ type: "stt_patterns_reset" });
+    $("sf-patterns-reset").onclick = () => this.command({ type: "stt_patterns_reset" });
     $("sf-recent-clear").onclick = () => this.command({ type: "stt_recent_clear" });
     $("sf-min").onchange = (e) => {
       const n = Number(e.target.value);
@@ -89,6 +91,8 @@ export class ListenPanel {
     if (!f) return;
     this.filter = f;
     $("sf-enabled").checked = !!f.enabled;
+    $("sf-reply").checked = !!f.reply_enabled;
+    $("sf-context").checked = !!f.reset_context;
     if (document.activeElement !== $("sf-min")) $("sf-min").value = f.min_chars;
     const gate = f.gate || {};
     $("sf-stats").textContent = `${f.enabled ? "Đang bật" : "Đang tắt"} · đã bỏ qua ${f.ignored_total} câu từ lúc khởi động`

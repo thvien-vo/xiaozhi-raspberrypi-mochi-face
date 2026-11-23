@@ -147,6 +147,31 @@ class ConversationSession:
             except Exception:
                 pass
         logger.info("STT filter: listening again after the ignored turn")
+        await self._refresh_server_session()
+
+    async def _refresh_server_session(self) -> None:
+        """Optional (STT_FILTER.RESET_CONTEXT): reopen the server session after a dropped turn.
+
+        The protocol has no "forget" message: the only client-side way to start a fresh
+        conversation is to close the channel and say hello again.
+        """
+        stt_filter = getattr(getattr(self, "_stt_gate", None), "_filter", None)
+        if stt_filter is None or not stt_filter.reset_context:
+            return
+        if self.state.resting or not self.protocol.is_audio_channel_opened():
+            return
+        keep, mode = self.state.keep_listening, self.state.listening_mode
+        try:
+            logger.info("STT filter: reopening the server session so it forgets the dropped sentence")
+            await self.protocol.disconnect()
+            if not await self.connect_protocol():
+                return
+            if keep and mode != ListeningMode.REALTIME:
+                self.state.set_listening_mode(mode)
+                self.state.set_keep_listening(True)
+                await self.protocol.send_start_listening(mode)
+        except Exception as e:
+            logger.warning(f"STT filter: could not reopen the server session: {e}", exc_info=True)
 
     async def _refuse_tool_call(self, payload: dict) -> None:
         request_id = payload.get("id")

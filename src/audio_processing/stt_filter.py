@@ -93,6 +93,43 @@ DEFAULT_PATTERNS: tuple[str, ...] = (
     "字幕由Amara.org社区提供",
 )
 
+# Pieces of a hallucinated sentence the STT sometimes returns alone (the whole text must be
+# the piece: "để không bỏ lỡ" is dropped, "để không bỏ lỡ cuộc hẹn" is not)
+DEFAULT_FRAGMENTS: tuple[str, ...] = (
+    "để không bỏ lỡ",
+    "không bỏ lỡ",
+    "những video hấp dẫn",
+    "video hấp dẫn",
+    "những video mới nhất",
+    "video mới nhất",
+    "bấm chuông",
+    "nhấn chuông",
+    "chuông thông báo",
+    "và hẹn gặp lại",
+    "đã theo dõi và hẹn gặp lại",
+)
+
+# Robot sentences that must never be spoken: they repeat a hallucinated sentence the server
+# kept in its conversation history. Narrower than PATTERNS (a normal answer may say "kênh
+# YouTube" or "ủng hộ").
+DEFAULT_REPLY_PATTERNS: tuple[str, ...] = (
+    "La La School",
+    "Ghiền Mì Gõ",
+    "subscribe kênh",
+    "subscribe cho kênh",
+    "đăng ký kênh",
+    "đăng kí kênh",
+    "bấm chuông",
+    "nhấn chuông",
+    "không bỏ lỡ những video",
+    "không bỏ lỡ video",
+    "hẹn gặp lại các bạn trong video",
+    "hẹn gặp lại các bạn trong những video",
+)
+
+TAIL_MAX_WORDS = 10
+MAX_REPLY_WORDS = 80
+
 # Words that carry no request on their own once the hallucinated phrase is gone (folded)
 FILLER_WORDS = frozenset(
     """
@@ -161,7 +198,7 @@ def compile_pattern(text: str) -> _Pattern | None:
 @dataclass(frozen=True)
 class FilterResult:
     ignored: bool
-    reason: str = ""  # "pattern", "short" or ""
+    reason: str = ""  # "pattern", "short", "fragment", "tail", "reply" or ""
     patterns: tuple[str, ...] = ()
     leftover: str = ""  # Words that were neither a pattern nor filler
 
@@ -169,6 +206,12 @@ class FilterResult:
     def label(self) -> str:
         if self.reason == "short":
             return "quá ngắn"
+        if self.reason == "reply":
+            return "câu trả lời: " + ", ".join(self.patterns)
+        if self.reason == "fragment":
+            return "mảnh câu ảo giác: " + ", ".join(self.patterns)
+        if self.reason == "tail":
+            return "đuôi câu vừa bỏ: " + ", ".join(self.patterns)
         if self.patterns:
             return ", ".join(self.patterns)
         return ""
@@ -259,6 +302,73 @@ def check_text(text: str, patterns, min_chars: int = DEFAULT_MIN_CHARS) -> Filte
     return FilterResult(False, "", tuple(matched), " ".join(leftover))
 
 
+def check_fragment(text: str, fragments) -> FilterResult:
+    """Ignore a text that is exactly one known piece of a hallucinated sentence."""
+    words = fold_words(text)
+    candidates = [words]
+    trimmed = list(words)
+    while trimmed and trimmed[-1] in FILLER_WORDS:
+        trimmed.pop()  # "để không bỏ lỡ nhé"
+        candidates.append(list(trimmed))
+    for fragment in fragments:
+        pattern = fragment if isinstance(fragment, _Pattern) else compile_pattern(fragment)
+        if pattern is None:
+            continue
+        for cand in candidates:
+            if not 2 <= len(cand) <= TAIL_MAX_WORDS or len(pattern.words) != len(cand):
+                continue
+            dist = _edit_distance("".join(cand), pattern.letters, pattern.typos)
+            if dist <= pattern.typos and (dist == 0 or _enough_words(pattern, cand)):
+                return FilterResult(True, "fragment", (pattern.text,))
+    return FilterResult(False)
+
+
+def check_tail(text: str, dropped_texts) -> FilterResult:
+    """Ignore a short text that is a run of words taken from a just-dropped hallucination."""
+    words = fold_words(text)
+    k = len(words)
+    if not 2 <= k <= TAIL_MAX_WORDS:
+        return FilterResult(False)
+    letters = "".join(words)
+    typos = allowed_typos(len(letters))
+    for dropped in dropped_texts:
+        source = fold_words(dropped)
+        for i in range(len(source) - k + 1):
+            window = source[i : i + k]
+            if _edit_distance("".join(window), letters, typos) <= typos:
+                return FilterResult(True, "tail", (dropped[:60],))
+    return FilterResult(False)
+
+
+def find_in_reply(text: str, patterns) -> tuple[str, ...]:
+    """The patterns a robot sentence mentions (anywhere in it, unlike check_text)."""
+    words = fold_words(text)
+    if not words:
+        return ()
+    words = words[:MAX_REPLY_WORDS]
+    letters = "".join(words)
+    found: list[str] = []
+    for raw in patterns:
+        pattern = raw if isinstance(raw, _Pattern) else compile_pattern(raw)
+        if pattern is None or not _may_contain(pattern, words, letters):
+            continue
+        k = len(pattern.words)
+        for i in range(len(words)):
+            hit = False
+            for size in range(max(1, k - 1), k + 2):
+                if i + size > len(words):
+                    continue
+                window = words[i : i + size]
+                dist = _edit_distance("".join(window), pattern.letters, pattern.typos)
+                if dist <= pattern.typos and (dist == 0 or _enough_words(pattern, window)):
+                    hit = True
+                    break
+            if hit:
+                found.append(pattern.text)
+                break
+    return tuple(found)
+
+
 def clean_pattern(value) -> str:
     """A pattern as entered on the web page, or ValueError."""
     if not isinstance(value, str):
@@ -281,6 +391,10 @@ class SttFilter:
         min_chars: int = DEFAULT_MIN_CHARS,
         save: Callable[[dict], None] | None = None,
         clock: Callable[[], float] = time.time,
+        fragments=None,
+        reply_enabled: bool = True,
+        reply_patterns=None,
+        reset_context: bool = False,
     ) -> None:
         self._lock = threading.Lock()
         self._enabled = bool(enabled)
@@ -288,11 +402,29 @@ class SttFilter:
         self._patterns: list[str] = []
         self._compiled: list[_Pattern] = []
         self._set_patterns_locked(DEFAULT_PATTERNS if patterns is None else patterns)
+        self._fragments = self._clean_list(DEFAULT_FRAGMENTS if fragments is None else fragments)
+        self._reply_enabled = bool(reply_enabled)
+        self._reply_patterns = self._clean_list(
+            DEFAULT_REPLY_PATTERNS if reply_patterns is None else reply_patterns
+        )
+        self._reset_context = bool(reset_context)
         self._save = save
         self._clock = clock
         self._recent: deque = deque(maxlen=RECENT_IGNORED)
         self._ignored_total = 0
         self._listeners: list[Callable[[], None]] = []
+
+    @staticmethod
+    def _clean_list(items) -> list[str]:
+        out: list[str] = []
+        for raw in items or ():
+            try:
+                text = clean_pattern(raw)
+            except ValueError:
+                continue
+            if text not in out and len(out) < MAX_PATTERNS:
+                out.append(text)
+        return out
 
     @staticmethod
     def _clean_min_chars(value, fallback: int) -> int:
@@ -329,7 +461,15 @@ class SttFilter:
         patterns = get(f"{CONFIG_SECTION}.PATTERNS", None)
         if not isinstance(patterns, list):
             patterns = None
+        def lst(key):
+            value = get(f"{CONFIG_SECTION}.{key}", None)
+            return value if isinstance(value, list) else None
+
         return cls(
+            fragments=lst("FRAGMENTS"),
+            reply_enabled=bool(get(f"{CONFIG_SECTION}.REPLY_FILTER", True)),
+            reply_patterns=lst("REPLY_PATTERNS"),
+            reset_context=bool(get(f"{CONFIG_SECTION}.RESET_CONTEXT", False)),
             enabled=bool(get(f"{CONFIG_SECTION}.ENABLED", True)),
             patterns=patterns,
             min_chars=get(f"{CONFIG_SECTION}.MIN_CHARS", DEFAULT_MIN_CHARS),
@@ -359,7 +499,50 @@ class SttFilter:
             if not self._enabled:
                 return FilterResult(False)
             compiled, min_chars = list(self._compiled), self._min_chars
-        return check_text(text, compiled, min_chars)
+        result = check_text(text, compiled, min_chars)
+        if result.ignored:
+            return result
+        with self._lock:
+            fragments = list(self._fragments)
+        fragment = check_fragment(text, fragments)
+        return fragment if fragment.ignored else result
+
+    def check_tail(self, text: str, dropped_texts) -> FilterResult:
+        """Is text the tail of a hallucination dropped a moment ago?"""
+        if not self.enabled:
+            return FilterResult(False)
+        return check_tail(text, dropped_texts)
+
+    @property
+    def reply_enabled(self) -> bool:
+        with self._lock:
+            return self._reply_enabled
+
+    @property
+    def reset_context(self) -> bool:
+        with self._lock:
+            return self._reset_context
+
+    def check_reply(self, text: str) -> tuple[str, ...]:
+        """Hallucination patterns a robot sentence mentions (empty when the switch is off)."""
+        with self._lock:
+            if not (self._enabled and self._reply_enabled):
+                return ()
+            patterns = list(self._reply_patterns)
+        return find_in_reply(text, patterns)
+
+    def record_reply_blocked(self, text: str, matched) -> None:
+        self.record_ignored(text, FilterResult(True, "reply", tuple(matched)))
+
+    def set_reply_enabled(self, enabled: bool) -> None:
+        with self._lock:
+            self._reply_enabled = bool(enabled)
+        self._persist()
+
+    def set_reset_context(self, enabled: bool) -> None:
+        with self._lock:
+            self._reset_context = bool(enabled)
+        self._persist()
 
     def record_ignored(self, text: str, result: FilterResult) -> None:
         with self._lock:
@@ -412,6 +595,8 @@ class SttFilter:
     def reset_patterns(self) -> None:
         with self._lock:
             self._set_patterns_locked(DEFAULT_PATTERNS)
+            self._fragments = self._clean_list(DEFAULT_FRAGMENTS)
+            self._reply_patterns = self._clean_list(DEFAULT_REPLY_PATTERNS)
         self._persist()
 
     def clear_recent(self) -> None:
@@ -428,6 +613,10 @@ class SttFilter:
                     "ENABLED": self._enabled,
                     "PATTERNS": list(self._patterns),
                     "MIN_CHARS": self._min_chars,
+                    "FRAGMENTS": list(self._fragments),
+                    "REPLY_FILTER": self._reply_enabled,
+                    "REPLY_PATTERNS": list(self._reply_patterns),
+                    "RESET_CONTEXT": self._reset_context,
                 }
             try:
                 self._save(updates)
@@ -451,6 +640,10 @@ class SttFilter:
                 "enabled": self._enabled,
                 "patterns": list(self._patterns),
                 "min_chars": self._min_chars,
+                "fragments": list(self._fragments),
+                "reply_enabled": self._reply_enabled,
+                "reply_patterns": list(self._reply_patterns),
+                "reset_context": self._reset_context,
                 "ignored_total": self._ignored_total,
                 "recent": list(reversed(self._recent)),
                 "defaults": len(DEFAULT_PATTERNS),

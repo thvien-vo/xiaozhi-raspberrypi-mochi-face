@@ -7,7 +7,9 @@ from datetime import datetime, timezone
 from typing import Any, Dict
 
 from src.logging import get_logger
+from src.audio_processing.stt_filter import DEFAULT_FRAGMENTS as DEFAULT_STT_FRAGMENTS
 from src.audio_processing.stt_filter import DEFAULT_PATTERNS as DEFAULT_STT_PATTERNS
+from src.audio_processing.stt_filter import DEFAULT_REPLY_PATTERNS as DEFAULT_STT_REPLY_PATTERNS
 from src.utils.resource_finder import (
     get_config_dir,
     get_user_data_dir,
@@ -335,6 +337,13 @@ class ConfigManager:
             "ENABLED": True,
             "PATTERNS": list(DEFAULT_STT_PATTERNS),
             "MIN_CHARS": 2,
+            # Pieces of a hallucinated sentence ignored when they come alone
+            "FRAGMENTS": list(DEFAULT_STT_FRAGMENTS),
+            # Robot sentences that repeat hallucinated content are not spoken (per sentence)
+            "REPLY_FILTER": True,
+            "REPLY_PATTERNS": list(DEFAULT_STT_REPLY_PATTERNS),
+            # After a dropped turn reopen the server session so it forgets the sentence
+            "RESET_CONTEXT": False,
         },
         # Local voice activity detection: microphone audio goes to the server only while
         # someone speaks (src/audio_processing/vad_gate.py; Silero via sherpa-onnx)

@@ -190,25 +190,41 @@ Server nhận dạng giọng (STT) đôi khi "nghe ra" câu kết video YouTube 
 - **Đo trên server chính thức:** `abort` không hủy câu trả lời. Server trả `tts stop` ngay rồi vẫn gửi `llm`, các câu `tts sentence_start` và toàn bộ âm thanh. Vì vậy cổng chặn **mọi** `tts`/`llm`/`tools/call`/khung âm thanh cho tới khi có câu STT thật tiếp theo, tin nhắn gõ tay, hoặc 30 s. Micro đóng trong lúc server còn gửi câu trả lời, và mở lại (gửi `listen start`) khi luồng đó đã im 2 s (tối đa 15 s).
 - **Vẫn tốn hạn mức:** khi câu STT về tới robot thì server đã chạy STT và LLM cho lượt đó. Lọc chỉ giúp robot im lặng. Chỉ VAD (phần dưới) mới bớt lượt gửi lên server.
 
+**Mảnh câu ảo giác và đuôi câu vừa bỏ** (server vẫn giữ câu ảo giác trong lịch sử hội thoại nên một mảnh của nó, như "Để không bỏ lỡ.", dễ bị trả lời như lời thật):
+
+- `FRAGMENTS`: các mảnh đã biết ("để không bỏ lỡ", "những video hấp dẫn", "bấm chuông", "và hẹn gặp lại", …). Câu bị bỏ qua khi **cả câu** chính là một mảnh (mờ như mẫu thường, có thể thêm từ đệm cuối như "nhé"). "để không bỏ lỡ cuộc hẹn" hay "hẹn gặp lại" vẫn được trả lời.
+- Câu ngắn (2–10 từ) đến trong vòng 20 s sau một lượt bị bỏ qua và chỉ là một đoạn từ liền nhau của câu vừa bị bỏ (cũng so mờ) cũng bị bỏ qua, dù không có trong danh sách. Log: `matched: đuôi câu vừa bỏ: ...`.
+- Danh sách mảnh chỉ sửa trong `config.json` (`STT_FILTER.FRAGMENTS`); thiếu khóa này thì dùng mặc định.
+
+**Lọc câu trả lời của robot** (`STT_FILTER.REPLY_FILTER`, mặc định bật; công tắc "Lọc câu trả lời" trên web):
+
+- Trước khi hiện chữ và phát âm thanh, mỗi câu `tts sentence_start` được so với `REPLY_PATTERNS` (hẹp hơn `PATTERNS`: "La La School", "Ghiền Mì Gõ", "subscribe kênh", "đăng ký kênh", "bấm chuông", "không bỏ lỡ những video", …; mờ, tìm ở bất kỳ chỗ nào trong câu). Khớp thì câu đó bị bỏ cùng `sentence_end` và các gói âm thanh của nó (tới câu kế tiếp); các câu khác của lượt vẫn nói bình thường. Câu bị bỏ hiện trong "Câu đã bỏ qua gần đây" với nhãn "câu trả lời: ...". Log: `STT filter: robot sentence not spoken '<câu>'`.
+- Không chặn khi chính câu người nói gần nhất đã nhắc mẫu đó ("mở nhạc La La School" → "Đang mở La La School" vẫn nói).
+- Dựa vào việc server gửi `sentence_start` trước âm thanh của câu (đúng trên server chính thức).
+
+**Làm mới ngữ cảnh server** (`STT_FILTER.RESET_CONTEXT`, mặc định **tắt**, công tắc trên web, thử nghiệm): giao thức không có thông điệp xóa lịch sử. Cách duy nhất từ phía robot là đóng kênh âm thanh rồi mở lại (hello mới = phiên mới). Khi bật, sau khi nghe lại bình thường sau một lượt bị bỏ qua, robot đóng và mở lại kênh. Chưa kiểm chứng được server có quên câu cũ hay không, nên mặc định tắt; hai lớp lọc trên đã đủ để robot im lặng dù server còn nhớ.
+
 **Trên web:** công tắc bật/tắt; số câu đã bỏ qua; mục "Câu đã bỏ qua gần đây" (20 câu mới nhất, nút **Làm mẫu** để thêm câu đó vào danh sách); mục "Mẫu" hiện các mẫu dạng thẻ (bấm × để xóa), ô thêm mẫu, số chữ cái tối thiểu, nút **Khôi phục mẫu mặc định**. Mọi thay đổi được lưu vào `config.json`.
 
 **Config:**
 
 ```json
-"STT_FILTER": {"ENABLED": true, "PATTERNS": ["La La School", "..."], "MIN_CHARS": 2}
+"STT_FILTER": {"ENABLED": true, "PATTERNS": ["La La School", "..."], "MIN_CHARS": 2,
+  "FRAGMENTS": ["để không bỏ lỡ", "..."], "REPLY_FILTER": true, "REPLY_PATTERNS": ["La La School", "..."],
+  "RESET_CONTEXT": false}
 ```
 
 **Lệnh WebSocket** (Pi kiểm tra lại mọi giá trị):
 
 | Lệnh | Ý nghĩa |
 |---|---|
-| `{"type":"stt_filter","enabled":true,"min_chars":2}` | Bật/tắt, đổi số chữ cái tối thiểu (0–20); trường nào cũng tùy chọn |
+| `{"type":"stt_filter","enabled":true,"min_chars":2,"reply_filter":true,"reset_context":false}` | Bật/tắt bộ lọc, đổi số chữ cái tối thiểu (0–20), bật/tắt lọc câu trả lời, bật/tắt làm mới phiên server; trường nào cũng tùy chọn |
 | `{"type":"stt_pattern_add","pattern":"..."}` | Thêm mẫu (tối đa 120 ký tự, phải có chữ, tối đa 200 mẫu, trùng thì bỏ qua) |
 | `{"type":"stt_pattern_remove","pattern":"..."}` | Xóa mẫu |
 | `{"type":"stt_patterns_reset"}` | Về danh sách mặc định |
 | `{"type":"stt_recent_clear"}` | Xóa danh sách câu đã bỏ qua gần đây |
 
-Trạng thái: `state.stt_filter` = `{enabled, patterns, min_chars, ignored_total, recent, defaults, gate}`.
+Trạng thái: `state.stt_filter` = `{enabled, patterns, min_chars, fragments, reply_enabled, reply_patterns, reset_context, ignored_total, recent, defaults, gate}`.
 
 ### 2. Chỉ gửi micro khi có tiếng nói (`VAD`)
 

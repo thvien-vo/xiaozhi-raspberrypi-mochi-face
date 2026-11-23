@@ -288,6 +288,10 @@
           <label class="switch"><input type="checkbox" id="sf-enabled" aria-label="Bật bộ lọc câu ảo giác"><span></span></label>
         </div>
         <p class="note">Server đôi khi "nghe" ra câu từ tiếng ồn hoặc nhạc (như "La La School", "subscribe kênh…"). Câu <b>chỉ</b> gồm các mẫu dưới đây (không phân biệt dấu, hoa thường, cho phép sai chính tả nhẹ) bị bỏ qua: robot không trả lời, không chạy lệnh. Câu có thêm yêu cầu thật vẫn được trả lời.</p>
+        <div class="row"><label class="switch"><input type="checkbox" id="sf-reply" aria-label="Lọc câu trả lời của robot"><span></span></label>
+          <span class="note">Không đọc câu trả lời nhắc lại nội dung ảo giác (La La School, subscribe kênh…) &mdash; chặn từng câu.</span></div>
+        <div class="row"><label class="switch"><input type="checkbox" id="sf-context" aria-label="Làm mới phiên server"><span></span></label>
+          <span class="note">Sau một lượt bị bỏ qua, mở lại phiên với server để nó quên câu ảo giác (thử nghiệm).</span></div>
         <div class="sf-stats" id="sf-stats"></div>
         <details class="sf-section" id="sf-recent-box" open>
           <summary>Câu đã bỏ qua gần đây <span class="pill" id="sf-recent-count">0</span></summary>
@@ -303,7 +307,7 @@
           <ul class="sf-chips" id="sf-patterns"></ul>
           <div class="row sf-foot">
             <label class="sf-min">Bỏ qua câu ngắn hơn <input class="input" id="sf-min" type="number" min="0" max="20" step="1" inputmode="numeric"> chữ cái</label>
-            <button class="btn small" id="sf-reset" type="button">Đặt lại mặc định</button>
+            <button class="btn small" id="sf-patterns-reset" type="button">Đặt lại mặc định</button>
           </div>
         </details>
       </div>

@@ -268,14 +268,28 @@ class RobotBackend:
             raise CommandError("bộ lọc câu ảo giác không chạy")
         return self.stt_filter
 
-    def _cmd_stt_filter(self, enabled: bool | None, min_chars: int | None) -> dict:
+    def _cmd_stt_filter(
+        self,
+        enabled: bool | None,
+        min_chars: int | None,
+        reply_filter: bool | None = None,
+        reset_context: bool | None = None,
+    ) -> dict:
         f = self._need_filter()
         if enabled is not None:
             f.set_enabled(enabled)
         if min_chars is not None:
             f.set_min_chars(min_chars)
+        if reply_filter is not None:
+            f.set_reply_enabled(reply_filter)
+        if reset_context is not None:
+            f.set_reset_context(reset_context)
         if enabled is not None:
             return {"ok": True, "message": "Đã bật bộ lọc" if enabled else "Đã tắt bộ lọc"}
+        if reply_filter is not None:
+            return {"ok": True, "message": "Đã bật lọc câu trả lời" if reply_filter else "Đã tắt lọc câu trả lời"}
+        if reset_context is not None:
+            return {"ok": True, "message": "Sẽ làm mới phiên server sau lượt bị bỏ" if reset_context else "Không làm mới phiên server"}
         return {"ok": True, "message": f"Câu ngắn hơn {f.min_chars} chữ cái sẽ bị bỏ qua"}
 
     def _cmd_stt_pattern_add(self, pattern: str) -> dict:

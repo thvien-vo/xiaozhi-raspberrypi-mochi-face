@@ -141,10 +141,20 @@ def _parse_stt_filter(kind: str, data: dict) -> Command:
 
     if kind == "stt_filter":
         enabled = None if data.get("enabled") is None else _bool(data, "enabled")
+        reply = None if data.get("reply_filter") is None else _bool(data, "reply_filter")
+        reset = None if data.get("reset_context") is None else _bool(data, "reset_context")
         min_chars = _number(data, "min_chars", *MIN_CHARS_RANGE, required=False)
-        if enabled is None and min_chars is None:
-            raise CommandError("cần 'enabled' hoặc 'min_chars'")
-        return Command(kind, {"enabled": enabled, "min_chars": None if min_chars is None else int(round(min_chars))})
+        if enabled is None and min_chars is None and reply is None and reset is None:
+            raise CommandError("cần 'enabled', 'min_chars', 'reply_filter' hoặc 'reset_context'")
+        return Command(
+            kind,
+            {
+                "enabled": enabled,
+                "min_chars": None if min_chars is None else int(round(min_chars)),
+                "reply_filter": reply,
+                "reset_context": reset,
+            },
+        )
     if kind in ("stt_pattern_add", "stt_pattern_remove"):
         value = data.get("pattern")
         if kind == "stt_pattern_add":
