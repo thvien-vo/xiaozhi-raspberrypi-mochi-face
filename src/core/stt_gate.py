@@ -186,10 +186,12 @@ class SttGate:
                         if self._seen_start:
                             self._suppressing = False
                             resume_turn = self._turn
+                            logger.info("STT filter: dropped reply finished (tts stop after tts start)")
                         elif self._early_stop_at is None:
                             # Answer to our abort, sent before the reply even started: the
                             # official server may still send the reply after it
                             self._early_stop_at = now
+                            logger.info("STT filter: tts stop before any tts start (abort answer); still dropping")
                 elif kind == "mcp":
                     payload = message.get("payload")
                     if isinstance(payload, dict) and payload.get("method") == "tools/call":

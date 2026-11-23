@@ -234,7 +234,11 @@ class ProtocolTransport:
         gate = self._stt_gate
         if gate is not None and not gate.filter_json(json_data):
             msg_type = json_data.get("type") if isinstance(json_data, dict) else None
-            logger.info(f"Dropped JSON message of an ignored turn: type={msg_type}")
+            state = json_data.get("state") if isinstance(json_data, dict) else None
+            logger.info(
+                f"Dropped JSON message of an ignored turn: type={msg_type}"
+                + (f" state={state}" if state else "")
+            )
             return
         self._spawn(
             self._event_bus.emit(Events.INCOMING_JSON, json_data),
